@@ -1,0 +1,175 @@
+'use client';
+
+import React, { useState } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { 
+  Home, 
+  Search, 
+  Bell, 
+  Users, 
+  User as UserIcon, 
+  MoreHorizontal, 
+  Feather,
+  Link2,
+  LogOut,
+  LogIn
+} from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { CURRENT_USER } from '@/lib/mockData';
+import { formatTwitterAvatar } from '@/lib/utils';
+
+interface LeftSidebarProps {
+  onOpenComposer?: () => void;
+}
+
+export default function LeftSidebar({ onOpenComposer }: LeftSidebarProps) {
+  const pathname = usePathname();
+  const { user, profile, signInWithTwitter, signOut, isLoading } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // Active user data (fallback to mock if not signed in)
+  const activeUsername = profile?.username || (user ? 'me' : CURRENT_USER.username);
+  const activeName = profile?.name || (user ? 'You' : CURRENT_USER.name);
+  const activeAvatar = profile?.avatar_url || CURRENT_USER.avatar;
+
+  const navItems = [
+    { label: 'Home', href: '/', icon: Home },
+    { label: 'Explore', href: '/explore', icon: Search },
+    { label: 'Notifications', href: '/notifications', icon: Bell },
+    { label: 'OOMFS Mutuals', href: '/oomfs', icon: Users },
+    { label: 'Profile', href: `/${activeUsername}`, icon: UserIcon },
+  ];
+
+  return (
+    <aside className="sticky top-0 h-screen flex flex-col justify-between py-3 px-2 sm:px-4 xl:w-64 border-r border-[#eff3f4] select-none">
+      <div className="flex flex-col gap-1">
+        {/* Logo */}
+        <Link 
+          href="/" 
+          className="flex items-center gap-2 p-3 hover:bg-[#f7f9f9] rounded-full w-fit transition-colors group mb-1"
+        >
+          <div className="w-9 h-9 bg-[#1d9bf0] rounded-xl flex items-center justify-center text-white font-black text-xl tracking-tighter shadow-xs group-hover:scale-105 transition-transform">
+            O
+          </div>
+          <span className="font-extrabold text-xl tracking-tight hidden xl:inline text-[#0f1419]">
+            oomfs<span className="text-[#1d9bf0]">.org</span>
+          </span>
+        </Link>
+
+        {/* Navigation links */}
+        <nav className="flex flex-col gap-1">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.href || (item.label === 'Profile' && pathname === `/${activeUsername}`);
+
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                className={`flex items-center gap-4 px-4 py-3 rounded-full transition-colors w-fit xl:w-full ${
+                  isActive 
+                    ? 'font-bold text-[#0f1419]' 
+                    : 'text-[#0f1419] hover:bg-[#f7f9f9] font-normal'
+                }`}
+              >
+                <div className="relative flex items-center justify-center">
+                  <Icon className={`w-6 h-6 ${isActive ? 'stroke-[2.5]' : 'stroke-[1.75]'}`} />
+                </div>
+                <span className="text-lg hidden xl:inline flex-1">{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Post Button (or Sign In if not logged in) */}
+        {user ? (
+          <button
+            onClick={onOpenComposer}
+            className="mt-4 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-bold py-3.5 px-4 rounded-full w-fit xl:w-full flex items-center justify-center gap-2 shadow-xs transition-colors text-base"
+          >
+            <Feather className="w-5 h-5 xl:hidden" />
+            <span className="hidden xl:inline">Add Bio Block</span>
+          </button>
+        ) : (
+          <button
+            onClick={() => signInWithTwitter()}
+            className="mt-4 bg-[#0f1419] hover:bg-[#272c30] text-white font-bold py-3 px-4 rounded-full w-fit xl:w-full flex items-center justify-center gap-2 shadow-xs transition-colors text-sm"
+          >
+            <LogIn className="w-4 h-4" />
+            <span className="hidden xl:inline">Sign in with X</span>
+          </button>
+        )}
+
+        {/* Bio Link Badge Callout */}
+        <div className="hidden xl:block mt-6 p-3 bg-[#f7f9f9] rounded-2xl border border-[#eff3f4]">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-[#1d9bf0] uppercase tracking-wider mb-1">
+            <Link2 className="w-3.5 h-3.5" />
+            <span>Your Bio Link</span>
+          </div>
+          <p className="text-xs text-[#536471] mb-2">
+            Share this URL in your X bio:
+          </p>
+          <div className="bg-white border border-[#eff3f4] rounded-lg px-2.5 py-1.5 font-mono text-xs font-semibold text-[#0f1419] truncate select-all">
+            oomfs.org/{activeUsername}
+          </div>
+        </div>
+      </div>
+
+      {/* User profile pill at bottom with Sign Out menu */}
+      <div className="relative">
+        {menuOpen && user && (
+          <div className="absolute bottom-16 left-0 w-full bg-white border border-[#eff3f4] rounded-2xl shadow-xl p-2 z-30 animate-in fade-in">
+            <button
+              onClick={() => {
+                signOut();
+                setMenuOpen(false);
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-xl transition-colors font-semibold"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Log out @{activeUsername}</span>
+            </button>
+          </div>
+        )}
+
+        {user ? (
+          <div
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="flex items-center justify-between p-2 hover:bg-[#f7f9f9] rounded-full transition-colors w-fit xl:w-full cursor-pointer"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <img
+                src={formatTwitterAvatar(activeAvatar)}
+                alt={activeName}
+                className="w-10 h-10 rounded-full object-cover border border-gray-200"
+              />
+              <div className="hidden xl:flex flex-col min-w-0 text-left">
+                <span className="font-bold text-sm text-[#0f1419] truncate leading-tight">
+                  {activeName}
+                </span>
+                <span className="text-xs text-[#536471] truncate">
+                  @{activeUsername}
+                </span>
+              </div>
+            </div>
+            <MoreHorizontal className="w-5 h-5 text-[#536471] hidden xl:block" />
+          </div>
+        ) : (
+          <button
+            onClick={() => signInWithTwitter()}
+            className="flex items-center gap-3 p-2 hover:bg-[#f7f9f9] rounded-full transition-colors w-fit xl:w-full text-left"
+          >
+            <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center text-white font-black text-sm">
+              𝕏
+            </div>
+            <div className="hidden xl:flex flex-col min-w-0">
+              <span className="font-bold text-sm text-[#0f1419]">Connect Account</span>
+              <span className="text-xs text-[#536471]">Sign in with X</span>
+            </div>
+          </button>
+        )}
+      </div>
+    </aside>
+  );
+}
