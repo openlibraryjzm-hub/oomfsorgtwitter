@@ -82,21 +82,21 @@ export default function LeftSidebar({ onOpenComposer }: LeftSidebarProps) {
           })}
         </nav>
 
-        {/* Post Button (or Sign In if not logged in) */}
-        {user ? (
-          <button
-            onClick={onOpenComposer}
-            className="mt-4 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-bold py-3.5 px-4 rounded-full w-fit xl:w-full flex items-center justify-center gap-2 shadow-xs transition-colors text-base"
-          >
-            <Feather className="w-5 h-5 xl:hidden" />
-            <span className="hidden xl:inline">Add Bio Block</span>
-          </button>
-        ) : (
+        {/* Post Button */}
+        <button
+          onClick={onOpenComposer}
+          className="mt-4 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-bold py-3.5 px-4 rounded-full w-fit xl:w-full flex items-center justify-center gap-2 shadow-xs transition-colors text-base cursor-pointer"
+        >
+          <Feather className="w-5 h-5 xl:hidden" />
+          <span className="hidden xl:inline">Post</span>
+        </button>
+
+        {!user && (
           <button
             onClick={() => signInWithTwitter()}
-            className="mt-4 bg-[#0f1419] hover:bg-[#272c30] text-white font-bold py-3 px-4 rounded-full w-fit xl:w-full flex items-center justify-center gap-2 shadow-xs transition-colors text-sm"
+            className="mt-2 bg-[#0f1419] hover:bg-[#272c30] text-white font-bold py-2.5 px-4 rounded-full w-fit xl:w-full flex items-center justify-center gap-2 shadow-xs transition-colors text-xs cursor-pointer"
           >
-            <LogIn className="w-4 h-4" />
+            <LogIn className="w-3.5 h-3.5" />
             <span className="hidden xl:inline">Sign in with X</span>
           </button>
         )}

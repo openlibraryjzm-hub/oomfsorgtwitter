@@ -13,14 +13,26 @@ import {
   ExternalLink, 
   Sparkles, 
   Share2, 
-  Award, 
-  Music, 
   Plus, 
   X,
-  LogIn
+  LogIn,
+  Layers,
+  LayoutGrid,
+  FileText
 } from 'lucide-react';
-import { User, MOCK_OOMFS, MOCK_POSTS, CURRENT_USER, Post } from '@/lib/mockData';
+import { 
+  User, 
+  MOCK_POSTS, 
+  MOCK_COMMENTS, 
+  MOCK_LIKED_POSTS, 
+  CURRENT_USER, 
+  Post, 
+  Comment
+} from '@/lib/mockData';
 import PostCard from '@/components/feed/PostCard';
+import CommentCard from '@/components/feed/CommentCard';
+import PostComposer from '@/components/feed/PostComposer';
+import { saveSessionPost } from '@/lib/postStore';
 import { useAuth } from '@/context/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { formatTwitterAvatar } from '@/lib/utils';
@@ -33,12 +45,19 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
   const { user: authUser, profile: authProfile, signInWithTwitter } = useAuth();
   const supabase = createClient();
 
-  const [activeTab, setActiveTab] = useState<'posts' | 'oomfs' | 'links' | 'vouches'>('posts');
+  // 4 tabs requested left-to-right: 1. Posts (default), 2. Comments, 3. Links, 4. Likes
+  const [activeTab, setActiveTab] = useState<'posts' | 'comments' | 'links' | 'likes'>('posts');
   const [copiedLink, setCopiedLink] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [userProfile, setUserProfile] = useState<User>(initialUser);
 
-  // Posts / Blocks state
+  // Check if viewing own profile
+  const isSelf = Boolean(
+    (authProfile && authProfile.username.toLowerCase() === initialUser.username.toLowerCase()) || 
+    (authUser && authProfile?.username === initialUser.username)
+  );
+
+  // Posts state
   const [posts, setPosts] = useState<Post[]>(() => {
     const defaultPosts = MOCK_POSTS.filter(p => p.author.username === initialUser.username);
     return defaultPosts.length > 0 ? defaultPosts : [
@@ -46,13 +65,8 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
         id: `post_sample_${initialUser.username}`,
         author: initialUser,
         createdAt: '10m',
-        type: 'link_card',
-        text: `Welcome to my oomfs.org profile! Connect with me below:`,
-        linkData: {
-          title: `${initialUser.name} - Official Link`,
-          url: `https://x.com/${initialUser.username}`,
-          buttonText: 'Connect on X ↗'
-        },
+        type: 'standard',
+        text: `Welcome to my oomfs.org profile! Connect with me and leave a comment below.`,
         likesCount: 12,
         repostsCount: 2,
         repliesCount: 1,
@@ -61,18 +75,21 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
     ];
   });
 
-  // Composer Drawer State
-  const [composerOpen, setComposerOpen] = useState(false);
-  const [blockType, setBlockType] = useState<'link_card' | 'vouch_card' | 'media_card' | 'oomf_spotlight' | 'prompt_card' | 'standard'>('link_card');
+  // Comments state
+  const [comments, setComments] = useState<Comment[]>(() => {
+    return MOCK_COMMENTS[initialUser.username] || [];
+  });
+  const [commentText, setCommentText] = useState('');
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
 
-  // Input states
-  const [postText, setPostText] = useState('');
-  const [linkTitle, setLinkTitle] = useState('');
-  const [linkUrl, setLinkUrl] = useState('');
-  const [mediaTitle, setMediaTitle] = useState('');
-  const [vouchText, setVouchText] = useState('');
-  const [selectedOomfUsername, setSelectedOomfUsername] = useState(MOCK_OOMFS[0]?.username || 'dev_kyle');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Likes state (only liked posts)
+  const [likedPosts] = useState<Post[]>(() => {
+    return MOCK_LIKED_POSTS[initialUser.username] || [];
+  });
+
+  // Composer Drawer State (for Posts & Links)
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [blockType, setBlockType] = useState<'standard' | 'carousel' | 'board' | 'link_card'>('standard');
 
   // Edit Profile Modal State
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -82,11 +99,31 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
   const [editWebsite, setEditWebsite] = useState(initialUser.website || '');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
-  // Check if viewing own profile
-  const isSelf = (authProfile && authProfile.username.toLowerCase() === initialUser.username.toLowerCase()) || 
-                 (authUser && authProfile?.username === initialUser.username);
+  // Listen for posts created via the LeftSidebar modal or inline PostComposer
+  useEffect(() => {
+    const handlePostCreated = (e: Event) => {
+      const customEvent = e as CustomEvent<Post>;
+      const newPost = customEvent.detail;
+      if (!newPost) return;
 
-  // Fetch real Supabase data if this profile exists in DB
+      saveSessionPost(newPost);
+      setPosts((prev) => {
+        if (prev.some((p) => p.id === newPost.id)) return prev;
+        return [newPost, ...prev];
+      });
+
+      if (newPost.type === 'link_card') {
+        setActiveTab('links');
+      } else {
+        setActiveTab('posts');
+      }
+    };
+
+    window.addEventListener('oomfs:post-created', handlePostCreated);
+    return () => window.removeEventListener('oomfs:post-created', handlePostCreated);
+  }, []);
+
+  // Fetch real Supabase data if this profile exists in DB (or if signed-in user created blocks)
   useEffect(() => {
     const loadSupabaseProfileAndBlocks = async () => {
       try {
@@ -95,6 +132,8 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
           .select('*')
           .eq('username', initialUser.username.toLowerCase())
           .single();
+
+        let targetUserId = dbUser?.id || null;
 
         if (dbUser) {
           setUserProfile(prev => ({
@@ -111,36 +150,95 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
           setEditBio(dbUser.bio !== null && dbUser.bio !== undefined ? dbUser.bio : initialUser.bio);
           setEditLocation(dbUser.location ?? initialUser.location ?? '');
           setEditWebsite(dbUser.website ?? initialUser.website ?? '');
+        } else if (authUser?.id && initialUser.username.toLowerCase() === 'amberlyn') {
+          // If viewing the default landing demo profile while signed in, also surface blocks created by this user
+          targetUserId = authUser.id;
+        }
 
-          // Fetch DB blocks
+        if (targetUserId) {
           const { data: dbBlocks, error } = await supabase
             .from('blocks')
             .select('*')
-            .eq('user_id', dbUser.id)
+            .eq('user_id', targetUserId)
             .order('created_at', { ascending: false });
 
           if (!error && dbBlocks && dbBlocks.length > 0) {
-            const mappedPosts: Post[] = dbBlocks.map((b: any) => ({
-              id: b.id,
-              author: {
-                ...initialUser,
-                name: dbUser.name || initialUser.name,
-                avatar: dbUser.avatar_url || initialUser.avatar,
-              },
-              createdAt: new Date(b.created_at).toLocaleDateString(),
-              type: b.type,
-              text: b.content?.text || '',
-              linkData: b.content?.linkData,
-              spotlightUser: b.content?.spotlightUser,
-              promptData: b.content?.promptData,
-              mediaData: b.content?.mediaData,
-              vouchData: b.content?.vouchData,
-              likesCount: b.content?.likesCount || 0,
-              repostsCount: b.content?.repostsCount || 0,
-              repliesCount: 0,
-              viewsCount: '1',
-            }));
-            setPosts(mappedPosts);
+            const mappedPosts: Post[] = [];
+            const mappedComments: Comment[] = [];
+
+            for (const b of dbBlocks) {
+              if (b.type === 'comment') {
+                mappedComments.push({
+                  id: b.id,
+                  author: b.content?.author || {
+                    id: 'guest',
+                    username: 'guest',
+                    name: 'Guest User',
+                    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=guest',
+                    joined: '2026',
+                    followingCount: 0,
+                    followersCount: 0,
+                    oomfsCount: 0,
+                    links: []
+                  },
+                  createdAt: new Date(b.created_at).toLocaleDateString(),
+                  text: b.content?.text || '',
+                  likesCount: b.content?.likesCount || 0,
+                  isLiked: false
+                });
+              } else if (
+                b.type === 'standard' ||
+                b.type === 'carousel' ||
+                b.type === 'board' ||
+                b.type === 'link_card'
+              ) {
+                const postObj: Post = {
+                  id: b.id,
+                  author: dbUser ? {
+                    ...initialUser,
+                    id: dbUser.id,
+                    name: dbUser.name || initialUser.name,
+                    avatar: dbUser.avatar_url || initialUser.avatar,
+                  } : initialUser,
+                  createdAt: new Date(b.created_at).toLocaleDateString(),
+                  type: b.type,
+                  text: b.content?.text || '',
+                  carouselData: b.content?.carouselData,
+                  boardData: b.content?.boardData,
+                  linkData: b.content?.linkData,
+                  likesCount: b.content?.likesCount || 0,
+                  repostsCount: b.content?.repostsCount || 0,
+                  repliesCount: 0,
+                  viewsCount: '1',
+                };
+                saveSessionPost(postObj);
+                mappedPosts.push(postObj);
+              }
+            }
+
+            if (mappedPosts.length > 0) {
+              if (dbUser) {
+                // Real DB profile: show their DB posts (or keep sample if only link_card exists)
+                const hasTimelinePosts = mappedPosts.some(p => p.type !== 'link_card');
+                if (hasTimelinePosts) {
+                  setPosts(mappedPosts);
+                } else {
+                  setPosts(prev => {
+                    const existingIds = new Set(mappedPosts.map(p => p.id));
+                    return [...mappedPosts, ...prev.filter(p => !existingIds.has(p.id))];
+                  });
+                }
+              } else {
+                // Demo landing profile: prepend user's Supabase posts above the mock showcase posts
+                setPosts(prev => {
+                  const existingIds = new Set(mappedPosts.map(p => p.id));
+                  return [...mappedPosts, ...prev.filter(p => !existingIds.has(p.id))];
+                });
+              }
+            }
+            if (mappedComments.length > 0) {
+              setComments(mappedComments);
+            }
           }
         }
       } catch (err) {
@@ -149,7 +247,7 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
     };
 
     loadSupabaseProfileAndBlocks();
-  }, [initialUser.username]);
+  }, [initialUser.username, authUser?.id]);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(`https://oomfs.org/${userProfile.username}`);
@@ -194,95 +292,82 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
     setEditModalOpen(false);
   };
 
-  const handleAddBlock = async (e: React.FormEvent) => {
+  // Add Comment handler
+  const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
+    if (!commentText.trim()) return;
+    setIsSubmittingComment(true);
 
-    const selectedOomf = MOCK_OOMFS.find(o => o.username === selectedOomfUsername) || MOCK_OOMFS[0];
+    const authorData = authProfile ? {
+      id: authUser?.id || `usr_${authProfile.username}`,
+      username: authProfile.username,
+      name: authProfile.name || authProfile.username,
+      avatar: authProfile.avatar_url || CURRENT_USER.avatar,
+      isVerified: false,
+      banner: '',
+      bio: '',
+      joined: '2026',
+      followingCount: 0,
+      followersCount: 0,
+      oomfsCount: 0,
+      links: []
+    } : CURRENT_USER;
 
-    const blockContent: any = {
-      text: postText.trim() || (blockType === 'vouch_card' ? 'Mutual vouch:' : ''),
-      ...(blockType === 'link_card' ? {
-        linkData: {
-          title: linkTitle || 'Featured Project Link',
-          url: linkUrl.startsWith('http') ? linkUrl : `https://${linkUrl || 'oomfs.org'}`,
-          buttonText: 'Open Link ↗'
-        }
-      } : {}),
-      ...(blockType === 'vouch_card' ? {
-        vouchData: {
-          vouchedBy: selectedOomf,
-          endorsement: vouchText || 'Incredible builder and mutual friend.',
-          relationship: `Mutual OOMF`
-        }
-      } : {}),
-      ...(blockType === 'media_card' ? {
-        mediaData: {
-          platform: 'spotify',
-          title: mediaTitle || 'Favorite Playlist / Track',
-          subtitle: 'Featured Audio',
-          url: 'https://open.spotify.com'
-        }
-      } : {}),
-      ...(blockType === 'oomf_spotlight' ? {
-        spotlightUser: selectedOomf
-      } : {}),
-      ...(blockType === 'prompt_card' ? {
-        promptData: {
-          question: 'What is your current hyperfocus?',
-          answer: postText || 'Building cool apps with my oomfs!'
-        }
-      } : {})
-    };
+    let newCommentId = `comment_${Date.now()}`;
 
-    let newPostId = `post_${Date.now()}`;
+    // Persist to Supabase if signed in
+    const targetOwnerId = userProfile.id && !userProfile.id.startsWith('usr_')
+      ? userProfile.id
+      : authUser?.id;
 
-    // If authenticated in Supabase, persist to `blocks` table!
-    if (authUser?.id) {
+    if (targetOwnerId && authUser?.id) {
       try {
         const { data, error } = await supabase
           .from('blocks')
           .insert({
             user_id: authUser.id,
-            type: blockType,
-            content: blockContent
+            type: 'comment',
+            content: {
+              text: commentText.trim(),
+              targetUsername: userProfile.username,
+              author: authorData,
+              likesCount: 0
+            }
           })
           .select('id')
           .single();
 
         if (!error && data?.id) {
-          newPostId = data.id;
+          newCommentId = data.id;
         }
       } catch (err) {
-        console.error('Error inserting into Supabase:', err);
+        console.error('Error inserting comment to Supabase:', err);
       }
     }
 
-    const newPost: Post = {
-      id: newPostId,
-      author: userProfile,
+    const newComment: Comment = {
+      id: newCommentId,
+      author: authorData,
       createdAt: 'Just now',
-      type: blockType,
-      text: blockContent.text,
-      linkData: blockContent.linkData,
-      vouchData: blockContent.vouchData,
-      mediaData: blockContent.mediaData,
-      spotlightUser: blockContent.spotlightUser,
-      promptData: blockContent.promptData,
+      text: commentText.trim(),
       likesCount: 0,
-      repostsCount: 0,
-      repliesCount: 0,
-      viewsCount: '1'
+      isLiked: false
     };
 
-    setPosts([newPost, ...posts]);
-    setPostText('');
-    setLinkTitle('');
-    setLinkUrl('');
-    setMediaTitle('');
-    setVouchText('');
-    setComposerOpen(false);
-    setIsSubmitting(false);
+    setComments([newComment, ...comments]);
+    setCommentText('');
+    setIsSubmittingComment(false);
+  };
+
+  const handleDeleteComment = async (id: string) => {
+    setComments(comments.filter(c => c.id !== id));
+    if (authUser?.id) {
+      try {
+        await supabase.from('blocks').delete().eq('id', id);
+      } catch (err) {
+        console.error('Error deleting comment from Supabase:', err);
+      }
+    }
   };
 
   const handleDeletePost = async (id: string) => {
@@ -295,6 +380,27 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
       }
     }
   };
+
+  // Timeline posts (Standard, Carousel, Board)
+  const timelinePosts = posts.filter(p => p.type !== 'link_card');
+
+  // Combined links (user profile links + link_card posts)
+  const linkCards = [
+    ...posts.filter(p => p.type === 'link_card' && p.linkData).map(p => ({
+      id: p.id,
+      title: p.linkData!.title,
+      url: p.linkData!.url,
+      description: p.linkData!.description || p.text,
+      clicks: 120
+    })),
+    ...userProfile.links.map(l => ({
+      id: l.id,
+      title: l.title,
+      url: l.url,
+      description: l.category ? `Category: ${l.category}` : undefined,
+      clicks: l.clicks
+    }))
+  ];
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
@@ -315,21 +421,19 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
               )}
             </h1>
             <span className="text-xs text-[#536471]">
-              {posts.length} Content Blocks
+              {timelinePosts.length} Posts
             </span>
           </div>
         </div>
 
-        {/* Action Trigger */}
-        {isSelf || !authUser ? (
-          <button
-            onClick={() => setComposerOpen(!composerOpen)}
-            className="bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-bold text-xs px-3.5 py-1.5 rounded-full flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Add Block</span>
-          </button>
-        ) : null}
+        {/* Action Trigger - Always accessible to draft & test posts */}
+        <button
+          onClick={() => setComposerOpen(!composerOpen)}
+          className="bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-bold text-xs px-3.5 py-1.5 rounded-full flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
+        >
+          {composerOpen ? <X className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+          <span>{composerOpen ? 'Close Composer' : 'Create Post'}</span>
+        </button>
       </header>
 
       {/* Banner */}
@@ -464,297 +568,250 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
             <span className="text-[#536471]">Followers</span>
           </div>
 
-          {/* OOMFS SPECIAL STAT HIGHLIGHT */}
-          <button 
-            onClick={() => setActiveTab('oomfs')}
+          {/* OOMFS MUTUAL STAT HIGHLIGHT */}
+          <Link 
+            href="/oomfs"
             className="bg-[#1d9bf0]/10 hover:bg-[#1d9bf0]/20 px-2.5 py-1 rounded-full text-[#1d9bf0] font-bold flex items-center gap-1.5 transition-colors border border-[#1d9bf0]/20 cursor-pointer"
           >
             <Users className="w-3.5 h-3.5" />
             <span>{userProfile.oomfsCount} OOMFs (Mutuals)</span>
-          </button>
+          </Link>
         </div>
       </div>
 
-      {/* BLOCK COMPOSER (PERSISTS TO SUPABASE WHEN LOGGED IN) */}
+      {/* UNIFIED POST COMPOSER DRAWER */}
       {composerOpen && (
-        <div className="mx-4 mt-4 p-4 border border-[#1d9bf0]/30 bg-blue-50/20 rounded-2xl flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-[#1d9bf0] uppercase tracking-wider">
+        <div className="mx-4 mt-4 border border-[#1d9bf0]/40 bg-white rounded-2xl overflow-hidden shadow-sm">
+          <div className="flex items-center justify-between px-4 py-2.5 bg-[#f7f9f9] border-b border-[#eff3f4]">
+            <div className="flex items-center gap-1.5 text-xs font-extrabold text-[#1d9bf0] uppercase tracking-wider">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>{authUser ? 'Add Block to Supabase Profile' : 'Add Block Sandbox'}</span>
+              <span>{authUser ? 'Create Post (Saved to Supabase)' : 'Create Post'}</span>
             </div>
             <button
               onClick={() => setComposerOpen(false)}
-              className="p-1 text-[#536471] hover:bg-gray-100 rounded-full cursor-pointer"
+              className="p-1 text-[#536471] hover:bg-gray-200/60 rounded-full cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
-
-          {/* Block Type Buttons */}
-          <div className="flex flex-wrap gap-1.5">
-            {[
-              { id: 'link_card', label: '🔗 Bio Link Card' },
-              { id: 'vouch_card', label: '🏆 OOMF Vouch' },
-              { id: 'media_card', label: '🎵 Spotify / Media' },
-              { id: 'oomf_spotlight', label: '⭐ OOMF Spotlight' },
-              { id: 'prompt_card', label: '❓ Q&A Prompt' },
-              { id: 'standard', label: '📝 Standard Post' },
-            ].map(tab => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setBlockType(tab.id as any)}
-                className={`text-xs px-3 py-1.5 rounded-full font-semibold transition-colors cursor-pointer ${
-                  blockType === tab.id 
-                    ? 'bg-[#0f1419] text-white' 
-                    : 'bg-white border border-[#eff3f4] text-[#536471] hover:border-gray-300'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Form Fields */}
-          <form onSubmit={handleAddBlock} className="flex flex-col gap-2 pt-2">
-            {blockType === 'link_card' && (
-              <div className="flex flex-col gap-2">
-                <input
-                  type="text"
-                  placeholder="Link Title (e.g. My Newsletter / GitHub / Portfolio)"
-                  value={linkTitle}
-                  onChange={e => setLinkTitle(e.target.value)}
-                  className="bg-white border border-[#eff3f4] rounded-xl px-3 py-2 text-sm text-[#0f1419] outline-none"
-                  required
-                />
-                <input
-                  type="text"
-                  placeholder="URL (e.g. https://portfolio.site)"
-                  value={linkUrl}
-                  onChange={e => setLinkUrl(e.target.value)}
-                  className="bg-white border border-[#eff3f4] rounded-xl px-3 py-2 text-sm text-[#0f1419] outline-none"
-                  required
-                />
-              </div>
-            )}
-
-            {blockType === 'vouch_card' && (
-              <div className="flex flex-col gap-2">
-                <label className="text-xs text-[#536471] font-medium">Select Mutual OOMF Endorsing You:</label>
-                <select
-                  value={selectedOomfUsername}
-                  onChange={e => setSelectedOomfUsername(e.target.value)}
-                  className="bg-white border border-[#eff3f4] rounded-xl px-3 py-2 text-sm text-[#0f1419] outline-none"
-                >
-                  {MOCK_OOMFS.map(o => (
-                    <option key={o.username} value={o.username}>
-                      {o.name} (@{o.username})
-                    </option>
-                  ))}
-                </select>
-                <textarea
-                  placeholder="What is their testimonial/vouch for you?"
-                  value={vouchText}
-                  onChange={e => setVouchText(e.target.value)}
-                  rows={2}
-                  className="bg-white border border-[#eff3f4] rounded-xl px-3 py-2 text-sm text-[#0f1419] outline-none resize-none"
-                />
-              </div>
-            )}
-
-            {blockType === 'media_card' && (
-              <div className="flex flex-col gap-2">
-                <input
-                  type="text"
-                  placeholder="Media / Audio Title (e.g. Late Night Synthwave Playlist)"
-                  value={mediaTitle}
-                  onChange={e => setMediaTitle(e.target.value)}
-                  className="bg-white border border-[#eff3f4] rounded-xl px-3 py-2 text-sm text-[#0f1419] outline-none"
-                  required
-                />
-              </div>
-            )}
-
-            {blockType === 'oomf_spotlight' && (
-              <div className="flex flex-col gap-2">
-                <label className="text-xs text-[#536471] font-medium">Choose OOMF to spotlight:</label>
-                <select
-                  value={selectedOomfUsername}
-                  onChange={e => setSelectedOomfUsername(e.target.value)}
-                  className="bg-white border border-[#eff3f4] rounded-xl px-3 py-2 text-sm text-[#0f1419] outline-none"
-                >
-                  {MOCK_OOMFS.map(o => (
-                    <option key={o.username} value={o.username}>
-                      {o.name} (@{o.username})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            <textarea
-              placeholder="Caption or post note (optional)..."
-              value={postText}
-              onChange={e => setPostText(e.target.value)}
-              rows={2}
-              className="bg-white border border-[#eff3f4] rounded-xl px-3 py-2 text-sm text-[#0f1419] outline-none resize-none"
-            />
-
-            <div className="flex justify-end gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => setComposerOpen(false)}
-                className="px-3 py-1.5 text-xs text-[#536471] hover:bg-gray-100 rounded-full font-semibold cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white text-xs font-bold px-4 py-1.5 rounded-full transition-colors cursor-pointer disabled:opacity-50"
-              >
-                {isSubmitting ? 'Saving...' : 'Add to Profile Feed'}
-              </button>
-            </div>
-          </form>
+          <PostComposer
+            targetUser={userProfile}
+            defaultType={blockType}
+            compact={true}
+            onClose={() => setComposerOpen(false)}
+          />
         </div>
       )}
 
-      {/* Tabs Bar */}
+      {/* 4 TABS BAR: Posts (1st), Comments (2nd), Links (3rd), Likes (4th) */}
       <div className="flex border-b border-[#eff3f4] mt-4 font-medium text-sm text-[#536471]">
+        {/* 1. Posts */}
         <button
           onClick={() => setActiveTab('posts')}
           className={`flex-1 py-3.5 text-center relative hover:bg-[#f7f9f9] transition-colors font-bold cursor-pointer ${
             activeTab === 'posts' ? 'text-[#0f1419]' : ''
           }`}
         >
-          Blocks & Posts ({posts.length})
+          Posts ({timelinePosts.length})
           {activeTab === 'posts' && (
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-20 h-1 bg-[#1d9bf0] rounded-full" />
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-1 bg-[#1d9bf0] rounded-full" />
           )}
         </button>
 
+        {/* 2. Comments */}
         <button
-          onClick={() => setActiveTab('oomfs')}
-          className={`flex-1 py-3.5 text-center relative hover:bg-[#f7f9f9] transition-colors flex items-center justify-center gap-1.5 font-bold cursor-pointer ${
-            activeTab === 'oomfs' ? 'text-[#1d9bf0]' : ''
+          onClick={() => setActiveTab('comments')}
+          className={`flex-1 py-3.5 text-center relative hover:bg-[#f7f9f9] transition-colors font-bold cursor-pointer ${
+            activeTab === 'comments' ? 'text-[#0f1419]' : ''
           }`}
         >
-          <Users className="w-4 h-4 text-[#1d9bf0]" />
-          OOMFS ({MOCK_OOMFS.length})
-          {activeTab === 'oomfs' && (
+          Comments ({comments.length})
+          {activeTab === 'comments' && (
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-20 h-1 bg-[#1d9bf0] rounded-full" />
           )}
         </button>
 
+        {/* 3. Links */}
         <button
           onClick={() => setActiveTab('links')}
           className={`flex-1 py-3.5 text-center relative hover:bg-[#f7f9f9] transition-colors font-bold cursor-pointer ${
             activeTab === 'links' ? 'text-[#0f1419]' : ''
           }`}
         >
-          Bio Links ({userProfile.links.length})
+          Links ({linkCards.length})
           {activeTab === 'links' && (
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-1 bg-[#1d9bf0] rounded-full" />
           )}
         </button>
 
+        {/* 4. Likes */}
         <button
-          onClick={() => setActiveTab('vouches')}
+          onClick={() => setActiveTab('likes')}
           className={`flex-1 py-3.5 text-center relative hover:bg-[#f7f9f9] transition-colors font-bold cursor-pointer ${
-            activeTab === 'vouches' ? 'text-[#0f1419]' : ''
+            activeTab === 'likes' ? 'text-[#0f1419]' : ''
           }`}
         >
-          Vouches & Media
-          {activeTab === 'vouches' && (
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-20 h-1 bg-[#1d9bf0] rounded-full" />
+          Likes ({likedPosts.length})
+          {activeTab === 'likes' && (
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-1 bg-[#1d9bf0] rounded-full" />
           )}
         </button>
       </div>
 
       {/* Tab Content Display */}
       <div className="flex-1">
-        {/* POSTS TAB */}
+        {/* 1. POSTS TAB */}
         {activeTab === 'posts' && (
           <div>
-            {posts.length > 0 ? (
-              posts.map((post) => (
+            {/* Quick-Compose Bar right at the top of Posts tab */}
+            {!composerOpen && (
+              <div className="px-4 py-3 border-b border-[#eff3f4] bg-[#f7f9f9]/50 flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBlockType('standard');
+                    setComposerOpen(true);
+                  }}
+                  className="flex items-center gap-2.5 flex-1 text-left cursor-pointer group"
+                >
+                  <img
+                    src={formatTwitterAvatar(userProfile.avatar)}
+                    alt={userProfile.name}
+                    className="w-9 h-9 rounded-full object-cover border border-gray-200 shrink-0"
+                  />
+                  <span className="text-sm text-[#536471] group-hover:text-[#0f1419] transition-colors">
+                    Draft a new post, carousel, or board...
+                  </span>
+                </button>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBlockType('standard');
+                      setComposerOpen(true);
+                    }}
+                    className="px-2.5 py-1.5 rounded-full text-xs font-bold bg-white border border-[#eff3f4] hover:border-[#1d9bf0] text-[#0f1419] flex items-center gap-1 transition-colors cursor-pointer"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-[#1d9bf0]" />
+                    <span className="hidden sm:inline">Standard</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBlockType('carousel');
+                      setComposerOpen(true);
+                    }}
+                    className="px-2.5 py-1.5 rounded-full text-xs font-bold bg-white border border-[#eff3f4] hover:border-[#1d9bf0] text-[#0f1419] flex items-center gap-1 transition-colors cursor-pointer"
+                  >
+                    <Layers className="w-3.5 h-3.5 text-[#1d9bf0]" />
+                    <span>Carousel</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBlockType('board');
+                      setComposerOpen(true);
+                    }}
+                    className="px-2.5 py-1.5 rounded-full text-xs font-bold bg-white border border-[#eff3f4] hover:border-[#1d9bf0] text-[#0f1419] flex items-center gap-1 transition-colors cursor-pointer"
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5 text-[#1d9bf0]" />
+                    <span>Board</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {timelinePosts.length > 0 ? (
+              timelinePosts.map((post) => (
                 <PostCard key={post.id} post={post} onDelete={handleDeletePost} />
               ))
             ) : (
               <div className="text-center py-12 text-[#536471] text-sm">
-                No blocks yet. Click <b>"Add Block"</b> above to add your first bio card!
+                No posts yet. Click <b>&quot;Create Post&quot;</b> above to share your first post!
               </div>
             )}
           </div>
         )}
 
-        {/* OOMFS TAB */}
-        {activeTab === 'oomfs' && (
+        {/* 2. COMMENTS TAB */}
+        {activeTab === 'comments' && (
           <div className="flex flex-col">
-            <div className="p-4 bg-[#f7f9f9] border-b border-[#eff3f4]">
-              <h3 className="font-bold text-[#0f1419] text-sm flex items-center gap-1.5">
-                <Users className="w-4 h-4 text-[#1d9bf0]" />
-                Mutual Followers (OOMFs)
-              </h3>
-              <p className="text-xs text-[#536471] mt-0.5">
-                Click any profile to experience profile hopping across mutuals:
-              </p>
+            {/* Leave a Comment Composer */}
+            <div className="p-4 border-b border-[#eff3f4] bg-white flex gap-3">
+              <img
+                src={formatTwitterAvatar(authProfile?.avatar_url || CURRENT_USER.avatar)}
+                alt="Your avatar"
+                className="w-10 h-10 rounded-full object-cover border border-gray-200 shrink-0"
+              />
+              <form onSubmit={handleAddComment} className="flex-1 flex flex-col gap-2">
+                <textarea
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  placeholder={`Leave a comment for @${userProfile.username}...`}
+                  rows={2}
+                  className="w-full text-sm text-[#0f1419] placeholder-[#536471] outline-none resize-none bg-transparent"
+                />
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-[11px] text-[#536471]">
+                    Direct comments cannot be threaded or quoted.
+                  </span>
+                  <button
+                    type="submit"
+                    disabled={!commentText.trim() || isSubmittingComment}
+                    className="bg-[#1d9bf0] hover:bg-[#1a8cd8] disabled:opacity-50 text-white font-bold text-xs px-4 py-1.5 rounded-full transition-colors cursor-pointer"
+                  >
+                    {isSubmittingComment ? 'Posting...' : 'Comment'}
+                  </button>
+                </div>
+              </form>
             </div>
 
-            {MOCK_OOMFS.map((oomf) => (
-              <Link
-                key={oomf.id}
-                href={`/${oomf.username}`}
-                className="flex items-center justify-between p-4 border-b border-[#eff3f4] hover:bg-[#f7f9f9]/70 transition-colors group"
-              >
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <img
-                    src={oomf.avatar}
-                    alt={oomf.name}
-                    className="w-12 h-12 rounded-full object-cover border border-gray-200"
+            {/* Comments List */}
+            <div>
+              {comments.length > 0 ? (
+                comments.map((comment) => (
+                  <CommentCard 
+                    key={comment.id} 
+                    comment={comment} 
+                    onDelete={handleDeleteComment}
+                    canDelete={Boolean(isSelf || (authProfile && authProfile.username === comment.author.username))}
                   />
-                  <div className="flex flex-col min-w-0">
-                    <span className="font-bold text-sm text-[#0f1419] group-hover:underline flex items-center gap-1">
-                      {oomf.name}
-                      {oomf.isVerified && (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-[#1d9bf0] fill-[#1d9bf0] text-white" />
-                      )}
-                    </span>
-                    <span className="text-xs text-[#536471]">
-                      @{oomf.username}
-                    </span>
-                    <p className="text-xs text-[#536471] line-clamp-1 mt-1">
-                      {oomf.bio}
-                    </p>
-                  </div>
+                ))
+              ) : (
+                <div className="text-center py-12 text-[#536471] text-sm">
+                  No comments yet. Leave the first comment for @{userProfile.username} above!
                 </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="bg-[#1d9bf0]/10 text-[#1d9bf0] text-xs font-bold px-3 py-1.5 rounded-full border border-[#1d9bf0]/20">
-                    View OOMF Profile →
-                  </span>
-                </div>
-              </Link>
-            ))}
+              )}
+            </div>
           </div>
         )}
 
-        {/* LINKS TAB */}
+        {/* 3. LINKS TAB */}
         {activeTab === 'links' && (
           <div className="p-4 flex flex-col gap-3">
-            <div className="p-3 bg-[#f7f9f9] rounded-xl border border-[#eff3f4]">
-              <span className="text-xs font-bold text-[#1d9bf0] uppercase tracking-wider block mb-1">
-                Linktree Alternative Mode
-              </span>
-              <p className="text-xs text-[#536471]">
-                Visitors from X clicking <b>oomfs.org/{userProfile.username}</b> can tap these curated links directly.
-              </p>
+            <div className="p-3 bg-[#f7f9f9] rounded-xl border border-[#eff3f4] flex items-center justify-between">
+              <div>
+                <span className="text-xs font-bold text-[#1d9bf0] uppercase tracking-wider block mb-0.5">
+                  Linktree Style Showcase
+                </span>
+                <p className="text-xs text-[#536471]">
+                  Curated links displayed for visitors discovering <b>oomfs.org/{userProfile.username}</b>.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setBlockType('link_card');
+                  setComposerOpen(true);
+                }}
+                className="bg-[#1d9bf0] text-white text-xs font-bold px-3 py-1.5 rounded-full hover:bg-[#1a8cd8] transition-colors shrink-0 cursor-pointer"
+              >
+                + Add Link
+              </button>
             </div>
 
-            {userProfile.links.length > 0 ? (
-              userProfile.links.map((link) => (
+            {linkCards.length > 0 ? (
+              linkCards.map((link) => (
                 <a
                   key={link.id}
                   href={link.url}
@@ -762,12 +819,17 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
                   rel="noopener noreferrer"
                   className="p-4 border border-[#eff3f4] rounded-2xl bg-white hover:border-[#1d9bf0] hover:shadow-xs transition-all flex items-center justify-between group"
                 >
-                  <div className="flex flex-col gap-0.5">
-                    <span className="font-bold text-[#0f1419] text-base group-hover:text-[#1d9bf0] transition-colors">
+                  <div className="flex flex-col gap-0.5 min-w-0 pr-4">
+                    <span className="font-bold text-[#0f1419] text-base group-hover:text-[#1d9bf0] transition-colors truncate">
                       {link.title}
                     </span>
-                    <span className="text-xs text-[#536471] font-mono">
-                      {link.url}
+                    {link.description && (
+                      <p className="text-xs text-[#536471] line-clamp-1">
+                        {link.description}
+                      </p>
+                    )}
+                    <span className="text-xs text-[#1d9bf0] font-mono truncate">
+                      {link.url.replace(/^https?:\/\//, '')}
                     </span>
                   </div>
                   <div className="bg-[#1d9bf0] text-white text-xs font-bold px-4 py-2 rounded-full group-hover:bg-[#1a8cd8] transition-colors flex items-center gap-1 shrink-0">
@@ -784,16 +846,16 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
           </div>
         )}
 
-        {/* VOUCHES TAB */}
-        {activeTab === 'vouches' && (
+        {/* 4. LIKES TAB */}
+        {activeTab === 'likes' && (
           <div>
-            {posts.filter(p => p.type === 'vouch_card' || p.type === 'media_card').length > 0 ? (
-              posts.filter(p => p.type === 'vouch_card' || p.type === 'media_card').map(post => (
-                <PostCard key={post.id} post={post} onDelete={handleDeletePost} />
+            {likedPosts.length > 0 ? (
+              likedPosts.map((post) => (
+                <PostCard key={post.id} post={post} />
               ))
             ) : (
               <div className="text-center py-12 text-[#536471] text-sm">
-                No vouches or media added yet. Use the <b>"Add Block"</b> button above to add an OOMF Vouch or Spotify embed!
+                @{userProfile.username} hasn&apos;t liked any posts yet.
               </div>
             )}
           </div>

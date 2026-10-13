@@ -1,14 +1,14 @@
 # oomfs.org 
 
 > **A 1:1 Twitter/X-native alternative to Linktree.**  
-> Users put `oomfs.org/username` in their X bio to link to a profile that looks and feels authentically like X, but serves as a personal hub with custom content blocks and an in-app mutual followers (**OOMFS**) graph.
+> Users put `oomfs.org/username` in their X bio to link to a profile that looks and feels authentically like X, serving as a personal portfolio hub with specialized visual post types, bio links, guestbook comments, and an in-app mutual followers (**OOMFS**) graph.
 
 ---
 
 ## 🎯 Project Vision & Core Principles
 
 1. **The Core Job-to-be-Done:**  
-   Replace generic Linktree pages. When someone discovers a creator on X and taps their bio link (`oomfs.org/amberlyndev`), they stay within an interface that looks identical to X, complete with their banner, HD avatar, display name, verified badge, and bio.
+   Replace generic Linktree pages. When someone discovers a creator on X and taps their bio link (`oomfs.org/username`), they stay within an interface that looks identical to X, complete with their banner, HD avatar, display name, verified badge, and bio.
 
 2. **The "OOMFS" Differentiator:**  
    In Twitter/X culture, **OOMF** means *"One Of My Followers / Friends"*.
@@ -16,21 +16,31 @@
    * When User A and User B follow each other on `oomfs.org`, they automatically earn an **OOMF mutual badge** ($A \leftrightarrow B$).
    * Mutuals are highlighted on user profiles and in the dedicated **OOMFS** tab.
 
-3. **Unique Content Block Types (Beyond Tweets):**  
-   Instead of just 280-character text posts, profiles showcase modular blocks that match the timeline aesthetic:
-   * 🔗 **Bio Link Cards**: Clean link-in-bio buttons with domain tags, descriptions, and click tracking.
-   * 🏆 **OOMF Vouches**: Verified testimonials and endorsements left by mutual followers.
-   * 🎵 **Media / Audio Embeds**: Spotify playlist / track cards and multimedia showcases.
-   * ⭐ **OOMF Spotlights**: Dedicated shoutouts featuring mutual besties.
-   * ❓ **Q&A Prompts**: Conversational prompt and answer cards.
-   * 📝 **Standard Posts**: Native 1:1 timeline tweets.
+3. **Specialized Post & Block Types (Beyond Tweets):**  
+   Profiles showcase rich, modular content formats tailored to creative work and visual curation:
+   * 📝 **Standard Post (`standard`)**: Native 1:1 timeline tweet text post. Threadable, likeable, repostable.
+   * 🎞️ **Carousel (`carousel`)**: Uncapped horizontal photo strip (`>4` slides) with a universal small header bar, natural portrait/landscape aspect ratio preservation (no forced square crops), desktop chevrons, and individual bottom overlay captions.
+   * 📌 **Board (`board`)**: Pinterest-style visual curation boards (`3+` images). Renders as a 3-image preview on the profile timeline (`50%` left half, two `25%` stacked right images with a `+N` badge) and expands into a full **2-column Pinterest masonry grid** in the dedicated thread view (`/[username]/status/[id]`).
+   * 🔗 **Bio Link Card (`link_card`)**: High-visibility link showcase button with title, domain badge, description, and direct visit action. Showcased on the profile **Links** tab.
+   * 💬 **Flat Comments (`comment`)**: Direct profile guestbook comments (non-threaded, no replies or quotes).
 
-4. **"Profile-First" Strategy (Overcoming Cold Start):**  
+   *Detailed post format specifications and extension guides are available in [Post Types Context Doc](docs/post-types.md).*
+
+4. **The 4 Distinct Profile Tabs:**  
+   User profiles organize content across 4 clean tabs ordered left-to-right:
+   1. **Posts** (default): Actual posts (Standard, Carousel, Board). Supports full thread navigation (`/[username]/status/[id]`).
+   2. **Comments**: Direct guestbook comments underneath an inline comment composer (flat, non-threaded).
+   3. **Links**: Linktree-style showcase of permanent bio links and link cards.
+   4. **Likes**: Posts liked by the user.
+
+   *Detailed profile layout rules and routing are available in [Profile Page Context Doc](docs/profile-page.md).*
+
+5. **"Profile-First" Strategy (Overcoming Cold Start):**  
    * We do **not** focus on global feeds, algorithmic discovery, or notifications yet.
    * Non-profile pages (`/explore`, `/notifications`) display low-pressure "Coming Soon" states.
-   * 100% of product focus is on perfecting **`oomfs.org/[username]`** and organic **profile-hopping** between mutuals.
+   * 100% of product focus is on perfecting **`oomfs.org/[username]`**, thread views, and organic **profile-hopping** between mutuals.
 
-5. **Design System Rule (Strict North Star):**  
+6. **Design System Rule (Strict North Star):**  
    * **Light Theme by default**: Clean white background (`#ffffff`), Twitter Blue (`#1d9bf0`), subtle gray borders (`#eff3f4`), secondary text (`#536471`), and primary text (`#0f1419`).
    * **Zero "Vibecoding" Fluff**: No forced dark modes, no neon gradients, no heavy glassmorphism or floating bubbles. Maintain 1:1 parity with Twitter Web light mode.
 
@@ -50,36 +60,44 @@
 ## 📂 Architecture & File Map
 
 ```
+├── docs/
+│   ├── post-types.md                   # Specification for active post formats & creation guide
+│   └── profile-page.md                 # Profile page architecture, 4 tabs, and thread routing
 ├── .env.local                          # Supabase project URL and API keys
 ├── src/
 │   ├── app/
 │   │   ├── [username]/
-│   │   │   └── page.tsx                # Dynamic profile route (SSR with Supabase fetch + mock fallback)
+│   │   │   ├── page.tsx                # Dynamic profile route (SSR with Supabase fetch + mock fallback)
+│   │   │   └── status/[id]/
+│   │   │       ├── page.tsx            # Thread route SSR resolver (Supabase blocks + mock fallback)
+│   │   │       └── ThreadClientView.tsx# Client thread view (2-col Board expansion, replies feed)
 │   │   ├── auth/
 │   │   │   └── callback/
 │   │   │       └── route.ts            # OAuth code exchange & Twitter v2 bio enrichment handler
 │   │   ├── explore/page.tsx            # Clean "Coming Soon" explore page
 │   │   ├── notifications/page.tsx      # Clean "Coming Soon" notifications page
 │   │   ├── oomfs/page.tsx              # Mutual followers directory
-│   │   ├── page.tsx                    # Root redirect (forwards straight to /amberlyndev or active user)
+│   │   ├── page.tsx                    # Root redirect (forwards to default profile or active user)
 │   │   ├── layout.tsx                  # Root layout with AuthProvider & metadata
 │   │   └── globals.css                 # Twitter Light Theme CSS variables
 │   │
 │   ├── components/
 │   │   ├── layout/
-│   │   │   ├── LeftSidebar.tsx         # 1:1 Left navigation, active profile pill, Sign in with X
+│   │   │   ├── LeftSidebar.tsx         # 1:1 Left navigation, active profile pill, "Post" button
 │   │   │   ├── RightSidebar.tsx        # Search, featured OOMFs, auth callout
-│   │   │   └── MainLayout.tsx          # 3-column responsive layout wrapper
+│   │   │   └── MainLayout.tsx          # 3-column responsive layout wrapper + compose modal
 │   │   ├── profile/
-│   │   │   └── ProfileView.tsx         # Core profile view, Edit Profile modal, tabs, sandbox composer
+│   │   │   └── ProfileView.tsx         # Core profile view, 4 tabs, Edit Profile modal, composer
 │   │   └── feed/
-│   │       ├── PostCard.tsx            # 1:1 timeline post rendering all 6 content block types
-│   │       └── PostComposer.tsx        # In-timeline block composer
+│   │       ├── PostCard.tsx            # 1:1 timeline post rendering (Standard, Carousel, Board)
+│   │       ├── CommentCard.tsx         # Flat guestbook comment card (non-threaded)
+│   │       └── PostComposer.tsx        # Unified post composer with image uploads & live previews
 │   │
 │   ├── context/
 │   │   └── AuthContext.tsx             # Supabase auth session, profile state, signInWithTwitter, signOut
 │   ├── lib/
 │   │   ├── mockData.ts                 # Offline mock accounts & sample content for prototyping
+│   │   ├── postStore.ts                # Client runtime store for newly created session posts
 │   │   ├── utils.ts                    # formatTwitterAvatar() (400x400 HD upscaler)
 │   │   └── supabase/
 │   │       ├── client.ts               # Browser Supabase client (@supabase/ssr)
@@ -103,11 +121,11 @@ Stores user profile information synced from Twitter or edited on `oomfs.org`:
 * `created_at` (`timestamptz`)
 
 ### 2. `public.blocks`
-Stores custom profile content blocks (bio links, vouches, media, posts):
+Stores custom profile content blocks (posts, carousels, boards, links, comments):
 * `id` (`uuid`, primary key, `default gen_random_uuid()`)
 * `user_id` (`uuid`, references `public.profiles.id` on delete cascade)
-* `type` (`text`: `'link_card' | 'vouch_card' | 'media_card' | 'oomf_spotlight' | 'prompt_card' | 'standard'`)
-* `content` (`jsonb`, block metadata like URL, title, endorsement, prompt, etc.)
+* `type` (`text`: `'standard' | 'carousel' | 'board' | 'link_card' | 'comment'`)
+* `content` (`jsonb`, post payload such as `text`, `carouselData`, `boardData`, `linkData`, or `author`)
 * `created_at` (`timestamptz`)
 
 ### 3. `public.follows`
@@ -147,8 +165,11 @@ When onboarding onto this codebase, remember these crucial implementation detail
    dbUser.bio !== null && dbUser.bio !== undefined ? dbUser.bio : fallback
    ```
 
-5. **Profile Editing:**  
-   Users can edit their bio, name, location, and website directly via the native **"Edit profile"** modal on `ProfileView.tsx`, which persists updates to `public.profiles`.
+5. **Next.js 16 Partial Prerendering & `usePathname()`:**  
+   When using Next.js 16 with `cacheComponents` enabled, components invoking dynamic client hooks like `usePathname()` (such as `LeftSidebar.tsx`) must be wrapped in `<Suspense>` within `MainLayout.tsx` to prevent build-time prerender bailout errors on dynamic routes.
+
+6. **Post Drafting & Global Reactivity:**  
+   Submitting posts via [`PostComposer.tsx`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/components/feed/PostComposer.tsx) persists records to Supabase `public.blocks` (for authenticated users), caches in [`postStore.ts`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/lib/postStore.ts), and emits the `oomfs:post-created` window event so [`ProfileView.tsx`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/components/profile/ProfileView.tsx) immediately updates without full page reloads.
 
 ---
 
@@ -171,7 +192,11 @@ npm run build
 * [x] Twitter / X OAuth 2.0 PKCE authentication via Supabase (`provider: 'x'`)
 * [x] HD Avatar resolution upscaling (`_400x400`)
 * [x] Twitter bio extraction and native "Edit profile" modal persistence
-* [x] Modular content block types (Bio Link Card, OOMF Vouch, Spotify Media, Spotlight, Q&A)
+* [x] 4 Distinct Profile Tabs: Posts, Comments (flat guestbook), Links, Likes
+* [x] Thread route (`/[username]/status/[id]`) with replies composer
+* [x] Custom Post Formats: Uncapped Photo Carousel & Pinterest-style Board
+* [x] Board Timeline 3-image preview + Thread 2-column masonry grid expansion
+* [x] Unified Post Composer with local file upload compression & sample presets
 * [ ] Follow / Unfollow button wired to `public.follows`
 * [ ] Real-time mutual follower count calculation (SQL view or RPC)
 * [ ] Custom link click tracking / analytics for bio links
