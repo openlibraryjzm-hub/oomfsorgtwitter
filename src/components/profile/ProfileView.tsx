@@ -89,7 +89,7 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
 
   // Composer Drawer State (for Posts & Links)
   const [composerOpen, setComposerOpen] = useState(false);
-  const [blockType, setBlockType] = useState<'standard' | 'carousel' | 'board' | 'link_card'>('standard');
+  const [blockType, setBlockType] = useState<'standard' | 'carousel' | 'board' | 'link_card' | 'badge'>('standard');
 
   // Edit Profile Modal State
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -112,7 +112,7 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
         return [newPost, ...prev];
       });
 
-      if (newPost.type === 'link_card') {
+      if (newPost.type === 'link_card' || newPost.type === 'badge') {
         setActiveTab('links');
       } else {
         setActiveTab('posts');
@@ -190,7 +190,8 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
                 b.type === 'standard' ||
                 b.type === 'carousel' ||
                 b.type === 'board' ||
-                b.type === 'link_card'
+                b.type === 'link_card' ||
+                b.type === 'badge'
               ) {
                 const postObj: Post = {
                   id: b.id,
@@ -206,6 +207,7 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
                   carouselData: b.content?.carouselData,
                   boardData: b.content?.boardData,
                   linkData: b.content?.linkData,
+                  badgeData: b.content?.badgeData,
                   likesCount: b.content?.likesCount || 0,
                   repostsCount: b.content?.repostsCount || 0,
                   repliesCount: 0,
@@ -218,8 +220,8 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
 
             if (mappedPosts.length > 0) {
               if (dbUser) {
-                // Real DB profile: show their DB posts (or keep sample if only link_card exists)
-                const hasTimelinePosts = mappedPosts.some(p => p.type !== 'link_card');
+                // Real DB profile: show their DB posts (or keep sample if only link_card/badge exists)
+                const hasTimelinePosts = mappedPosts.some(p => p.type !== 'link_card' && p.type !== 'badge');
                 if (hasTimelinePosts) {
                   setPosts(mappedPosts);
                 } else {
@@ -381,8 +383,11 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
     }
   };
 
-  // Timeline posts (Standard, Carousel, Board)
-  const timelinePosts = posts.filter(p => p.type !== 'link_card');
+  // Timeline posts (Standard, Carousel, Board) - excludes link cards and badges
+  const timelinePosts = posts.filter(p => p.type !== 'link_card' && p.type !== 'badge');
+
+  // Unified Badge Wall posts
+  const badgePosts = posts.filter(p => p.type === 'badge' && p.badgeData);
 
   // Combined links (user profile links + link_card posts)
   const linkCards = [
@@ -638,7 +643,7 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
             activeTab === 'links' ? 'text-[#0f1419]' : ''
           }`}
         >
-          Links ({linkCards.length})
+          Links ({linkCards.length + badgePosts.length})
           {activeTab === 'links' && (
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-1 bg-[#1d9bf0] rounded-full" />
           )}
@@ -788,7 +793,118 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
 
         {/* 3. LINKS TAB */}
         {activeTab === 'links' && (
-          <div className="p-4 flex flex-col gap-3">
+          <div className="p-4 flex flex-col gap-4">
+            {/* 1. THE BADGE WALL (Above larger cards, early web 88x31 buttons packed super tightly in center column) */}
+            <div className="border border-[#eff3f4] rounded-2xl bg-white overflow-hidden shadow-2xs">
+              <div className="px-3.5 py-2.5 bg-[#f7f9f9] border-b border-[#eff3f4] flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 rounded-md bg-[#1d9bf0]/10 flex items-center justify-center text-[#1d9bf0]">
+                    <Sparkles className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-extrabold text-[#0f1419] uppercase tracking-wider">
+                      Badge Wall
+                    </span>
+                    <span className="text-[11px] font-semibold text-[#536471]">
+                      ({badgePosts.length})
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBlockType('badge');
+                    setComposerOpen(true);
+                  }}
+                  className="bg-[#0f1419] hover:bg-[#272c30] text-white text-xs font-bold px-3 py-1 rounded-full transition-colors cursor-pointer flex items-center gap-1 shrink-0"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>Add Badge</span>
+                </button>
+              </div>
+
+              {/* Tightly packed unified wall within center column */}
+              <div className="p-3 sm:p-3.5 bg-white">
+                {badgePosts.length > 0 ? (
+                  <div className="flex flex-wrap gap-2 items-center justify-start">
+                    {badgePosts.map((post) => {
+                      const b = post.badgeData!;
+                      return (
+                        <div
+                          key={post.id}
+                          className="relative group/badge-item shrink-0"
+                        >
+                          <a
+                            href={b.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title={`${b.title} • ${b.url.replace(/^https?:\/\//, '')}`}
+                            className="block w-[88px] h-[31px] shrink-0 rounded-xs overflow-hidden border border-black/25 shadow-xs hover:shadow-md hover:scale-105 active:scale-95 transition-all select-none cursor-pointer"
+                          >
+                            {b.badgeType === 'image' && b.imageUrl ? (
+                              <img
+                                src={b.imageUrl}
+                                alt={b.title}
+                                className="w-[88px] h-[31px] object-cover block"
+                                style={{ imageRendering: 'pixelated' }}
+                              />
+                            ) : (
+                              <div
+                                className="w-[88px] h-[31px] flex items-center overflow-hidden font-mono text-[9px] font-extrabold"
+                                style={{ backgroundColor: b.bgColor || '#0f1419', color: b.textColor || '#ffffff' }}
+                              >
+                                {b.sublabel && (
+                                  <span className="bg-black/35 h-full px-1.5 flex items-center justify-center border-r border-white/20 uppercase tracking-tight shrink-0">
+                                    {b.sublabel}
+                                  </span>
+                                )}
+                                <span className="flex-1 px-1 text-center truncate tracking-tight uppercase flex items-center justify-center gap-0.5">
+                                  {b.icon && <span className="text-[10px]">{b.icon}</span>}
+                                  <span className="truncate">{b.label || b.title}</span>
+                                </span>
+                              </div>
+                            )}
+                          </a>
+
+                          {/* Delete button for profile owner */}
+                          {isSelf && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeletePost(post.id);
+                              }}
+                              title="Delete badge from wall"
+                              className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-600 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover/badge-item:opacity-100 transition-opacity shadow-xs hover:bg-red-700 cursor-pointer z-10"
+                            >
+                              ×
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-5 px-3 border border-dashed border-[#eff3f4] rounded-xl bg-[#f7f9f9]/50">
+                    <p className="text-xs text-[#536471] mb-2">
+                      No badges on this wall yet. Tiny 88×31 buttons pack tightly together here.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBlockType('badge');
+                        setComposerOpen(true);
+                      }}
+                      className="text-xs font-bold text-[#1d9bf0] hover:underline cursor-pointer"
+                    >
+                      + Create the first badge
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 2. LARGER BIO LINK CARDS */}
             <div className="p-3 bg-[#f7f9f9] rounded-xl border border-[#eff3f4] flex items-center justify-between">
               <div>
                 <span className="text-xs font-bold text-[#1d9bf0] uppercase tracking-wider block mb-0.5">
@@ -839,7 +955,7 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
                 </a>
               ))
             ) : (
-              <div className="text-center py-8 text-[#536471] text-sm">
+              <div className="text-center py-6 text-[#536471] text-sm">
                 No bio links listed yet.
               </div>
             )}

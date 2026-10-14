@@ -73,6 +73,7 @@ export default function ThreadClientView({ initialPost, username }: ThreadClient
               carouselData: dbBlock.content?.carouselData,
               boardData: dbBlock.content?.boardData,
               linkData: dbBlock.content?.linkData,
+              badgeData: dbBlock.content?.badgeData,
               likesCount: dbBlock.content?.likesCount || 0,
               repostsCount: dbBlock.content?.repostsCount || 0,
               repliesCount: 0,

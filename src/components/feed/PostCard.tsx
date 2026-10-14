@@ -325,6 +325,61 @@ export default function PostCard({ post, onDelete, isThreadView = false }: PostC
     );
   };
 
+  // Render Badge
+  const renderBadge = () => {
+    if (post.type !== 'badge' || !post.badgeData) return null;
+    const b = post.badgeData;
+
+    return (
+      <div className="mt-2.5 inline-flex flex-col gap-1.5" onClick={(e) => e.stopPropagation()}>
+        <a
+          href={b.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={`${b.title} (${b.url})`}
+          className="group/badge inline-block shrink-0 transition-transform hover:scale-105"
+        >
+          {b.badgeType === 'image' && b.imageUrl ? (
+            <img
+              src={b.imageUrl}
+              alt={b.title}
+              className="w-[88px] h-[31px] object-cover rounded-xs border border-black/20 shadow-xs block"
+              style={{ imageRendering: 'pixelated' }}
+            />
+          ) : (
+            <div
+              className="w-[88px] h-[31px] rounded-xs flex items-center overflow-hidden border border-black/30 shadow-xs font-mono text-[9px] font-extrabold select-none"
+              style={{ backgroundColor: b.bgColor || '#0f1419', color: b.textColor || '#ffffff' }}
+            >
+              {b.sublabel && (
+                <span className="bg-black/30 h-full px-1.5 flex items-center justify-center tracking-tight border-r border-white/20 uppercase">
+                  {b.sublabel}
+                </span>
+              )}
+              <span className="flex-1 px-1 text-center truncate tracking-tight uppercase flex items-center justify-center gap-1">
+                {b.icon && <span>{b.icon}</span>}
+                <span>{b.label || b.title}</span>
+              </span>
+            </div>
+          )}
+        </a>
+        <div className="flex items-center gap-1 text-[11px] text-[#536471]">
+          <span className="font-semibold text-[#0f1419]">{b.title}</span>
+          <span>·</span>
+          <a
+            href={b.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[#1d9bf0] hover:underline flex items-center gap-0.5"
+          >
+            <span>{b.url.replace(/^https?:\/\//, '')}</span>
+            <ExternalLink className="w-3 h-3" />
+          </a>
+        </div>
+      </div>
+    );
+  };
+
   // THREAD / FOCAL TWEET EXPANDED VIEW
   if (isThreadView) {
     return (
@@ -388,6 +443,7 @@ export default function PostCard({ post, onDelete, isThreadView = false }: PostC
         {renderCarousel()}
         {renderBoard()}
         {renderLinkCard()}
+        {renderBadge()}
 
         {/* Timestamp & Views */}
         <div className="py-3 text-sm text-[#536471] border-b border-[#eff3f4] flex items-center gap-2 mt-1">
@@ -534,6 +590,7 @@ export default function PostCard({ post, onDelete, isThreadView = false }: PostC
         {renderCarousel()}
         {renderBoard()}
         {renderLinkCard()}
+        {renderBadge()}
 
         {/* X Action Bar */}
         <div className="flex items-center justify-between mt-2 pt-1 text-[#536471] text-xs max-w-md">

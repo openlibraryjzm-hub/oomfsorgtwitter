@@ -18,6 +18,7 @@ Unlike generic social platforms with rigid 4-image grid constraints, `oomfs.org`
 | **Carousel** | `'carousel'` | Uncapped horizontal scroll strip, universal header, per-image captions | Uncapped horizontal scroll strip, full header & captions |
 | **Board** | `'board'` | Pinterest-style 3-image preview (`50%` left, `25%`+`25%` right, `+N` badge) | Expanded 2-column Pinterest-style masonry grid |
 | **Bio Link Card** | `'link_card'` | Compact link showcase button (featured on the **Links** profile tab) | Link showcase with direct outbound destination |
+| **Web Badge** | `'badge'` | Exclusively in the **Links** tab (unified Badge Wall above cards) | Compact 88×31 button badge with outbound destination |
 
 ---
 
@@ -54,15 +55,28 @@ export interface LinkData {
   buttonText?: string;
 }
 
+export interface BadgeData {
+  title: string;
+  url: string;
+  badgeType: 'image' | 'custom';
+  imageUrl?: string;
+  label?: string;
+  sublabel?: string;
+  bgColor?: string;
+  textColor?: string;
+  icon?: string;
+}
+
 export interface Post {
   id: string;
   author: User;
   createdAt: string;
-  type: 'standard' | 'carousel' | 'board' | 'link_card';
+  type: 'standard' | 'carousel' | 'board' | 'link_card' | 'badge';
   text: string;
   carouselData?: CarouselData;
   boardData?: BoardData;
   linkData?: LinkData;
+  badgeData?: BadgeData;
   likesCount: number;
   repostsCount: number;
   repliesCount: number;
@@ -106,6 +120,15 @@ export interface Post {
 - **Key Features**:
   - Highlights title, domain URL (with `https://` stripped for clean display), optional description, and a `"Visit ↗"` pill.
   - Primed for display under the **3. Links** tab on the profile page, but can also be shared directly on the timeline.
+
+### 5. Web Badge (`type: 'badge'`)
+- **Purpose**: Early-internet 88×31 button badges & micro-links.
+- **Key Features**:
+  - **Exclusively on the Links Tab**: Filtered out of the primary timeline; aggregates into a single unified **Badge Wall** situated directly above larger link cards.
+  - **Zero Card Clutter**: Badges are freed from standard Twitter card wrappers (no repeated avatar, handle, or timestamp per item) and pack together super tightly.
+  - **Center Column Constrained**: Stays bounded within the 600px center feed column (`w-[88px] h-[31px]` buttons with responsive flex wrap) without spilling over into sidebars or margins.
+  - **Customizable**: Supports both classic 88×31 Image/GIF buttons and custom split-pill text badges with custom background colors, tags, and icons.
+  - **Interactive**: Hover tooltip with outbound domain and visit link; profile owners can delete badges directly on hover.
 
 ---
 

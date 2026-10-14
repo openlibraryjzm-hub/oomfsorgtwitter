@@ -78,9 +78,10 @@ Tabs are ordered left-to-right to optimize content discovery:
   - Deletion: Permitted for the profile owner or the comment author.
 
 ### 3. Links (Third from Left)
-- **Role**: Linktree-style showcase for featured external resources, stores, portfolios, and projects.
-- **Composition**: Aggregates the user's permanent profile links (`user.links`) and any standalone `link_card` blocks published via the composer.
-- **Card Format**: High-contrast white card with clean borders, title, description, domain badge, and a high-visibility `"Visit ↗"` button.
+- **Role**: Curated bio link showcase and retro web button hub.
+- **Composition**:
+  - **The Badge Wall (Top Section)**: Aggregates all micro-badges (`badge` post type) into a single unified wall of 88×31 button badges packed tightly together within the center column, free from standard tweet card chrome.
+  - **Featured Link Cards (Bottom Section)**: Showcases high-contrast Linktree-style cards with title, description, domain badge, and a high-visibility `"Visit ↗"` button (from `user.links` and `link_card` blocks).
 
 ### 4. Likes (Fourth / Rightmost)
 - **Role**: Dedicated feed showcasing posts liked by the user.

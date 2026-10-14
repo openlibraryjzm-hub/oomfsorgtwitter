@@ -24,7 +24,7 @@ import { formatTwitterAvatar } from '@/lib/utils';
 interface PostComposerProps {
   onAddPost?: (post: Post) => void;
   onClose?: () => void;
-  defaultType?: 'standard' | 'carousel' | 'board' | 'link_card';
+  defaultType?: 'standard' | 'carousel' | 'board' | 'link_card' | 'badge';
   targetUser?: User;
   compact?: boolean;
 }
@@ -81,8 +81,9 @@ export default function PostComposer({
   const { user: authUser, profile: authProfile } = useAuth();
   const supabase = createClient();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const badgeFileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const [postType, setPostType] = useState<'standard' | 'carousel' | 'board' | 'link_card'>(defaultType);
+  const [postType, setPostType] = useState<'standard' | 'carousel' | 'board' | 'link_card' | 'badge'>(defaultType);
   const [text, setText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
@@ -98,6 +99,17 @@ export default function PostComposer({
   const [linkTitle, setLinkTitle] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
   const [linkDescription, setLinkDescription] = useState('');
+
+  // Badge state
+  const [badgeMode, setBadgeMode] = useState<'custom' | 'image'>('custom');
+  const [badgeTitle, setBadgeTitle] = useState('');
+  const [badgeUrl, setBadgeUrl] = useState('');
+  const [badgeImageUrl, setBadgeImageUrl] = useState('');
+  const [badgeLabel, setBadgeLabel] = useState('MUTUAL');
+  const [badgeSublabel, setBadgeSublabel] = useState('OOMF');
+  const [badgeBgColor, setBadgeBgColor] = useState('#1d9bf0');
+  const [badgeTextColor, setBadgeTextColor] = useState('#ffffff');
+  const [badgeIcon, setBadgeIcon] = useState('✨');
 
   useEffect(() => {
     setPostType(defaultType);
@@ -192,7 +204,33 @@ export default function PostComposer({
     if (postType === 'carousel') return mediaItems.length >= 1;
     if (postType === 'board') return mediaItems.length >= 3;
     if (postType === 'link_card') return linkTitle.trim().length > 0 && linkUrl.trim().length > 0;
+    if (postType === 'badge') {
+      const hasUrl = badgeUrl.trim().length > 0;
+      if (badgeMode === 'image') return hasUrl && badgeImageUrl.trim().length > 0;
+      return hasUrl && (badgeLabel.trim().length > 0 || badgeTitle.trim().length > 0);
+    }
     return false;
+  };
+
+  const handleBadgeFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    try {
+      const dataUrl = await compressImageFile(file, 200, 0.9);
+      setBadgeImageUrl(dataUrl);
+      setBadgeMode('image');
+      if (!badgeTitle) {
+        setBadgeTitle(file.name.replace(/\.[^/.]+$/, ''));
+      }
+    } catch (err) {
+      console.error('Error reading badge file:', err);
+      setErrorMsg('Could not process badge image.');
+    } finally {
+      if (badgeFileInputRef.current) {
+        badgeFileInputRef.current.value = '';
+      }
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -239,6 +277,19 @@ export default function PostComposer({
           description: linkDescription.trim() || undefined,
           buttonText: 'Visit Link ↗'
         }
+      } : {}),
+      ...(postType === 'badge' ? {
+        badgeData: {
+          title: badgeTitle.trim() || badgeLabel.trim() || 'Web Badge',
+          url: badgeUrl.trim().startsWith('http') ? badgeUrl.trim() : `https://${badgeUrl.trim()}`,
+          badgeType: badgeMode,
+          imageUrl: badgeMode === 'image' ? badgeImageUrl.trim() : undefined,
+          label: badgeLabel.trim() || undefined,
+          sublabel: badgeSublabel.trim() || undefined,
+          bgColor: badgeBgColor || '#1d9bf0',
+          textColor: badgeTextColor || '#ffffff',
+          icon: badgeIcon.trim() || undefined
+        }
       } : {})
     };
 
@@ -283,6 +334,7 @@ export default function PostComposer({
       carouselData: blockContent.carouselData,
       boardData: blockContent.boardData,
       linkData: blockContent.linkData,
+      badgeData: blockContent.badgeData,
       likesCount: 0,
       repostsCount: 0,
       repliesCount: 0,
@@ -307,6 +359,11 @@ export default function PostComposer({
     setLinkTitle('');
     setLinkUrl('');
     setLinkDescription('');
+    setBadgeTitle('');
+    setBadgeUrl('');
+    setBadgeImageUrl('');
+    setBadgeLabel('MUTUAL');
+    setBadgeSublabel('OOMF');
     setIsSubmitting(false);
 
     if (onClose) {
@@ -395,6 +452,7 @@ export default function PostComposer({
             { id: 'carousel', label: 'Carousel', icon: Layers },
             { id: 'board', label: 'Board (3+)', icon: LayoutGrid },
             { id: 'link_card', label: 'Bio Link', icon: Link2 },
+            { id: 'badge', label: 'Badge (88×31)', icon: Sparkles },
           ].map((tab) => {
             const Icon = tab.icon;
             const active = postType === tab.id;
@@ -430,6 +488,8 @@ export default function PostComposer({
               ? 'Describe this board / moodboard...'
               : postType === 'link_card'
               ? 'Add an optional note above your link card...'
+              : postType === 'badge'
+              ? 'Add an optional note about this badge (saved with your block)...'
               : 'What is happening?!'
           }
           rows={compact ? 2 : 3}
@@ -443,6 +503,15 @@ export default function PostComposer({
           accept="image/*"
           multiple
           onChange={handleFileChange}
+          className="hidden"
+        />
+
+        {/* Hidden Single Image/GIF File Input for 88x31 Badge */}
+        <input
+          ref={badgeFileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleBadgeFileChange}
           className="hidden"
         />
 
@@ -749,6 +818,284 @@ export default function PostComposer({
           </div>
         )}
 
+        {/* BADGE (88x31) DRAFTING UI */}
+        {postType === 'badge' && (
+          <div className="bg-[#f7f9f9] border border-[#eff3f4] rounded-2xl p-3.5 flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold text-[#1d9bf0] uppercase tracking-wider flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>88×31 Web Badge Details</span>
+              </span>
+
+              {/* Mode Switcher */}
+              <div className="flex bg-white border border-[#eff3f4] p-0.5 rounded-full text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setBadgeMode('custom')}
+                  className={`px-2.5 py-1 rounded-full transition-colors cursor-pointer ${
+                    badgeMode === 'custom' ? 'bg-[#0f1419] text-white' : 'text-[#536471] hover:text-[#0f1419]'
+                  }`}
+                >
+                  Styled Text
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBadgeMode('image')}
+                  className={`px-2.5 py-1 rounded-full transition-colors cursor-pointer ${
+                    badgeMode === 'image' ? 'bg-[#0f1419] text-white' : 'text-[#536471] hover:text-[#0f1419]'
+                  }`}
+                >
+                  Image / 88×31
+                </button>
+              </div>
+            </div>
+
+            {/* LIVE PREVIEW BOX */}
+            <div className="bg-white border border-[#eff3f4] rounded-xl p-3 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-2xs">
+              <div className="flex flex-col gap-0.5 text-center sm:text-left">
+                <span className="text-[11px] font-bold text-[#536471] uppercase tracking-wider">
+                  Wall Preview (Actual 88×31 Size)
+                </span>
+                <span className="text-xs text-[#0f1419] font-medium truncate max-w-[280px]">
+                  {badgeTitle || badgeLabel || 'My Web Badge'}
+                </span>
+              </div>
+
+              {/* 88x31 Button Render */}
+              <div className="shrink-0 flex items-center">
+                {badgeMode === 'image' ? (
+                  badgeImageUrl ? (
+                    <img
+                      src={badgeImageUrl}
+                      alt="Preview"
+                      className="w-[88px] h-[31px] object-cover rounded-xs border border-black/25 shadow-xs block"
+                      style={{ imageRendering: 'pixelated' }}
+                    />
+                  ) : (
+                    <div className="w-[88px] h-[31px] rounded-xs border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center text-[9px] text-[#536471] font-mono">
+                      No Image
+                    </div>
+                  )
+                ) : (
+                  <div
+                    className="w-[88px] h-[31px] rounded-xs flex items-center overflow-hidden border border-black/30 shadow-xs font-mono text-[9px] font-extrabold select-none"
+                    style={{ backgroundColor: badgeBgColor, color: badgeTextColor }}
+                  >
+                    {badgeSublabel && (
+                      <span className="bg-black/35 h-full px-1.5 flex items-center justify-center border-r border-white/20 uppercase tracking-tight shrink-0">
+                        {badgeSublabel}
+                      </span>
+                    )}
+                    <span className="flex-1 px-1 text-center truncate tracking-tight uppercase flex items-center justify-center gap-0.5">
+                      {badgeIcon && <span className="text-[10px]">{badgeIcon}</span>}
+                      <span className="truncate">{badgeLabel || 'LABEL'}</span>
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* CORE INPUTS: URL & Title */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <label className="text-[11px] font-semibold text-[#536471] block mb-1">
+                  Destination URL *
+                </label>
+                <input
+                  type="text"
+                  placeholder="https://..."
+                  value={badgeUrl}
+                  onChange={(e) => setBadgeUrl(e.target.value)}
+                  className="w-full bg-white border border-[#eff3f4] rounded-xl px-3 py-2 text-xs text-[#0f1419] outline-none focus:border-[#1d9bf0]"
+                  required
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-[#536471] block mb-1">
+                  Badge Title / Hover Tooltip *
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. My Neocities Site, Spotify Playlist"
+                  value={badgeTitle}
+                  onChange={(e) => setBadgeTitle(e.target.value)}
+                  className="w-full bg-white border border-[#eff3f4] rounded-xl px-3 py-2 text-xs text-[#0f1419] outline-none focus:border-[#1d9bf0]"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* MODE SPECIFIC CONTROLS */}
+            {badgeMode === 'image' ? (
+              <div className="flex flex-col gap-2">
+                <label className="text-[11px] font-semibold text-[#536471]">
+                  88×31 Button Graphic Source
+                </label>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => badgeFileInputRef.current?.click()}
+                    className="bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Upload Image / GIF</span>
+                  </button>
+                  <input
+                    type="url"
+                    placeholder="Or paste button image URL..."
+                    value={badgeImageUrl}
+                    onChange={(e) => setBadgeImageUrl(e.target.value)}
+                    className="flex-1 bg-white border border-[#eff3f4] rounded-xl px-3 py-1.5 text-xs text-[#0f1419] outline-none focus:border-[#1d9bf0]"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2.5">
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="text-[11px] font-semibold text-[#536471] block mb-1">
+                      Prefix / Tag
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. OOMF"
+                      value={badgeSublabel}
+                      onChange={(e) => setBadgeSublabel(e.target.value)}
+                      maxLength={8}
+                      className="w-full bg-white border border-[#eff3f4] rounded-xl px-2.5 py-1.5 text-xs text-[#0f1419] outline-none focus:border-[#1d9bf0] uppercase"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold text-[#536471] block mb-1">
+                      Main Text
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. MUTUAL"
+                      value={badgeLabel}
+                      onChange={(e) => setBadgeLabel(e.target.value)}
+                      maxLength={12}
+                      className="w-full bg-white border border-[#eff3f4] rounded-xl px-2.5 py-1.5 text-xs text-[#0f1419] outline-none focus:border-[#1d9bf0] uppercase"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold text-[#536471] block mb-1">
+                      Emoji / Icon
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. ✨"
+                      value={badgeIcon}
+                      onChange={(e) => setBadgeIcon(e.target.value)}
+                      className="w-full bg-white border border-[#eff3f4] rounded-xl px-2.5 py-1.5 text-xs text-[#0f1419] outline-none focus:border-[#1d9bf0] text-center"
+                    />
+                  </div>
+                </div>
+
+                {/* Color Swatches */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[11px] font-semibold text-[#536471]">
+                    Color:
+                  </span>
+                  {[
+                    { name: 'Twitter Blue', hex: '#1d9bf0' },
+                    { name: 'Obsidian', hex: '#0f1419' },
+                    { name: 'Emerald', hex: '#10b981' },
+                    { name: 'Amber', hex: '#f59e0b' },
+                    { name: 'Cyber Cyan', hex: '#06b6d4' },
+                    { name: 'Violet', hex: '#8b5cf6' },
+                    { name: 'Pink', hex: '#ec4899' },
+                  ].map((color) => (
+                    <button
+                      key={color.hex}
+                      type="button"
+                      title={color.name}
+                      onClick={() => setBadgeBgColor(color.hex)}
+                      className={`w-5 h-5 rounded-full transition-transform cursor-pointer border border-black/10 ${
+                        badgeBgColor === color.hex ? 'scale-125 ring-2 ring-black/30' : 'hover:scale-110'
+                      }`}
+                      style={{ backgroundColor: color.hex }}
+                    />
+                  ))}
+                  <input
+                    type="color"
+                    value={badgeBgColor}
+                    onChange={(e) => setBadgeBgColor(e.target.value)}
+                    title="Custom hex color"
+                    className="w-6 h-6 rounded-md cursor-pointer border-0 bg-transparent p-0"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* 1-CLICK SAMPLE PRESETS */}
+            <div className="pt-2 border-t border-[#eff3f4] flex items-center gap-1.5 flex-wrap">
+              <span className="text-[11px] text-[#536471] font-medium mr-1">
+                Presets:
+              </span>
+              {[
+                {
+                  label: '✨ OOMF Mutual',
+                  apply: () => {
+                    setBadgeMode('custom');
+                    setBadgeSublabel('OOMF');
+                    setBadgeLabel('MUTUAL');
+                    setBadgeIcon('✨');
+                    setBadgeBgColor('#1d9bf0');
+                    setBadgeTitle('OOMFS Mutual');
+                    setBadgeUrl('https://oomfs.org');
+                  }
+                },
+                {
+                  label: '👾 Neocities',
+                  apply: () => {
+                    setBadgeMode('custom');
+                    setBadgeSublabel('NEO');
+                    setBadgeLabel('CITIES');
+                    setBadgeIcon('👾');
+                    setBadgeBgColor('#e06800');
+                    setBadgeTitle('My Neocities Site');
+                    setBadgeUrl('https://neocities.org');
+                  }
+                },
+                {
+                  label: '💻 GitHub',
+                  apply: () => {
+                    setBadgeMode('custom');
+                    setBadgeSublabel('GIT');
+                    setBadgeLabel('REPOS');
+                    setBadgeIcon('💻');
+                    setBadgeBgColor('#0f1419');
+                    setBadgeTitle('GitHub Profile');
+                    setBadgeUrl('https://github.com');
+                  }
+                },
+                {
+                  label: '🎧 Spotify',
+                  apply: () => {
+                    setBadgeMode('custom');
+                    setBadgeSublabel('SPOTIFY');
+                    setBadgeLabel('ON AIR');
+                    setBadgeIcon('🎧');
+                    setBadgeBgColor('#10b981');
+                    setBadgeTitle('Late Night Playlist');
+                    setBadgeUrl('https://spotify.com');
+                  }
+                }
+              ].map((preset, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={preset.apply}
+                  className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-white border border-[#eff3f4] hover:border-[#1d9bf0] text-[#0f1419] transition-colors cursor-pointer"
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {errorMsg && (
           <p className="text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
             {errorMsg}
@@ -798,6 +1145,16 @@ export default function PostComposer({
               }`}
             >
               <Link2 className="w-5 h-5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setPostType('badge')}
+              title="Create Web Badge"
+              className={`p-2 rounded-full transition-colors cursor-pointer ${
+                postType === 'badge' ? 'bg-[#1d9bf0]/15 text-[#1d9bf0]' : 'hover:bg-[#1d9bf0]/10'
+              }`}
+            >
+              <Sparkles className="w-5 h-5" />
             </button>
           </div>
 

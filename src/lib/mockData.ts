@@ -38,11 +38,23 @@ export interface BoardImage {
   caption?: string;
 }
 
+export interface BadgeData {
+  title: string;
+  url: string;
+  badgeType: 'image' | 'custom';
+  imageUrl?: string;
+  label?: string;
+  sublabel?: string;
+  bgColor?: string;
+  textColor?: string;
+  icon?: string;
+}
+
 export interface Post {
   id: string;
   author: User;
   createdAt: string;
-  type: 'standard' | 'carousel' | 'board' | 'link_card';
+  type: 'standard' | 'carousel' | 'board' | 'link_card' | 'badge';
   text: string;
   carouselData?: {
     header: string;
@@ -58,6 +70,7 @@ export interface Post {
     image?: string;
     buttonText?: string;
   };
+  badgeData?: BadgeData;
   likesCount: number;
   repostsCount: number;
   repliesCount: number;
@@ -361,6 +374,174 @@ export const MOCK_POSTS: Post[] = [
     repliesCount: 9,
     viewsCount: '1.4K',
     isLiked: true
+  },
+  {
+    id: 'post_badge_1',
+    author: MOCK_USERS.amberlyn,
+    createdAt: '4h',
+    type: 'badge',
+    text: 'OOMFS Mutual Badge',
+    badgeData: {
+      title: 'OOMFS.ORG Mutual',
+      url: 'https://oomfs.org/amberlyn',
+      badgeType: 'custom',
+      label: 'MUTUAL',
+      sublabel: 'OOMF',
+      bgColor: '#1d9bf0',
+      textColor: '#ffffff',
+      icon: '✨'
+    },
+    likesCount: 12,
+    repostsCount: 2,
+    repliesCount: 0,
+    viewsCount: '320'
+  },
+  {
+    id: 'post_badge_2',
+    author: MOCK_USERS.amberlyn,
+    createdAt: '4h',
+    type: 'badge',
+    text: 'Neocities personal site button',
+    badgeData: {
+      title: 'Amber on Neocities',
+      url: 'https://neocities.org',
+      badgeType: 'custom',
+      label: 'CITIES',
+      sublabel: 'NEO',
+      bgColor: '#e06800',
+      textColor: '#ffffff',
+      icon: '👾'
+    },
+    likesCount: 24,
+    repostsCount: 4,
+    repliesCount: 1,
+    viewsCount: '480'
+  },
+  {
+    id: 'post_badge_3',
+    author: MOCK_USERS.amberlyn,
+    createdAt: '4h',
+    type: 'badge',
+    text: 'GitHub open source button',
+    badgeData: {
+      title: 'GitHub Repositories',
+      url: 'https://github.com',
+      badgeType: 'custom',
+      label: 'REPOS',
+      sublabel: 'GIT',
+      bgColor: '#0f1419',
+      textColor: '#ffffff',
+      icon: '💻'
+    },
+    likesCount: 19,
+    repostsCount: 1,
+    repliesCount: 0,
+    viewsCount: '390'
+  },
+  {
+    id: 'post_badge_4',
+    author: MOCK_USERS.amberlyn,
+    createdAt: '4h',
+    type: 'badge',
+    text: 'Spotify late night playlist',
+    badgeData: {
+      title: 'Late Night Coding on Spotify',
+      url: 'https://spotify.com',
+      badgeType: 'custom',
+      label: 'ON AIR',
+      sublabel: 'SPOTIFY',
+      bgColor: '#10b981',
+      textColor: '#ffffff',
+      icon: '🎧'
+    },
+    likesCount: 31,
+    repostsCount: 5,
+    repliesCount: 2,
+    viewsCount: '620'
+  },
+  {
+    id: 'post_badge_5',
+    author: MOCK_USERS.amberlyn,
+    createdAt: '4h',
+    type: 'badge',
+    text: 'RSS Web Feed',
+    badgeData: {
+      title: 'Subscribe to RSS Feed',
+      url: 'https://amberlyn.substack.com/feed',
+      badgeType: 'custom',
+      label: 'FEED',
+      sublabel: 'RSS',
+      bgColor: '#f97316',
+      textColor: '#ffffff',
+      icon: '📡'
+    },
+    likesCount: 15,
+    repostsCount: 3,
+    repliesCount: 0,
+    viewsCount: '270'
+  },
+  {
+    id: 'post_badge_6',
+    author: MOCK_USERS.amberlyn,
+    createdAt: '4h',
+    type: 'badge',
+    text: 'Figma UI Library badge',
+    badgeData: {
+      title: 'Figma Design System',
+      url: 'https://figma.com',
+      badgeType: 'custom',
+      label: 'DESIGN',
+      sublabel: 'FIGMA',
+      bgColor: '#8b5cf6',
+      textColor: '#ffffff',
+      icon: '🎨'
+    },
+    likesCount: 28,
+    repostsCount: 6,
+    repliesCount: 1,
+    viewsCount: '510'
+  },
+  {
+    id: 'post_badge_7',
+    author: MOCK_USERS.amberlyn,
+    createdAt: '4h',
+    type: 'badge',
+    text: 'Cyberpunk Webring',
+    badgeData: {
+      title: 'Cyberpunk Indie Webring',
+      url: 'https://webring.org',
+      badgeType: 'custom',
+      label: 'WEBRING',
+      sublabel: 'CYBER',
+      bgColor: '#06b6d4',
+      textColor: '#ffffff',
+      icon: '⚡'
+    },
+    likesCount: 22,
+    repostsCount: 4,
+    repliesCount: 0,
+    viewsCount: '440'
+  },
+  {
+    id: 'post_badge_8',
+    author: MOCK_USERS.amberlyn,
+    createdAt: '4h',
+    type: 'badge',
+    text: 'Made with Next.js 16',
+    badgeData: {
+      title: 'Built with Next.js 16 App Router',
+      url: 'https://nextjs.org',
+      badgeType: 'custom',
+      label: 'NEXT.JS',
+      sublabel: 'APP',
+      bgColor: '#000000',
+      textColor: '#ffffff',
+      icon: '▲'
+    },
+    likesCount: 45,
+    repostsCount: 8,
+    repliesCount: 3,
+    viewsCount: '890'
   },
   {
     id: 'post_kyle_1',
