@@ -7,11 +7,9 @@ import {
   Home, 
   Search, 
   Bell, 
-  Users, 
   User as UserIcon, 
   MoreHorizontal, 
   Feather,
-  Link2,
   LogOut,
   LogIn
 } from 'lucide-react';
@@ -37,24 +35,20 @@ export default function LeftSidebar({ onOpenComposer }: LeftSidebarProps) {
     { label: 'Home', href: '/', icon: Home },
     { label: 'Explore', href: '/explore', icon: Search },
     { label: 'Notifications', href: '/notifications', icon: Bell },
-    { label: 'OOMFS Mutuals', href: '/oomfs', icon: Users },
     { label: 'Profile', href: `/${activeUsername}`, icon: UserIcon },
   ];
 
   return (
-    <aside className="sticky top-0 h-screen flex flex-col justify-between py-3 px-2 sm:px-4 xl:w-64 border-r border-[#eff3f4] select-none">
+    <aside className="sticky top-0 h-screen flex flex-col justify-between py-3 px-2 sm:px-4 xl:w-[275px] border-r border-[#eff3f4] select-none shrink-0">
       <div className="flex flex-col gap-1">
         {/* Logo */}
         <Link 
           href="/" 
-          className="flex items-center gap-2 p-3 hover:bg-[#f7f9f9] rounded-full w-fit transition-colors group mb-1"
+          className="flex items-center justify-center p-3 hover:bg-[#f7f9f9] rounded-full w-fit transition-colors group mb-1"
         >
           <div className="w-9 h-9 bg-[#1d9bf0] rounded-xl flex items-center justify-center text-white font-black text-xl tracking-tighter shadow-xs group-hover:scale-105 transition-transform">
             O
           </div>
-          <span className="font-extrabold text-xl tracking-tight hidden xl:inline text-[#0f1419]">
-            oomfs<span className="text-[#1d9bf0]">.org</span>
-          </span>
         </Link>
 
         {/* Navigation links */}
@@ -100,20 +94,6 @@ export default function LeftSidebar({ onOpenComposer }: LeftSidebarProps) {
             <span className="hidden xl:inline">Sign in with X</span>
           </button>
         )}
-
-        {/* Bio Link Badge Callout */}
-        <div className="hidden xl:block mt-6 p-3 bg-[#f7f9f9] rounded-2xl border border-[#eff3f4]">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-[#1d9bf0] uppercase tracking-wider mb-1">
-            <Link2 className="w-3.5 h-3.5" />
-            <span>Your Bio Link</span>
-          </div>
-          <p className="text-xs text-[#536471] mb-2">
-            Share this URL in your X bio:
-          </p>
-          <div className="bg-white border border-[#eff3f4] rounded-lg px-2.5 py-1.5 font-mono text-xs font-semibold text-[#0f1419] truncate select-all">
-            oomfs.org/{activeUsername}
-          </div>
-        </div>
       </div>
 
       {/* User profile pill at bottom with Sign Out menu */}

@@ -39,7 +39,6 @@ The profile header sits at the top of `ProfileView.tsx` and adheres strictly to 
    - Avatar: Circular avatar overlapping banner (`-mt-16 sm:-mt-20`). Always run through `formatTwitterAvatar()` to ensure 400×400 HD resolution instead of Twitter's pixelated default `_normal.jpg`.
 
 3. **Action Row**:
-   - **Share / Copy Link Button**: Copies `oomfs.org/[username]` to clipboard with visual checkmark confirmation.
    - **Contextual Action Button**:
      - Viewing own profile: **`"Edit profile"`** opens the native edit modal.
      - Viewing another profile (logged out): **`"Connect X"`** triggers Twitter OAuth 2.0 PKCE.
@@ -49,24 +48,24 @@ The profile header sits at the top of `ProfileView.tsx` and adheres strictly to 
    - Display name + Verified badge.
    - Handle (`@username`).
    - Bio: Multi-line text preserving whitespace. **Crucial Rule**: Always use nullish coalescing (`dbUser.bio !== null && dbUser.bio !== undefined ? dbUser.bio : fallback`) to prevent empty strings or brief bios from falling back to default text.
-   - Meta info chips: Location (`MapPin`), Website (`LinkIcon`), Joined Date (`Calendar`).
-   - Follower stats: Following count, Followers count.
-   - **OOMF Mutual Badge**: Displays internal mutual count (`X OOMFs (Mutuals)`) linking directly to `/oomfs`.
+   - **Streamlined Stats Row**: Ordered left-to-right:
+     1. **`0 oomfs`** (leftmost): Lowercase label styled in light Twitter blue (`#1d9bf0`) with the number slightly bolder (`font-extrabold` vs `font-medium`), linking directly to `/oomfs`.
+     2. **`Following`** count: Authentic black bold number + muted secondary label.
+     3. **`Followers`** count: Authentic black bold number + muted secondary label.
 
 ---
 
 ## 3. The 4 Profile Tabs
 
-Tabs are ordered left-to-right to optimize content discovery:
+Tabs are ordered left-to-right to optimize content discovery and render with clean labels without parentheses counters:
 
 ```
 [ 1. Posts ]  [ 2. Comments ]  [ 3. Links ]  [ 4. Likes ]
 ```
 
 ### 1. Posts (Leftmost & Default)
-- **Role**: Primary content timeline displaying actual posts created by the user.
-- **Content Types**: Standard Posts (`standard`), Photo Carousels (`carousel`), and Curated Boards (`board`). Standalone bio links are grouped into the **Links** tab.
-- **Quick-Draft Bar**: When the composer drawer is closed, an inline compose bar at the top of the feed invites the user to create a Standard, Carousel, or Board post with a single click.
+- **Role**: Primary content timeline displaying actual posts created by the user (Standard, Carousel, Board).
+- **Direct Feed Alignment**: Feed items render directly beneath the tab bar (no extraneous quick-compose bars), preserving strict 1:1 parity with Twitter/X web profile timelines.
 - **Thread Navigation**: Clicking any post card in this feed navigates directly to `/[username]/status/[id]` to open its dedicated thread view.
 
 ### 2. Comments (Second from Left)
@@ -80,8 +79,8 @@ Tabs are ordered left-to-right to optimize content discovery:
 ### 3. Links (Third from Left)
 - **Role**: Curated bio link showcase and retro web button hub.
 - **Composition**:
-  - **The Badge Wall (Top Section)**: Aggregates all micro-badges (`badge` post type) into a single unified wall of 88×31 button badges packed tightly together within the center column, free from standard tweet card chrome.
-  - **Featured Link Cards (Bottom Section)**: Showcases high-contrast Linktree-style cards with title, description, domain badge, and a high-visibility `"Visit ↗"` button (from `user.links` and `link_card` blocks).
+  - **The Badge Wall (Top Section)**: Displays early-web 88×31 button badges packed tightly together within the center column without chrome or top headers.
+  - **Featured Link Cards (Bottom Section)**: Showcases high-contrast Linktree-style cards with title, description, domain badge, and a high-visibility `"Visit ↗"` button (from `user.links` and `link_card` blocks) directly without promotional banners.
 
 ### 4. Likes (Fourth / Rightmost)
 - **Role**: Dedicated feed showcasing posts liked by the user.

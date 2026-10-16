@@ -15,9 +15,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
   return (
     <div className="min-h-screen bg-white text-[#0f1419] flex justify-center">
-      <div className="flex w-full max-w-[1280px] justify-between relative">
+      <div className="flex w-full max-w-[1265px] justify-between relative">
         {/* Left Navigation Sidebar */}
-        <React.Suspense fallback={<div className="sticky top-0 h-screen py-3 px-2 sm:px-4 xl:w-64 border-r border-[#eff3f4]" />}>
+        <React.Suspense fallback={<div className="sticky top-0 h-screen py-3 px-2 sm:px-4 xl:w-[275px] border-r border-[#eff3f4] shrink-0" />}>
           <LeftSidebar onOpenComposer={() => setComposerOpen(true)} />
         </React.Suspense>
 
@@ -26,7 +26,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
           {children}
         </main>
 
-        {/* Right Widgets Sidebar */}
+        {/* Right Spacer Column (maintains 1:1 X/Twitter spacing) */}
         <RightSidebar />
       </div>
 

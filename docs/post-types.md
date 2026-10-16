@@ -136,11 +136,14 @@ export interface Post {
 
 The unified composer is implemented in [`src/components/feed/PostComposer.tsx`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/components/feed/PostComposer.tsx).
 
-### Entry Points
+### Entry Points & Format Selection
 Post drafting can be initiated from:
 1. **Left Sidebar `"Post"` Button**: Accessible from anywhere in the app; opens the composer in a modal overlay.
 2. **Profile Page Header `"Create Post"` Button**: Toggles the composer drawer at the top of the profile.
-3. **Timeline Quick-Draft Bar**: An inline composer bar situated directly at the top of the **Posts** tab.
+
+Format switching is controlled via the **bottom icon action bar** (`ImageIcon`, `Layers`, `LayoutGrid`, `Link2`, `Sparkles`). Special format builders (Carousel, Board, Bio Link, Badge) sit completely flush at the top of the composer without redundant tweet textareas.
+
+*For full composer architecture and media pipeline details, see [Composer Documentation](composer.md).*
 
 ### Media Upload & Compression
 - **Computer File Uploads**: Users can select multiple image files from their local machine.

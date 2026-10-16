@@ -42,6 +42,11 @@
 
 6. **Design System Rule (Strict North Star):**  
    * **Light Theme by default**: Clean white background (`#ffffff`), Twitter Blue (`#1d9bf0`), subtle gray borders (`#eff3f4`), secondary text (`#536471`), and primary text (`#0f1419`).
+   * **1:1 Desktop Layout Geometry Parity**:  
+     * Left Navigation: `275px` (`xl:w-[275px]`)
+     * Center Timeline: `600px` (`max-w-[600px] border-x border-[#eff3f4]`)
+     * Right Spacer Column: `350px` (`xl:w-[350px]`) containing subtle legal footer links
+     * Centered Shell: `max-w-[1265px]` container with `justify-between`
    * **Zero "Vibecoding" Fluff**: No forced dark modes, no neon gradients, no heavy glassmorphism or floating bubbles. Maintain 1:1 parity with Twitter Web light mode.
 
 ---
@@ -61,6 +66,7 @@
 
 ```
 ├── docs/
+│   ├── composer.md                     # Post composer architecture, flush builders, & media compression
 │   ├── post-types.md                   # Specification for active post formats & creation guide
 │   └── profile-page.md                 # Profile page architecture, 4 tabs, and thread routing
 ├── .env.local                          # Supabase project URL and API keys
@@ -77,21 +83,21 @@
 │   │   ├── explore/page.tsx            # Clean "Coming Soon" explore page
 │   │   ├── notifications/page.tsx      # Clean "Coming Soon" notifications page
 │   │   ├── oomfs/page.tsx              # Mutual followers directory
-│   │   ├── page.tsx                    # Root redirect (forwards to default profile or active user)
+│   │   ├── page.tsx                    # Home route with "Coming Soon" timeline disclaimer
 │   │   ├── layout.tsx                  # Root layout with AuthProvider & metadata
 │   │   └── globals.css                 # Twitter Light Theme CSS variables
 │   │
 │   ├── components/
 │   │   ├── layout/
-│   │   │   ├── LeftSidebar.tsx         # 1:1 Left navigation, active profile pill, "Post" button
-│   │   │   ├── RightSidebar.tsx        # Search, featured OOMFs, auth callout
-│   │   │   └── MainLayout.tsx          # 3-column responsive layout wrapper + compose modal
+│   │   │   ├── LeftSidebar.tsx         # 1:1 Left navigation (275px), icon logo, profile pill, "Post" button
+│   │   │   ├── RightSidebar.tsx        # 1:1 Right spacer column (350px) for layout geometry + footer links
+│   │   │   └── MainLayout.tsx          # 1:1 X.com layout shell (max-w-[1265px]) + compose modal
 │   │   ├── profile/
 │   │   │   └── ProfileView.tsx         # Core profile view, 4 tabs, Edit Profile modal, composer
 │   │   └── feed/
 │   │       ├── PostCard.tsx            # 1:1 timeline post rendering (Standard, Carousel, Board)
 │   │       ├── CommentCard.tsx         # Flat guestbook comment card (non-threaded)
-│   │       └── PostComposer.tsx        # Unified post composer with image uploads & live previews
+│   │       └── PostComposer.tsx        # Unified post composer with flush builders & bottom icon toggles
 │   │
 │   ├── context/
 │   │   └── AuthContext.tsx             # Supabase auth session, profile state, signInWithTwitter, signOut

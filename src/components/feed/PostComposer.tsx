@@ -9,7 +9,6 @@ import {
   X, 
   Layers, 
   LayoutGrid, 
-  FileText,
   ArrowLeft,
   ArrowRight,
   Link as LinkIcon,
@@ -445,56 +444,16 @@ export default function PostComposer({
       />
 
       <form onSubmit={handleSubmit} className="flex-1 min-w-0 flex flex-col gap-3">
-        {/* Post Type Selector Pills */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {[
-            { id: 'standard', label: 'Standard', icon: FileText },
-            { id: 'carousel', label: 'Carousel', icon: Layers },
-            { id: 'board', label: 'Board (3+)', icon: LayoutGrid },
-            { id: 'link_card', label: 'Bio Link', icon: Link2 },
-            { id: 'badge', label: 'Badge (88×31)', icon: Sparkles },
-          ].map((tab) => {
-            const Icon = tab.icon;
-            const active = postType === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => {
-                  setPostType(tab.id as any);
-                  setErrorMsg(null);
-                }}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer ${
-                  active
-                    ? 'bg-[#0f1419] text-white'
-                    : 'bg-[#f7f9f9] text-[#536471] hover:bg-[#eff3f4] hover:text-[#0f1419]'
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Main Post Textarea */}
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder={
-            postType === 'carousel'
-              ? 'Write a caption for your carousel...'
-              : postType === 'board'
-              ? 'Describe this board / moodboard...'
-              : postType === 'link_card'
-              ? 'Add an optional note above your link card...'
-              : postType === 'badge'
-              ? 'Add an optional note about this badge (saved with your block)...'
-              : 'What is happening?!'
-          }
-          rows={compact ? 2 : 3}
-          className="w-full text-[15px] text-[#0f1419] placeholder-[#536471] outline-none resize-none bg-transparent"
-        />
+        {/* Main Post Textarea (only for standard posts; carousel, board, link, badge sit flush) */}
+        {postType === 'standard' && (
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="What is happening?!"
+            rows={compact ? 2 : 3}
+            className="w-full text-[15px] text-[#0f1419] placeholder-[#536471] outline-none resize-none bg-transparent"
+          />
+        )}
 
         {/* Hidden Multi-File Input */}
         <input
@@ -1118,7 +1077,10 @@ export default function PostComposer({
             </button>
             <button
               type="button"
-              onClick={() => setPostType('carousel')}
+              onClick={() => {
+                setErrorMsg(null);
+                setPostType((prev) => (prev === 'carousel' ? 'standard' : 'carousel'));
+              }}
               title="Create Carousel"
               className={`p-2 rounded-full transition-colors cursor-pointer ${
                 postType === 'carousel' ? 'bg-[#1d9bf0]/15 text-[#1d9bf0]' : 'hover:bg-[#1d9bf0]/10'
@@ -1128,7 +1090,10 @@ export default function PostComposer({
             </button>
             <button
               type="button"
-              onClick={() => setPostType('board')}
+              onClick={() => {
+                setErrorMsg(null);
+                setPostType((prev) => (prev === 'board' ? 'standard' : 'board'));
+              }}
               title="Create Board"
               className={`p-2 rounded-full transition-colors cursor-pointer ${
                 postType === 'board' ? 'bg-[#1d9bf0]/15 text-[#1d9bf0]' : 'hover:bg-[#1d9bf0]/10'
@@ -1138,7 +1103,10 @@ export default function PostComposer({
             </button>
             <button
               type="button"
-              onClick={() => setPostType('link_card')}
+              onClick={() => {
+                setErrorMsg(null);
+                setPostType((prev) => (prev === 'link_card' ? 'standard' : 'link_card'));
+              }}
               title="Create Bio Link"
               className={`p-2 rounded-full transition-colors cursor-pointer ${
                 postType === 'link_card' ? 'bg-[#1d9bf0]/15 text-[#1d9bf0]' : 'hover:bg-[#1d9bf0]/10'
@@ -1148,7 +1116,10 @@ export default function PostComposer({
             </button>
             <button
               type="button"
-              onClick={() => setPostType('badge')}
+              onClick={() => {
+                setErrorMsg(null);
+                setPostType((prev) => (prev === 'badge' ? 'standard' : 'badge'));
+              }}
               title="Create Web Badge"
               className={`p-2 rounded-full transition-colors cursor-pointer ${
                 postType === 'badge' ? 'bg-[#1d9bf0]/15 text-[#1d9bf0]' : 'hover:bg-[#1d9bf0]/10'

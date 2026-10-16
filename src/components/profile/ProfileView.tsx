@@ -4,21 +4,12 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
   ArrowLeft, 
-  Calendar, 
-  MapPin, 
-  Link as LinkIcon, 
   CheckCircle2, 
-  Check, 
-  Users, 
   ExternalLink, 
   Sparkles, 
-  Share2, 
   Plus, 
   X,
-  LogIn,
-  Layers,
-  LayoutGrid,
-  FileText
+  LogIn
 } from 'lucide-react';
 import { 
   User, 
@@ -47,7 +38,6 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
 
   // 4 tabs requested left-to-right: 1. Posts (default), 2. Comments, 3. Links, 4. Likes
   const [activeTab, setActiveTab] = useState<'posts' | 'comments' | 'links' | 'likes'>('posts');
-  const [copiedLink, setCopiedLink] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [userProfile, setUserProfile] = useState<User>(initialUser);
 
@@ -250,12 +240,6 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
 
     loadSupabaseProfileAndBlocks();
   }, [initialUser.username, authUser?.id]);
-
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(`https://oomfs.org/${userProfile.username}`);
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 2000);
-  };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -467,25 +451,6 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
 
         {/* Action buttons */}
         <div className="flex items-center gap-2 mb-2">
-          {/* Share / Copy Bio Link */}
-          <button
-            onClick={handleCopyLink}
-            className="border border-[#eff3f4] hover:bg-[#f7f9f9] text-[#0f1419] font-bold text-sm px-3.5 py-2 rounded-full transition-colors flex items-center gap-1.5 cursor-pointer"
-            title="Copy oomfs.org link"
-          >
-            {copiedLink ? (
-              <>
-                <Check className="w-4 h-4 text-green-600" />
-                <span className="text-xs text-green-600">Copied!</span>
-              </>
-            ) : (
-              <>
-                <Share2 className="w-4 h-4 text-[#536471]" />
-                <span className="text-xs">oomfs.org/{userProfile.username}</span>
-              </>
-            )}
-          </button>
-
           {isSelf ? (
             <button 
               onClick={() => setEditModalOpen(true)}
@@ -537,33 +502,15 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
           </p>
         )}
 
-        {/* Meta Info */}
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#536471] pt-1">
-          {userProfile.location && (
-            <div className="flex items-center gap-1">
-              <MapPin className="w-4 h-4" />
-              <span>{userProfile.location}</span>
-            </div>
-          )}
-          <div className="flex items-center gap-1">
-            <LinkIcon className="w-4 h-4 text-[#1d9bf0]" />
-            <a 
-              href={`https://${userProfile.website || `oomfs.org/${userProfile.username}`}`}
-              target="_blank"
-              rel="noopener noreferrer" 
-              className="text-[#1d9bf0] hover:underline font-medium"
-            >
-              {userProfile.website || `oomfs.org/${userProfile.username}`}
-            </a>
-          </div>
-          <div className="flex items-center gap-1">
-            <Calendar className="w-4 h-4" />
-            <span>Joined {userProfile.joined}</span>
-          </div>
-        </div>
-
         {/* Stats Row */}
         <div className="flex items-center gap-4 text-xs pt-1">
+          <Link 
+            href="/oomfs"
+            className="flex items-center gap-1 hover:underline cursor-pointer"
+          >
+            <span className="font-extrabold text-[#1d9bf0]">{userProfile.oomfsCount}</span>
+            <span className="font-medium text-[#1d9bf0]">oomfs</span>
+          </Link>
           <div className="flex items-center gap-1">
             <span className="font-bold text-[#0f1419]">{userProfile.followingCount}</span>
             <span className="text-[#536471]">Following</span>
@@ -572,15 +519,6 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
             <span className="font-bold text-[#0f1419]">{userProfile.followersCount.toLocaleString()}</span>
             <span className="text-[#536471]">Followers</span>
           </div>
-
-          {/* OOMFS MUTUAL STAT HIGHLIGHT */}
-          <Link 
-            href="/oomfs"
-            className="bg-[#1d9bf0]/10 hover:bg-[#1d9bf0]/20 px-2.5 py-1 rounded-full text-[#1d9bf0] font-bold flex items-center gap-1.5 transition-colors border border-[#1d9bf0]/20 cursor-pointer"
-          >
-            <Users className="w-3.5 h-3.5" />
-            <span>{userProfile.oomfsCount} OOMFs (Mutuals)</span>
-          </Link>
         </div>
       </div>
 
@@ -617,7 +555,7 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
             activeTab === 'posts' ? 'text-[#0f1419]' : ''
           }`}
         >
-          Posts ({timelinePosts.length})
+          Posts
           {activeTab === 'posts' && (
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-1 bg-[#1d9bf0] rounded-full" />
           )}
@@ -630,7 +568,7 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
             activeTab === 'comments' ? 'text-[#0f1419]' : ''
           }`}
         >
-          Comments ({comments.length})
+          Comments
           {activeTab === 'comments' && (
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-20 h-1 bg-[#1d9bf0] rounded-full" />
           )}
@@ -643,7 +581,7 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
             activeTab === 'links' ? 'text-[#0f1419]' : ''
           }`}
         >
-          Links ({linkCards.length + badgePosts.length})
+          Links
           {activeTab === 'links' && (
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-1 bg-[#1d9bf0] rounded-full" />
           )}
@@ -656,7 +594,7 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
             activeTab === 'likes' ? 'text-[#0f1419]' : ''
           }`}
         >
-          Likes ({likedPosts.length})
+          Likes
           {activeTab === 'likes' && (
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-1 bg-[#1d9bf0] rounded-full" />
           )}
@@ -668,64 +606,6 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
         {/* 1. POSTS TAB */}
         {activeTab === 'posts' && (
           <div>
-            {/* Quick-Compose Bar right at the top of Posts tab */}
-            {!composerOpen && (
-              <div className="px-4 py-3 border-b border-[#eff3f4] bg-[#f7f9f9]/50 flex items-center justify-between gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBlockType('standard');
-                    setComposerOpen(true);
-                  }}
-                  className="flex items-center gap-2.5 flex-1 text-left cursor-pointer group"
-                >
-                  <img
-                    src={formatTwitterAvatar(userProfile.avatar)}
-                    alt={userProfile.name}
-                    className="w-9 h-9 rounded-full object-cover border border-gray-200 shrink-0"
-                  />
-                  <span className="text-sm text-[#536471] group-hover:text-[#0f1419] transition-colors">
-                    Draft a new post, carousel, or board...
-                  </span>
-                </button>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setBlockType('standard');
-                      setComposerOpen(true);
-                    }}
-                    className="px-2.5 py-1.5 rounded-full text-xs font-bold bg-white border border-[#eff3f4] hover:border-[#1d9bf0] text-[#0f1419] flex items-center gap-1 transition-colors cursor-pointer"
-                  >
-                    <FileText className="w-3.5 h-3.5 text-[#1d9bf0]" />
-                    <span className="hidden sm:inline">Standard</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setBlockType('carousel');
-                      setComposerOpen(true);
-                    }}
-                    className="px-2.5 py-1.5 rounded-full text-xs font-bold bg-white border border-[#eff3f4] hover:border-[#1d9bf0] text-[#0f1419] flex items-center gap-1 transition-colors cursor-pointer"
-                  >
-                    <Layers className="w-3.5 h-3.5 text-[#1d9bf0]" />
-                    <span>Carousel</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setBlockType('board');
-                      setComposerOpen(true);
-                    }}
-                    className="px-2.5 py-1.5 rounded-full text-xs font-bold bg-white border border-[#eff3f4] hover:border-[#1d9bf0] text-[#0f1419] flex items-center gap-1 transition-colors cursor-pointer"
-                  >
-                    <LayoutGrid className="w-3.5 h-3.5 text-[#1d9bf0]" />
-                    <span>Board</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
             {timelinePosts.length > 0 ? (
               timelinePosts.map((post) => (
                 <PostCard key={post.id} post={post} onDelete={handleDeletePost} />
@@ -794,137 +674,69 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
         {/* 3. LINKS TAB */}
         {activeTab === 'links' && (
           <div className="p-4 flex flex-col gap-4">
-            {/* 1. THE BADGE WALL (Above larger cards, early web 88x31 buttons packed super tightly in center column) */}
-            <div className="border border-[#eff3f4] rounded-2xl bg-white overflow-hidden shadow-2xs">
-              <div className="px-3.5 py-2.5 bg-[#f7f9f9] border-b border-[#eff3f4] flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-5 h-5 rounded-md bg-[#1d9bf0]/10 flex items-center justify-center text-[#1d9bf0]">
-                    <Sparkles className="w-3.5 h-3.5" />
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-extrabold text-[#0f1419] uppercase tracking-wider">
-                      Badge Wall
-                    </span>
-                    <span className="text-[11px] font-semibold text-[#536471]">
-                      ({badgePosts.length})
-                    </span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBlockType('badge');
-                    setComposerOpen(true);
-                  }}
-                  className="bg-[#0f1419] hover:bg-[#272c30] text-white text-xs font-bold px-3 py-1 rounded-full transition-colors cursor-pointer flex items-center gap-1 shrink-0"
-                >
-                  <Plus className="w-3 h-3" />
-                  <span>Add Badge</span>
-                </button>
-              </div>
-
-              {/* Tightly packed unified wall within center column */}
-              <div className="p-3 sm:p-3.5 bg-white">
-                {badgePosts.length > 0 ? (
-                  <div className="flex flex-wrap gap-2 items-center justify-start">
-                    {badgePosts.map((post) => {
-                      const b = post.badgeData!;
-                      return (
-                        <div
-                          key={post.id}
-                          className="relative group/badge-item shrink-0"
+            {/* 1. THE BADGE WALL (Minimized: direct badges without title/add header) */}
+            {badgePosts.length > 0 && (
+              <div className="border border-[#eff3f4] rounded-2xl bg-white p-3 sm:p-3.5 shadow-2xs">
+                <div className="flex flex-wrap gap-2 items-center justify-start">
+                  {badgePosts.map((post) => {
+                    const b = post.badgeData!;
+                    return (
+                      <div
+                        key={post.id}
+                        className="relative group/badge-item shrink-0"
+                      >
+                        <a
+                          href={b.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={`${b.title} • ${b.url.replace(/^https?:\/\//, '')}`}
+                          className="block w-[88px] h-[31px] shrink-0 rounded-xs overflow-hidden border border-black/25 shadow-xs hover:shadow-md hover:scale-105 active:scale-95 transition-all select-none cursor-pointer"
                         >
-                          <a
-                            href={b.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title={`${b.title} • ${b.url.replace(/^https?:\/\//, '')}`}
-                            className="block w-[88px] h-[31px] shrink-0 rounded-xs overflow-hidden border border-black/25 shadow-xs hover:shadow-md hover:scale-105 active:scale-95 transition-all select-none cursor-pointer"
-                          >
-                            {b.badgeType === 'image' && b.imageUrl ? (
-                              <img
-                                src={b.imageUrl}
-                                alt={b.title}
-                                className="w-[88px] h-[31px] object-cover block"
-                                style={{ imageRendering: 'pixelated' }}
-                              />
-                            ) : (
-                              <div
-                                className="w-[88px] h-[31px] flex items-center overflow-hidden font-mono text-[9px] font-extrabold"
-                                style={{ backgroundColor: b.bgColor || '#0f1419', color: b.textColor || '#ffffff' }}
-                              >
-                                {b.sublabel && (
-                                  <span className="bg-black/35 h-full px-1.5 flex items-center justify-center border-r border-white/20 uppercase tracking-tight shrink-0">
-                                    {b.sublabel}
-                                  </span>
-                                )}
-                                <span className="flex-1 px-1 text-center truncate tracking-tight uppercase flex items-center justify-center gap-0.5">
-                                  {b.icon && <span className="text-[10px]">{b.icon}</span>}
-                                  <span className="truncate">{b.label || b.title}</span>
-                                </span>
-                              </div>
-                            )}
-                          </a>
-
-                          {/* Delete button for profile owner */}
-                          {isSelf && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeletePost(post.id);
-                              }}
-                              title="Delete badge from wall"
-                              className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-600 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover/badge-item:opacity-100 transition-opacity shadow-xs hover:bg-red-700 cursor-pointer z-10"
+                          {b.badgeType === 'image' && b.imageUrl ? (
+                            <img
+                              src={b.imageUrl}
+                              alt={b.title}
+                              className="w-[88px] h-[31px] object-cover block"
+                              style={{ imageRendering: 'pixelated' }}
+                            />
+                          ) : (
+                            <div
+                              className="w-[88px] h-[31px] flex items-center overflow-hidden font-mono text-[9px] font-extrabold"
+                              style={{ backgroundColor: b.bgColor || '#0f1419', color: b.textColor || '#ffffff' }}
                             >
-                              ×
-                            </button>
+                              {b.sublabel && (
+                                <span className="bg-black/35 h-full px-1.5 flex items-center justify-center border-r border-white/20 uppercase tracking-tight shrink-0">
+                                  {b.sublabel}
+                                </span>
+                              )}
+                              <span className="flex-1 px-1 text-center truncate tracking-tight uppercase flex items-center justify-center gap-0.5">
+                                {b.icon && <span className="text-[10px]">{b.icon}</span>}
+                                <span className="truncate">{b.label || b.title}</span>
+                              </span>
+                            </div>
                           )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-5 px-3 border border-dashed border-[#eff3f4] rounded-xl bg-[#f7f9f9]/50">
-                    <p className="text-xs text-[#536471] mb-2">
-                      No badges on this wall yet. Tiny 88×31 buttons pack tightly together here.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setBlockType('badge');
-                        setComposerOpen(true);
-                      }}
-                      className="text-xs font-bold text-[#1d9bf0] hover:underline cursor-pointer"
-                    >
-                      + Create the first badge
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
+                        </a>
 
-            {/* 2. LARGER BIO LINK CARDS */}
-            <div className="p-3 bg-[#f7f9f9] rounded-xl border border-[#eff3f4] flex items-center justify-between">
-              <div>
-                <span className="text-xs font-bold text-[#1d9bf0] uppercase tracking-wider block mb-0.5">
-                  Linktree Style Showcase
-                </span>
-                <p className="text-xs text-[#536471]">
-                  Curated links displayed for visitors discovering <b>oomfs.org/{userProfile.username}</b>.
-                </p>
+                        {/* Delete button for profile owner */}
+                        {isSelf && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeletePost(post.id);
+                            }}
+                            title="Delete badge from wall"
+                            className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-600 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover/badge-item:opacity-100 transition-opacity shadow-xs hover:bg-red-700 cursor-pointer z-10"
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setBlockType('link_card');
-                  setComposerOpen(true);
-                }}
-                className="bg-[#1d9bf0] text-white text-xs font-bold px-3 py-1.5 rounded-full hover:bg-[#1a8cd8] transition-colors shrink-0 cursor-pointer"
-              >
-                + Add Link
-              </button>
-            </div>
+            )}
 
             {linkCards.length > 0 ? (
               linkCards.map((link) => (
