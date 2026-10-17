@@ -110,7 +110,14 @@ When the user taps **"Post"**:
    - Emits window event with post payload
    - `ProfileView.tsx` listens and immediately prepends the post to active state
    - Automatically switches active tab ('links' for bio links / badges, 'posts' for media)
+       │
+       ▼
+5. Collection Assignment (`addItemToCollection`)
+   - If an existing collection preset was chosen from the "Add to collection" dropdown, the new post or link ID is immediately added to that collection in `public.collection_items` and local storage.
 ```
+
+### Collection Assignment During Drafting
+Above the composer submit chrome, a collection selector dropdown displays all available presets for the active tab (`userPostCols` for standard/carousel/board posts, `userLinkCols` for link cards and badges). Creators can associate new content with a specific curated lens in a single click without needing a secondary sorting step after publishing.
 
 ---
 

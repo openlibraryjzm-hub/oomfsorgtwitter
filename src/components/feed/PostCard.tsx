@@ -15,17 +15,19 @@ import {
   ChevronLeft,
   ChevronRight,
   Layers,
-  LayoutGrid
+  LayoutGrid,
+  FolderPlus
 } from 'lucide-react';
 import { Post } from '@/lib/mockData';
 
 interface PostCardProps {
   post: Post;
   onDelete?: (id: string) => void;
+  onManageCollections?: (post: Post) => void;
   isThreadView?: boolean;
 }
 
-export default function PostCard({ post, onDelete, isThreadView = false }: PostCardProps) {
+export default function PostCard({ post, onDelete, onManageCollections, isThreadView = false }: PostCardProps) {
   const router = useRouter();
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -406,6 +408,19 @@ export default function PostCard({ post, onDelete, isThreadView = false }: PostC
           </div>
 
           <div className="flex items-center gap-1">
+            {onManageCollections && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onManageCollections(post);
+                }}
+                title="Add to collection"
+                className="text-xs text-[#536471] hover:text-[#1d9bf0] hover:bg-[#1d9bf0]/10 p-2 rounded-full transition-colors cursor-pointer"
+              >
+                <FolderPlus className="w-4 h-4" />
+              </button>
+            )}
             {onDelete && (
               <button
                 type="button"
@@ -552,6 +567,19 @@ export default function PostCard({ post, onDelete, isThreadView = false }: PostC
           </div>
 
           <div className="flex items-center gap-1">
+            {onManageCollections && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onManageCollections(post);
+                }}
+                title="Add to collection"
+                className="text-xs text-[#536471] hover:text-[#1d9bf0] hover:bg-[#1d9bf0]/10 p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+              >
+                <FolderPlus className="w-4 h-4" />
+              </button>
+            )}
             {onDelete && (
               <button
                 type="button"

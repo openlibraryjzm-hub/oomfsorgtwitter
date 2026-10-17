@@ -94,6 +94,57 @@ Tracks the internal directed follow graph between `oomfs.org` users.
 
 ---
 
+### 2.4 `public.collections`
+Stores author-curated collection preset lenses across the Posts and Links tabs.
+
+| Column | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | `uuid` | Primary Key, Default `gen_random_uuid()` | Unique collection identifier |
+| `user_id` | `uuid` | Not Null, `references public.profiles(id) on delete cascade` | Creator's user profile ID |
+| `tab_type` | `text` | Not Null, Check `in ('posts', 'links')` | Target tab for this collection lens |
+| `title` | `text` | Not Null | Display title (e.g. "Highlights", "Work") |
+| `description` | `text` | | Optional short subtitle |
+| `icon` | `text` | Default `'📁'` | Single emoji or glyph |
+| `is_pinned` | `boolean` | Default `false` | When true, surfaced on the quick-access pill bar |
+| `sort_order` | `integer` | Default `0` | Sequence index in the modal and quick bar |
+| `created_at` | `timestamptz` | Not Null, Default `timezone('utc', now())` | Creation timestamp |
+
+**Indexes:**
+* `idx_collections_user_id` on `(user_id)`
+* `idx_collections_tab_type` on `(tab_type)`
+
+**RLS Policies:**
+* `SELECT`: Viewable by everyone (`using (true)`).
+* `INSERT`: Authenticated users where `auth.uid() = user_id`.
+* `UPDATE`: Authenticated users where `auth.uid() = user_id`.
+* `DELETE`: Authenticated users where `auth.uid() = user_id`.
+
+---
+
+### 2.5 `public.collection_items`
+Join table defining ordered membership of posts (`blocks.id`) or profile links in a collection.
+
+| Column | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | `uuid` | Primary Key, Default `gen_random_uuid()` | Unique membership record identifier |
+| `collection_id` | `uuid` | Not Null, `references public.collections(id) on delete cascade` | Parent collection |
+| `item_id` | `text` | Not Null | References `blocks.id` or user profile link ID |
+| `position` | `integer` | Not Null, Default `0` | Custom sort order within the collection |
+| `created_at` | `timestamptz` | Not Null, Default `timezone('utc', now())` | Membership timestamp |
+
+**Constraints & Indexes:**
+* Unique constraint on `(collection_id, item_id)`
+* `idx_collection_items_collection_id` on `(collection_id)`
+* `idx_collection_items_item_id` on `(item_id)`
+
+**RLS Policies:**
+* `SELECT`: Viewable by everyone (`using (true)`).
+* `INSERT`: Authenticated users who own the parent collection (`exists (select 1 from public.collections c where c.id = collection_id and c.user_id = auth.uid())`).
+* `UPDATE`: Authenticated users who own the parent collection.
+* `DELETE`: Authenticated users who own the parent collection.
+
+---
+
 ## 3. Mutuals (OOMFS) Graph & Stored Procedures (RPC)
 
 In Twitter/X culture, **OOMF** stands for *"One Of My Followers / Friends"*. On `oomfs.org`, followers and mutuals are tracked strictly in-app to circumvent third-party Twitter API firehose limitations.
@@ -193,7 +244,9 @@ $$;
 
 ---
 
-## 4. Application Integration Layer (`src/lib/follows.ts`)
+## 4. Application Integration Layer
+
+### 4.1 Directed Follow Graph (`src/lib/follows.ts`)
 
 The application layer encapsulates database operations with an **RPC-first, fallback-resilient architecture**:
 
@@ -209,6 +262,21 @@ The application layer encapsulates database operations with an **RPC-first, fall
 
 3. **Optimistic UI Mutations**:
    Follow/unfollow actions in [`ProfileView.tsx`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/components/profile/ProfileView.tsx) execute immediately in local React state, incrementing/decrementing counts and toggling badges before awaiting database confirmation. Any network or RLS failure automatically rolls back the UI state.
+
+### 4.2 Curated Collections & Presets Layer (`src/lib/collections.ts`)
+
+Manages author-curated lenses across the Posts and Links tabs using a dual-persistence architecture:
+
+1. **Supabase Database Persistence**:
+   - When mutating collections (creating, updating, deleting, reordering, or assigning items), operations verify valid UUID formats and execute against `public.collections` and `public.collection_items`.
+   - Queries strictly enforce RLS `auth.uid() = user_id`. Creators can only modify presets they own.
+2. **Instant Mount Hydration & Offline Fallback**:
+   - Synchronizes with `localStorage` (`oomfs_collections_v1_<userId>`).
+   - On page mount and refresh, [`ProfileView.tsx`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/components/profile/ProfileView.tsx) reads local storage immediately to eliminate empty-state flashing while network requests complete.
+   - For demo accounts or unauthenticated testing, mutations persist locally so presets survive reloads.
+3. **Reordering Engine**:
+   - `reorderCollections(orderedCollectionIds)` batch-updates `sort_order` in Supabase and synchronizes the sequence in `localStorage`.
+   - Sequence in the modal determines the leftmost-to-rightmost display order on the quick-access pill bar (`CollectionLensBar.tsx`).
 
 ---
 

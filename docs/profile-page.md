@@ -81,7 +81,7 @@ Tabs are ordered left-to-right to optimize content discovery and render with cle
 ### 1. Posts (Leftmost & Default)
 - **Role**: Primary content timeline displaying actual posts created by the user (Standard, Carousel, Board).
 - **Direct Feed Alignment**: Feed items render directly beneath the tab bar, preserving strict 1:1 parity with Twitter/X web profile timelines.
-- **Curated Collections & Presets**: Clicking the active **`Posts ▾`** tab header toggles the expandable `CollectionLensBar`. Selecting a collection dynamically filters and custom-orders posts according to the author's exact sequence. An active blue indicator dot appears on the tab when filtered (`Posts •`), accompanied by a clearable active lens banner. *(See [Collections Context Doc](collections.md) for complete architecture).*
+- **Curated Collections & Presets**: Clicking the active **`Posts ▾`** tab header toggles the expandable `CollectionLensBar`. Selecting a collection dynamically filters and custom-orders posts according to the author's exact sequence. Creators can organize existing posts into presets via the `FolderPlus` icon on any post card (`AddToCollectionModal.tsx`), create new presets (`CreateCollectionModal.tsx`), and reorder presets via native drag-and-drop in `AllCollectionsModal.tsx` (top presets pin leftmost on the lens bar). An active blue indicator dot appears on the tab when filtered (`Posts •`), accompanied by a clearable active lens banner. *(See [Collections Context Doc](collections.md) for complete architecture).*
 - **Thread Navigation**: Clicking any post card in this feed navigates directly to `/[username]/status/[id]` to open its dedicated thread view.
 
 ### 2. Comments (Second from Left)
@@ -94,7 +94,7 @@ Tabs are ordered left-to-right to optimize content discovery and render with cle
 
 ### 3. Links (Third from Left)
 - **Role**: Curated bio link showcase, link preset hub, and retro web button gallery.
-- **Curated Link Collections**: Clicking the active **`Links ▾`** tab header toggles the expandable link presets bar (e.g. *Featured*, *Work*, *Writing*, *Audio*), dynamically rearranging links in custom sequence.
+- **Curated Link Collections**: Clicking the active **`Links ▾`** tab header toggles the expandable link presets bar (e.g. *Featured*, *Work*, *Writing*, *Audio*), dynamically rearranging links in custom sequence. Creators can assign links to presets via `FolderPlus`, create new link presets, and reorder them with drag-and-drop.
 - **Composition**:
   - **The Badge Wall (Top Section)**: Aggregates all early-web 88×31 button badges into a single unified gallery sitting directly above larger link cards when viewing all links.
     - **88px Column Grid**: Rendered as `flex flex-wrap gap-3 items-start justify-start`. Each badge is formatted as an 88px wide column (`w-[88px] flex flex-col items-center gap-1`).

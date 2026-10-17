@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, X, Check, Star, Layers } from 'lucide-react';
+import { Search, X, Check, Star, Layers, Plus, Trash2, GripVertical } from 'lucide-react';
 import { Collection } from '@/lib/mockData';
 
 interface AllCollectionsModalProps {
@@ -13,6 +13,11 @@ interface AllCollectionsModalProps {
   totalPostsCount?: number;
   totalCount?: number;
   itemTypeLabel?: string;
+  isSelf?: boolean;
+  onCreateCollection?: () => void;
+  onTogglePin?: (collectionId: string) => void;
+  onDeleteCollection?: (collectionId: string) => void;
+  onReorderCollections?: (reordered: Collection[]) => void;
 }
 
 export default function AllCollectionsModal({
@@ -23,20 +28,69 @@ export default function AllCollectionsModal({
   onSelectCollection,
   totalPostsCount,
   totalCount,
-  itemTypeLabel = 'posts'
+  itemTypeLabel = 'posts',
+  isSelf,
+  onCreateCollection,
+  onTogglePin,
+  onDeleteCollection,
+  onReorderCollections
 }: AllCollectionsModalProps) {
   const count = totalCount ?? totalPostsCount ?? 0;
   const unit = itemTypeLabel;
   const capitalizedUnit = unit.charAt(0).toUpperCase() + unit.slice(1);
   const [searchQuery, setSearchQuery] = useState('');
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       setSearchQuery('');
+      setDraggedIndex(null);
+      setDragOverIndex(null);
       setTimeout(() => searchInputRef.current?.focus(), 50);
     }
   }, [isOpen]);
+
+  const isDraggable = Boolean(isSelf && onReorderCollections && !searchQuery.trim());
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    if (!isDraggable) return;
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', `${index}`);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    if (!isDraggable || draggedIndex === null) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverIndex !== index) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    if (!isDraggable || draggedIndex === null || draggedIndex === targetIndex) {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+
+    const updated = [...collections];
+    const [moved] = updated.splice(draggedIndex, 1);
+    updated.splice(targetIndex, 0, moved);
+
+    onReorderCollections?.(updated);
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
 
   if (!isOpen) return null;
 
@@ -71,13 +125,28 @@ export default function AllCollectionsModal({
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 text-[#536471] hover:bg-gray-100 hover:text-[#0f1419] rounded-full transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1.5">
+            {isSelf && onCreateCollection && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onCreateCollection();
+                }}
+                className="px-2.5 py-1 text-xs font-bold text-[#1d9bf0] bg-[#1d9bf0]/10 hover:bg-[#1d9bf0]/20 rounded-full transition-colors flex items-center gap-1 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>New</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 text-[#536471] hover:bg-gray-100 hover:text-[#0f1419] rounded-full transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Search Bar */}
@@ -146,23 +215,52 @@ export default function AllCollectionsModal({
 
           {/* Collection Rows */}
           {filteredCollections.length > 0 ? (
-            filteredCollections.map((col) => {
+            filteredCollections.map((col, idx) => {
               const isActive = activeCollectionId === col.id;
+              const isItemDragged = draggedIndex === idx;
+              const isDropTarget = dragOverIndex === idx && draggedIndex !== null && draggedIndex !== idx;
+              const isTargetAbove = draggedIndex !== null && idx < draggedIndex;
+
               return (
-                <button
+                <div
                   key={col.id}
-                  type="button"
+                  draggable={isDraggable}
+                  onDragStart={(e) => handleDragStart(e, idx)}
+                  onDragOver={(e) => handleDragOver(e, idx)}
+                  onDrop={(e) => handleDrop(e, idx)}
+                  onDragEnd={handleDragEnd}
                   onClick={() => {
                     onSelectCollection(col.id);
                     onClose();
                   }}
-                  className={`w-full p-3.5 flex items-center justify-between text-left transition-colors cursor-pointer group ${
+                  className={`w-full p-3.5 flex items-center justify-between text-left transition-all group select-none relative ${
+                    isDraggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
+                  } ${
                     isActive
                       ? 'bg-[#1d9bf0]/10 text-[#0f1419]'
                       : 'hover:bg-[#f7f9f9]'
+                  } ${
+                    isItemDragged ? 'opacity-35 bg-[#1d9bf0]/5' : ''
+                  } ${
+                    isDropTarget
+                      ? isTargetAbove
+                        ? 'border-t-2 border-[#1d9bf0] bg-[#1d9bf0]/5'
+                        : 'border-b-2 border-[#1d9bf0] bg-[#1d9bf0]/5'
+                      : ''
                   }`}
                 >
-                  <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-2">
+                    {/* Dotted Drag Handle Indicator */}
+                    {isDraggable && (
+                      <div
+                        className="text-gray-300 group-hover:text-gray-500 hover:text-[#0f1419] transition-colors p-1 -ml-1.5 shrink-0 flex items-center justify-center rounded cursor-grab active:cursor-grabbing"
+                        title="Drag to reorder presets (top presets show leftmost)"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <GripVertical className="w-4 h-4" />
+                      </div>
+                    )}
+
                     <div className="w-9 h-9 rounded-xl bg-[#f7f9f9] group-hover:bg-white flex items-center justify-center text-lg shrink-0 border border-black/5 shadow-2xs transition-colors">
                       {col.icon || '📁'}
                     </div>
@@ -174,7 +272,7 @@ export default function AllCollectionsModal({
                         </span>
                         {col.isPinned && (
                           <span 
-                            title="Pinned to top row" 
+                            title="Pinned to quick-access bar" 
                             className="text-amber-500 shrink-0 flex items-center"
                           >
                             <Star className="w-3 h-3 fill-amber-500" />
@@ -189,16 +287,56 @@ export default function AllCollectionsModal({
                     </div>
                   </div>
 
-                  {isActive ? (
-                    <div className="w-6 h-6 rounded-full bg-[#1d9bf0] text-white flex items-center justify-center shrink-0">
-                      <Check className="w-3.5 h-3.5 stroke-[3]" />
-                    </div>
-                  ) : (
-                    <div className="text-xs font-semibold text-[#536471] opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                      View →
-                    </div>
-                  )}
-                </button>
+                  {/* Actions / Select Status */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {/* Owner pin/delete actions */}
+                    {isSelf && onTogglePin && (
+                      <button
+                        type="button"
+                        draggable={false}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onTogglePin(col.id);
+                        }}
+                        title={col.isPinned ? "Unpin from top row" : "Pin to top row"}
+                        className={`p-1.5 rounded-full hover:bg-gray-200 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer ${
+                          col.isPinned ? 'text-amber-500' : 'text-gray-400'
+                        }`}
+                      >
+                        <Star className={`w-3.5 h-3.5 ${col.isPinned ? 'fill-amber-500' : ''}`} />
+                      </button>
+                    )}
+
+                    {isSelf && onDeleteCollection && (
+                      <button
+                        type="button"
+                        draggable={false}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm(`Delete collection "${col.title}"? Your posts will remain intact.`)) {
+                            onDeleteCollection(col.id);
+                          }
+                        }}
+                        title="Delete collection"
+                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+
+                    {isActive ? (
+                      <div className="w-6 h-6 rounded-full bg-[#1d9bf0] text-white flex items-center justify-center shrink-0">
+                        <Check className="w-3.5 h-3.5 stroke-[3]" />
+                      </div>
+                    ) : (
+                      <div className="text-xs font-semibold text-[#536471] opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                        View →
+                      </div>
+                    )}
+                  </div>
+                </div>
               );
             })
           ) : (
@@ -210,7 +348,14 @@ export default function AllCollectionsModal({
 
         {/* Modal Footer */}
         <div className="px-4 py-2.5 bg-[#f7f9f9] border-t border-[#eff3f4] flex items-center justify-between text-[11px] text-[#536471]">
-          <span>Showing {filteredCollections.length} of {collections.length} presets</span>
+          {isDraggable ? (
+            <span className="flex items-center gap-1.5 font-medium text-gray-500">
+              <GripVertical className="w-3.5 h-3.5 text-gray-400" />
+              <span>Drag presets to reorder · top presets pin leftmost</span>
+            </span>
+          ) : (
+            <span>Showing {filteredCollections.length} of {collections.length} presets</span>
+          )}
           <button
             type="button"
             onClick={onClose}

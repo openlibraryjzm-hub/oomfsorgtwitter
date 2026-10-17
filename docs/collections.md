@@ -1,6 +1,6 @@
 # Curated Collections & Feed Presets System
 
-This document outlines the architecture, data models, rendering behaviors, and future roadmap for the **Curated Collections & Presets System** on `oomfs.org`.
+This document outlines the architecture, component structure, relational data models, and persistence strategy for the **Curated Collections & Presets System** on `oomfs.org`.
 
 ---
 
@@ -14,6 +14,7 @@ The **Curated Collections & Presets System** introduces flexible, author-curated
 1. **Custom Ordering**: Authors group specific post or link IDs into curated sets presented in an exact, bespoke sequence (e.g., *Group A, B, C* rather than date-ordered).
 2. **On-Demand Discovery**: Presets remain collapsed by default to preserve a clean, native profile layout, but expand instantly when the visitor or creator clicks the active tab header.
 3. **Scalability Beyond 4 Items**: Uses a hybrid pill-and-modal pattern to support dozens of collections per profile without cluttering the horizontal tab strip.
+4. **Drag-and-Drop Reordering**: Creators can drag presets directly within the "All Collections" modal to establish their preferred sequence. Top items in the modal automatically pin leftmost on the quick-access pill bar.
 
 ---
 
@@ -22,30 +23,43 @@ The **Curated Collections & Presets System** introduces flexible, author-curated
 ```
 src/components/collections/
 ├── CollectionLensBar.tsx       # Horizontal stadium-pill scrollbar with quick-access lenses
-└── AllCollectionsModal.tsx     # Fullscreen/centered searchable modal displaying all presets
+├── AllCollectionsModal.tsx     # Searchable modal with native HTML5 drag-and-drop reordering
+├── CreateCollectionModal.tsx   # Modal for creating presets with emoji picker and quick-pin toggle
+└── AddToCollectionModal.tsx    # Modal for assigning posts/links to presets with instant checkboxes
 
 src/components/profile/
-└── ProfileView.tsx             # Controls tab toggling, active filter states, and feed reordering
+└── ProfileView.tsx             # Controls tab toggling, active filter states, feed reordering, & DB sync
 ```
 
 ### Component Responsibilities
 
 1. **`CollectionLensBar.tsx`**:
-   - **`[ All (N) ]` Pill**: Clears any active preset and restores the default chronological feed or standard link list.
-   - **Top Pinned Stadium Pills (`isPinned: true`)**: Surfaces up to 4 quick-access presets (e.g. `[ ⭐ Starred ]`, `[ 💼 Work ]`) with emoji icons and item count badges.
+   - **`[ All (N) ]` Pill**: Clears any active preset and restores the default chronological feed or standard link list. Strictly locked at the leftmost position and immovable.
+   - **Top Pinned Stadium Pills (`isPinned: true`)**: Surfaces up to 4 quick-access presets (e.g. `[ ⭐ Highlights ]`, `[ 💼 Work ]`) with emoji icons and item count badges. Sequence reflects the creator's custom sort order.
    - **Dynamic Active Pill**: If an unpinned preset is selected from the modal, it automatically surfaces into this bar with an inline `(×)` dismiss button.
    - **`[ ⊞ All (N) ▾ ]` Modal Trigger**: Scalability anchor. Displays the total number of presets and triggers `AllCollectionsModal`.
+   - **`[ + New ]` Button**: Visible to profile owners (`isSelf`) to trigger `CreateCollectionModal`.
 
 2. **`AllCollectionsModal.tsx`**:
    - Centered backdrop-blur modal.
-   - **Real-Time Search Input**: Auto-focuses on open; filters presets by title or description text.
-   - **"All Items" Row**: Quick action to reset filter back to the full feed.
-   - **Collection Cards**: Displays preset icon, title, item count, pinned indicator (`⭐`), description snippet, and active selection checkmark.
+   - **Immovable "All" Option**: Hardcoded at the top of the scrollable list outside draggable items; resets filter back to the full feed.
+   - **Native HTML5 Drag-and-Drop**: Profile owners can grab the dotted drag handle (`GripVertical`) to reorder presets. Top items in the modal automatically pin leftmost on `CollectionLensBar`.
+   - **Real-Time Search Input**: Auto-focuses on open; filters presets by title or description text (dragging is disabled during active searches to prevent index misalignment).
+   - **Owner Actions**: Quick hover actions to pin/unpin presets (`⭐`) and delete collections (`Trash2`).
    - **Dynamic Labels**: Accepts `itemTypeLabel="posts"` or `itemTypeLabel="links"` to format counters (`N posts` vs `N links`).
 
-3. **`ProfileView.tsx` Integration**:
-   - Houses the independent state for both post collections and link collections.
-   - Computes reordered feeds (`timelinePosts` and `linkCards`) based on the active preset.
+3. **`CreateCollectionModal.tsx`**:
+   - Modal form for creating new collections with title, optional description, quick emoji picker, and a `Pin to quick-access bar` toggle.
+   - Directly calls `createCollection` from `src/lib/collections.ts`.
+
+4. **`AddToCollectionModal.tsx`**:
+   - Triggered via the `FolderPlus` icon on any post card (`PostCard.tsx`) or link card.
+   - Displays real-time checkboxes for all existing presets, supporting instant multi-collection membership assignments.
+   - Includes an inline "+ Create new collection" trigger to streamline workflow without losing context.
+
+5. **`ProfileView.tsx` Integration**:
+   - Houses independent state for both post collections and link collections.
+   - Computes custom-ordered feeds (`timelinePosts` and `linkCards`) based on the active preset.
    - Handles tab header click-to-toggle interactions and renders the active indicator banner.
 
 ---
@@ -56,25 +70,18 @@ Defined in [`src/lib/mockData.ts`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twit
 
 ```typescript
 export interface Collection {
-  id: string;               // Unique collection ID (e.g., 'col_highlights', 'col_link_work')
-  title: string;            // Display title (e.g., 'Design Systems')
-  description?: string;     // Secondary description snippet shown in the modal
-  icon?: string;            // Emoji or icon glyph (e.g., '🎨', '⭐', '🎧')
-  itemIds: string[];        // Array of Post IDs or Link IDs defining membership & custom order
-  isPinned?: boolean;       // If true, pinned to the top quick-access row (first 4 items)
+  id: string;                  // Unique collection ID (UUID or local ID)
+  title: string;               // Display title (e.g., 'Design Systems')
+  description?: string;        // Secondary description snippet shown in the modal
+  icon?: string;               // Emoji or icon glyph (e.g., '🎨', '⭐', '🎧')
+  itemIds: string[];           // Array of Post IDs or Link IDs defining membership & custom order
+  isPinned?: boolean;          // If true, pinned to the top quick-access row (first 4 items)
+  tabType?: 'posts' | 'links'; // Whether collection belongs to Posts or Links tab
+  userId?: string;             // Creator profile owner ID
+  sortOrder?: number;          // Position index determining modal and quick bar sequence
+  createdAt?: string;          // Timestamp of creation
 }
 ```
-
-### Placeholder Datasets (Shared Across Profiles)
-
-To validate high-scale UI interactions prior to backend database persistence, two shared placeholder arrays are exported in [`src/lib/mockData.ts`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/lib/mockData.ts):
-
-* **`MOCK_COLLECTIONS: Collection[]`** (12 collections for Posts):
-  - *Pinned (4)*: `⭐ Highlights`, `🎨 Design Systems`, `📸 Film Photography`, `🌿 Brutalism`
-  - *Unpinned (8)*: `⚡ WebGL & Shaders`, `📝 Essays & Notes`, `☕ Studio Setups`, `🚀 Product Drops`, `🎧 Late Night Focus`, `🛠️ Dev Stack`, `🎯 Best of 2025`, `👾 Retro Web`
-* **`MOCK_LINK_COLLECTIONS: Collection[]`** (12 collections for Links):
-  - *Pinned (4)*: `⭐ Starred & Top Links`, `💼 Work & Case Studies`, `📝 Writing & Essays`, `🎧 Sound & Playlists`
-  - *Unpinned (8)*: `🛠️ Code & Open Source`, `🌐 Socials & Networks`, `🚀 Side Quests & Drops`, `☕ Office Hours & Chat`, `💡 Design Inspo & Assets`, `💬 Communities & Discords`, `📚 Reading List 2026`, `📦 Archive & Legacy`
 
 ---
 
@@ -101,11 +108,17 @@ When any collection preset is active:
   - `Change preset`: Re-opens the secondary collection lens bar.
   - `Clear filter`: Resets the active collection back to `null` (viewing all items).
 
+### 4. Drag-and-Drop Reordering Rules
+* Reordering is enabled exclusively for the authenticated profile owner (`isSelf === true`) when search query is empty.
+* A vertical dotted handle (`GripVertical`) serves as the visual affordance.
+* Moving an item in the modal updates `sortOrder` across the collection set and updates the leftmost-to-rightmost sequence on `CollectionLensBar`.
+* The "All" feed row is permanently anchored at the top of the modal and leftmost on the lens bar, and is completely immovable.
+
 ---
 
 ## 5. Feed Filtering & Custom Ordering Engine
 
-When a collection is selected, items are resolved and ordered strictly by the order of IDs in `col.itemIds`:
+When a collection is selected, items are resolved and ordered strictly by the sequence of IDs in `col.itemIds`:
 
 ```typescript
 // 1. Build an O(1) lookup map of all available timeline items
@@ -120,21 +133,19 @@ for (const id of col.itemIds) {
   }
 }
 
-// 3. Graceful fallback for non-mock or custom user profiles:
-// If browsing a profile whose post IDs do not match the mock itemIds,
-// deterministic slicing prevents blank states during prototyping:
-if (matchedPosts.length === 0 && rawTimelinePosts.length > 0) {
+// 3. Graceful fallback for mock collections if browsing an account without matched mock IDs
+if (matchedPosts.length === 0 && rawTimelinePosts.length > 0 && col.id.startsWith('col_')) {
   return rawTimelinePosts.slice(0, Math.min(rawTimelinePosts.length, col.itemIds.length));
 }
 ```
 
 ---
 
-## 6. Future Database Migration & Creator Curation Plan
+## 6. Database Schema & Dual Persistence Strategy
 
-When moving from mock placeholders to production Supabase persistence:
+The system is backed by two relational tables in Supabase (`public.collections` and `public.collection_items`), declared in [`supabase_collections.sql`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/supabase_collections.sql) and [`supabase_schema.sql`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/supabase_schema.sql), paired with a zero-latency `localStorage` hydration and offline cache layer:
 
-### Proposed Relational Schema
+### Relational Schema
 
 ```sql
 -- 1. Collections master table
@@ -156,7 +167,8 @@ create table public.collection_items (
   collection_id uuid not null references public.collections(id) on delete cascade,
   item_id text not null, -- references blocks.id or user profile link id
   position integer not null default 0,
-  created_at timestamptz default now()
+  created_at timestamptz default now(),
+  unique (collection_id, item_id)
 );
 
 -- RLS: Public read, owner manage
@@ -164,7 +176,26 @@ alter table public.collections enable row level security;
 alter table public.collection_items enable row level security;
 ```
 
-### Creator Curation UI
-1. **"Add to Collection" Action on Post/Link Cards**: Profile owners can click a `BookmarkPlus` or `Layers` icon on any card to add it to one or more presets.
-2. **Drag-and-Drop Sequence Manager**: In the modal or settings drawer, owners can reorder the items within each preset.
-3. **Pin Manager**: Creators can select up to 4 presets to pin as quick-access chips on their profile.
+### Persistence & Hydration Lifecycle (`src/lib/collections.ts`)
+
+1. **Authenticated Users (Live Supabase + Local Cache)**:
+   - When a creator with a valid Supabase Auth UUID (`authUser.id`) creates, edits, pins, deletes, or reorders presets, operations write directly to Supabase (`public.collections` and `public.collection_items`) satisfying RLS `auth.uid() = user_id`.
+   - Results are automatically mirrored into `localStorage` (`oomfs_collections_v1_<userId>`).
+2. **Instant Mount Hydration**:
+   - On page mount and browser refresh, [`ProfileView.tsx`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/components/profile/ProfileView.tsx) synchronizes state immediately from `localStorage` to eliminate any flicker or flash of an empty collection bar while the asynchronous network query completes.
+3. **Demo / Unauthenticated Fallback**:
+   - For demo accounts (such as `amberlyn`) or unauthenticated local development where Supabase Auth is unavailable, mutations persist reliably in `localStorage`. Custom collections, item assignments, and drag-and-drop sort orders survive browser reloads.
+
+---
+
+## 7. Creator Curation & Management Workflow
+
+1. **Organizing Existing Posts & Links (`AddToCollectionModal.tsx`)**:
+   - Profile owners click the `FolderPlus` icon on any post card (`PostCard.tsx`) or link card.
+   - Checkboxes allow toggling membership across multiple collections with optimistic UI updates and background Supabase synchronization (`src/lib/collections.ts`).
+2. **Drafting New Posts with Collections (`PostComposer.tsx`)**:
+   - A dropdown above the composer action bar allows assigning new posts to a collection directly during drafting.
+3. **On-Demand Preset Creation (`CreateCollectionModal.tsx`)**:
+   - Creators create new collections with an emoji icon picker, title, description, and `Pin to quick-access bar` toggle.
+4. **Pinning, Deleting & Drag Reordering (`AllCollectionsModal.tsx`)**:
+   - Creators can pin quick-access lenses, drag items using the dotted handle (`GripVertical`) to reorder them (with top items pinning leftmost on the lens bar), and delete presets without affecting underlying posts.

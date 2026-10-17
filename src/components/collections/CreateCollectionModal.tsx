@@ -1,0 +1,224 @@
+'use client';
+
+import React, { useState } from 'react';
+import { X, Star, FolderPlus } from 'lucide-react';
+import { Collection } from '@/lib/mockData';
+import { createCollection } from '@/lib/collections';
+
+interface CreateCollectionModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  userId: string;
+  tabType: 'posts' | 'links';
+  onCreated: (newCol: Collection) => void;
+}
+
+const EMOJI_PRESETS = ['📁', '⭐', '🎨', '📸', '🌿', '⚡', '📝', '☕', '💼', '🎧', '🛠️', '💡', '🚀', '👾', '📚'];
+
+export default function CreateCollectionModal({
+  isOpen,
+  onClose,
+  userId,
+  tabType,
+  onCreated
+}: CreateCollectionModalProps) {
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [icon, setIcon] = useState('📁');
+  const [isPinned, setIsPinned] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) {
+      setError('Please provide a collection title');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+
+    // Call Supabase creator
+    const newCol = await createCollection({
+      userId,
+      tabType,
+      title: title.trim(),
+      description: description.trim() || undefined,
+      icon,
+      isPinned,
+      isExclusive: false
+    });
+
+    if (newCol) {
+      onCreated(newCol);
+      onClose();
+      // Reset form
+      setTitle('');
+      setDescription('');
+      setIcon('📁');
+      setIsPinned(false);
+    } else {
+      // Mock fallback if user is in offline/demo mode or DB not connected
+      const fallbackCol: Collection = {
+        id: `col_${Date.now()}`,
+        userId,
+        tabType,
+        title: title.trim(),
+        description: description.trim() || undefined,
+        icon,
+        isPinned,
+        isExclusive: false,
+        itemIds: []
+      };
+      onCreated(fallbackCol);
+      onClose();
+    }
+    setIsSubmitting(false);
+  };
+
+  return (
+    <div 
+      className="fixed inset-0 bg-black/45 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in duration-150"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-[#eff3f4] overflow-hidden flex flex-col animate-in zoom-in-95 duration-150"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[#eff3f4]">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-[#1d9bf0]/10 flex items-center justify-center text-[#1d9bf0]">
+              <FolderPlus className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-[#0f1419] text-base leading-tight">
+                New {tabType === 'posts' ? 'Post' : 'Link'} Collection
+              </h3>
+              <p className="text-xs text-[#536471]">
+                Curate a custom lens for your profile
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 text-[#536471] hover:bg-gray-100 hover:text-[#0f1419] rounded-full transition-colors cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Form Body */}
+        <form onSubmit={handleSubmit} className="p-4 flex flex-col gap-4">
+          {error && (
+            <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg p-2.5">
+              {error}
+            </div>
+          )}
+
+          {/* Icon + Title Input */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold text-[#0f1419]">
+              Title & Icon
+            </label>
+            <div className="flex items-center gap-2">
+              <div className="relative group shrink-0">
+                <button
+                  type="button"
+                  className="w-10 h-10 rounded-xl bg-[#f7f9f9] border border-[#cfd9de] flex items-center justify-center text-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                >
+                  {icon}
+                </button>
+              </div>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. Design Systems, 35mm Tokyo"
+                className="flex-1 bg-white border border-[#cfd9de] focus:border-[#1d9bf0] rounded-xl px-3 py-2 text-sm text-[#0f1419] outline-none"
+                autoFocus
+              />
+            </div>
+
+            {/* Quick Emoji Picker */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+              {EMOJI_PRESETS.map((e) => (
+                <button
+                  key={e}
+                  type="button"
+                  onClick={() => setIcon(e)}
+                  className={`w-7 h-7 rounded-lg text-sm flex items-center justify-center transition-all cursor-pointer shrink-0 ${
+                    icon === e ? 'bg-[#1d9bf0]/20 scale-110 border border-[#1d9bf0]' : 'hover:bg-gray-100'
+                  }`}
+                >
+                  {e}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Description */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold text-[#0f1419]">
+              Description <span className="font-normal text-[#536471]">(optional)</span>
+            </label>
+            <input
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="e.g. Architectural studies, client drops"
+              className="bg-white border border-[#cfd9de] focus:border-[#1d9bf0] rounded-xl px-3 py-2 text-xs text-[#0f1419] outline-none"
+            />
+          </div>
+
+          {/* Pinned to Top Row Toggle */}
+          <div className="border border-[#eff3f4] rounded-xl bg-[#f7f9f9]">
+            <label className="p-3 flex items-start justify-between gap-3 cursor-pointer select-none">
+              <div className="flex items-start gap-2.5">
+                <div className={`p-1.5 rounded-lg shrink-0 mt-0.5 ${isPinned ? 'bg-blue-100 text-[#1d9bf0]' : 'bg-gray-200 text-gray-600'}`}>
+                  <Star className="w-3.5 h-3.5" />
+                </div>
+                <div>
+                  <div className="font-bold text-xs text-[#0f1419]">
+                    Pin to quick-access bar
+                  </div>
+                  <p className="text-[11px] text-[#536471] leading-snug mt-0.5">
+                    Surface this preset as a stadium pill directly above your profile feed.
+                  </p>
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                checked={isPinned}
+                onChange={(e) => setIsPinned(e.target.checked)}
+                className="w-4 h-4 text-[#1d9bf0] rounded border-gray-300 focus:ring-[#1d9bf0] mt-1 shrink-0 cursor-pointer"
+              />
+            </label>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#eff3f4]">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-xs font-bold text-[#536471] hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting || !title.trim()}
+              className="px-5 py-2 text-xs font-bold bg-[#0f1419] hover:bg-[#272c30] disabled:opacity-40 text-white rounded-full transition-colors cursor-pointer shadow-xs"
+            >
+              {isSubmitting ? 'Creating...' : 'Create Collection'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}

@@ -74,8 +74,9 @@
 │   ├── followerlist.md                 # Network directory architecture (OOMFs, Following, Followers) & 4 view modes
 │   ├── navigation.md                   # Global shell geometry, left sidebar registry (7 items), & responsive layout
 │   ├── post-types.md                   # Specification for active post formats & creation guide
-│   └── profile-page.md                 # Profile page architecture, 4 tabs, and thread routing
+├── supabase_schema.sql                 # Baseline schema: profiles, blocks, follows tables & RLS policies
 ├── supabase_follows_rpc.sql            # Supabase RPC migration for bidirectional mutual follower queries
+├── supabase_collections.sql            # Collections & collection_items schema, indexes, and RLS policies
 ├── .env.local                          # Supabase project URL and API keys
 ├── src/
 │   ├── app/
@@ -106,7 +107,9 @@
 │   │   │   └── ProfileView.tsx         # Core profile view, 4 tabs, Edit Profile modal, composer, Badge Wall
 │   │   ├── collections/
 │   │   │   ├── CollectionLensBar.tsx   # Quick-access stadium pills + modal trigger
-│   │   │   └── AllCollectionsModal.tsx # Searchable modal displaying all curated presets
+│   │   │   ├── AllCollectionsModal.tsx # Searchable modal displaying all curated presets + drag-and-drop reordering
+│   │   │   ├── CreateCollectionModal.tsx # Modal to create custom post/link preset collections
+│   │   │   └── AddToCollectionModal.tsx # Modal to assign existing blocks/posts to curated presets
 │   │   ├── network/
 │   │   │   ├── FollowButton.tsx        # Dynamic optimistic Follow/Unfollow action pill
 │   │   │   └── UserFollowItem.tsx      # 1:1 native follower list row component
@@ -118,6 +121,7 @@
 │   ├── context/
 │   │   └── AuthContext.tsx             # Supabase auth session, profile state, signInWithTwitter, signOut
 │   ├── lib/
+│   │   ├── collections.ts              # Supabase & localStorage dual-persistence manager for collections
 │   │   ├── follows.ts                  # Client follow toggle & network directory resolver
 │   │   ├── mockData.ts                 # Offline mock accounts & sample content for prototyping
 │   │   ├── postStore.ts                # Client runtime store for newly created session posts
@@ -161,6 +165,24 @@ Tracks the internal follow graph and computes mutual OOMFs:
 > **Mutual OOMF Definition:**  
 > User A and User B are **OOMFs** if:  
 > `(follower_id = A AND following_id = B)` **AND** `(follower_id = B AND following_id = A)` both exist in `public.follows`.
+
+### 4. `public.collections`
+Stores user-defined curated presets/collections for filtering profile content (posts and links):
+* `id` (`uuid`, primary key, `default gen_random_uuid()`)
+* `user_id` (`uuid`, references `public.profiles.id` on delete cascade)
+* `title` (`text`, collection display name)
+* `description` (`text`, optional collection summary)
+* `tab_type` (`text`: `'posts' | 'links'`, default `'posts'`)
+* `sort_order` (`int`, order index for lens bar and modal positioning, default `0`)
+* `created_at` (`timestamptz`)
+
+### 5. `public.collection_items`
+Join table mapping content blocks/posts to curated collections:
+* `id` (`uuid`, primary key, `default gen_random_uuid()`)
+* `collection_id` (`uuid`, references `public.collections.id` on delete cascade)
+* `block_id` (`uuid`, references `public.blocks.id` on delete cascade)
+* `created_at` (`timestamptz`)
+* Unique Constraint: `(collection_id, block_id)`
 
 ---
 

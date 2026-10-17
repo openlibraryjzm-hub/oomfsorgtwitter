@@ -108,6 +108,11 @@ export interface Collection {
   icon?: string;
   itemIds: string[];
   isPinned?: boolean;
+  isExclusive?: boolean; // When true: visible ONLY inside this collection, hidden from main "All" feed
+  tabType?: 'posts' | 'links';
+  userId?: string;
+  sortOrder?: number;
+  createdAt?: string;
 }
 
 export const MOCK_USERS: Record<string, User> = {

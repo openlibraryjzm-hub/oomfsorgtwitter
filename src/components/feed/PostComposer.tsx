@@ -12,13 +12,16 @@ import {
   ArrowLeft,
   ArrowRight,
   Link as LinkIcon,
-  Sparkles
+  Sparkles,
+  Lock,
+  FolderPlus
 } from 'lucide-react';
-import { CURRENT_USER, Post, User } from '@/lib/mockData';
+import { CURRENT_USER, Post, User, Collection } from '@/lib/mockData';
 import { saveSessionPost } from '@/lib/postStore';
 import { useAuth } from '@/context/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { formatTwitterAvatar } from '@/lib/utils';
+import { addItemToCollection, getProfileCollections } from '@/lib/collections';
 
 interface PostComposerProps {
   onAddPost?: (post: Post) => void;
@@ -26,6 +29,8 @@ interface PostComposerProps {
   defaultType?: 'standard' | 'carousel' | 'board' | 'link_card' | 'badge';
   targetUser?: User;
   compact?: boolean;
+  collections?: Collection[];
+  linkCollections?: Collection[];
 }
 
 interface DraftMediaItem {
@@ -221,7 +226,9 @@ export default function PostComposer({
   onClose,
   defaultType = 'standard',
   targetUser,
-  compact = false
+  compact = false,
+  collections,
+  linkCollections
 }: PostComposerProps) {
   const { user: authUser, profile: authProfile } = useAuth();
   const supabase = createClient();
@@ -233,6 +240,35 @@ export default function PostComposer({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Curated collection selection while drafting
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
+  const [userPostCols, setUserPostCols] = useState<Collection[]>(collections || []);
+  const [userLinkCols, setUserLinkCols] = useState<Collection[]>(linkCollections || []);
+
+  useEffect(() => {
+    if (collections && collections.length > 0) {
+      setUserPostCols(collections);
+    } else if (authUser?.id) {
+      getProfileCollections(authUser.id, 'posts').then((cols) => {
+        if (cols.length > 0) setUserPostCols(cols);
+      });
+    }
+  }, [collections, authUser?.id]);
+
+  useEffect(() => {
+    if (linkCollections && linkCollections.length > 0) {
+      setUserLinkCols(linkCollections);
+    } else if (authUser?.id) {
+      getProfileCollections(authUser.id, 'links').then((cols) => {
+        if (cols.length > 0) setUserLinkCols(cols);
+      });
+    }
+  }, [linkCollections, authUser?.id]);
+
+  const isLinkPost = postType === 'link_card' || postType === 'badge';
+  const availableCollections = isLinkPost ? userLinkCols : userPostCols;
+  const activeSelectedCollection = availableCollections.find((c) => c.id === selectedCollectionId);
 
   // Carousel state
   const [carouselHeader, setCarouselHeader] = useState('');
@@ -493,16 +529,25 @@ export default function PostComposer({
 
     saveSessionPost(newPost);
 
+    if (selectedCollectionId) {
+      addItemToCollection(selectedCollectionId, newPostId);
+    }
+
     if (onAddPost) {
       onAddPost(newPost);
     }
 
     // Broadcast globally so ProfileView updates immediately even if posted from LeftSidebar modal
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('oomfs:post-created', { detail: newPost }));
+      window.dispatchEvent(
+        new CustomEvent('oomfs:post-created', {
+          detail: { post: newPost, collectionId: selectedCollectionId }
+        })
+      );
     }
 
     // Reset state
+    setSelectedCollectionId(null);
     setText('');
     setCarouselHeader('');
     setMediaItems([]);
@@ -1165,6 +1210,30 @@ export default function PostComposer({
           <p className="text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
             {errorMsg}
           </p>
+        )}
+
+        {/* Optional Collection Assignment Selector */}
+        {availableCollections.length > 0 && (
+          <div className="flex flex-col gap-1.5 px-3 py-2 bg-[#f7f9f9] border border-[#eff3f4] rounded-xl">
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2">
+                <FolderPlus className="w-4 h-4 text-[#1d9bf0]" />
+                <span className="font-bold text-[#0f1419]">Add to collection:</span>
+                <select
+                  value={selectedCollectionId || ''}
+                  onChange={(e) => setSelectedCollectionId(e.target.value || null)}
+                  className="bg-white border border-[#cfd9de] focus:border-[#1d9bf0] rounded-lg px-2 py-1 text-xs text-[#0f1419] outline-none cursor-pointer"
+                >
+                  <option value="">None (main timeline)</option>
+                  {availableCollections.map((col) => (
+                    <option key={col.id} value={col.id}>
+                      {col.icon || '📁'} {col.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Footer Action Bar */}

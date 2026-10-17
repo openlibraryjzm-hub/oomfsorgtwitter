@@ -15,7 +15,8 @@ import {
   Search,
   Paintbrush,
   DollarSign,
-  MoreHorizontal
+  MoreHorizontal,
+  FolderPlus
 } from 'lucide-react';
 import { 
   User, 
@@ -34,11 +35,14 @@ import CommentCard from '@/components/feed/CommentCard';
 import PostComposer from '@/components/feed/PostComposer';
 import CollectionLensBar from '@/components/collections/CollectionLensBar';
 import AllCollectionsModal from '@/components/collections/AllCollectionsModal';
+import CreateCollectionModal from '@/components/collections/CreateCollectionModal';
+import AddToCollectionModal from '@/components/collections/AddToCollectionModal';
 import { saveSessionPost } from '@/lib/postStore';
 import { useAuth } from '@/context/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { formatTwitterAvatar } from '@/lib/utils';
 import { getProfileFollowStats, toggleFollow, isValidUuid } from '@/lib/follows';
+import { getProfileCollections, updateCollection, deleteCollection, reorderCollections, getLocalCollections } from '@/lib/collections';
 
 interface ProfileViewProps {
   user: User;
@@ -101,17 +105,30 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
   const [isHoveringFollow, setIsHoveringFollow] = useState(false);
   const [userProfile, setUserProfile] = useState<User>(initialUser);
 
-  // Curated collections / presets state (shared placeholders across profiles)
-  const [collections] = useState<Collection[]>(MOCK_COLLECTIONS);
+  // Curated collections / presets state (only showcase demo amberlyn gets mock placeholders; others start clean or sync from Supabase)
+  const isDemoProfile = initialUser.username.toLowerCase() === 'amberlyn';
+  const [collections, setCollections] = useState<Collection[]>(() => {
+    return isDemoProfile ? MOCK_COLLECTIONS : [];
+  });
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
   const [allCollectionsModalOpen, setAllCollectionsModalOpen] = useState(false);
   const [showPostCollections, setShowPostCollections] = useState(false);
 
-  // Curated link collections / presets state (shared placeholders across profiles)
-  const [linkCollections] = useState<Collection[]>(MOCK_LINK_COLLECTIONS);
+  // Curated link collections / presets state
+  const [linkCollections, setLinkCollections] = useState<Collection[]>(() => {
+    return isDemoProfile ? MOCK_LINK_COLLECTIONS : [];
+  });
   const [activeLinkCollectionId, setActiveLinkCollectionId] = useState<string | null>(null);
   const [allLinkCollectionsModalOpen, setAllLinkCollectionsModalOpen] = useState(false);
   const [showLinkCollections, setShowLinkCollections] = useState(false);
+
+  // Item assignment & collection creation modals
+  const [manageItem, setManageItem] = useState<{
+    id: string;
+    title?: string;
+    tabType: 'posts' | 'links';
+  } | null>(null);
+  const [createCollectionTab, setCreateCollectionTab] = useState<'posts' | 'links' | null>(null);
 
   const handleSelectPostCollection = (id: string | null) => {
     setActiveCollectionId(id);
@@ -133,6 +150,63 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
     (authUser && authProfile?.username === initialUser.username) ||
     (authUser && userProfile.id && authUser.id === userProfile.id)
   );
+
+  // Active creator user ID for mutating collections (prioritize authenticated Supabase Auth UUID)
+  const activeCreatorUserId = (authUser?.id && isValidUuid(authUser.id))
+    ? authUser.id
+    : (userProfile.id && isValidUuid(userProfile.id))
+      ? userProfile.id
+      : userProfile.id || initialUser.id || 'usr_amberlyn';
+
+  const handleTogglePinCollection = async (id: string, tab: 'posts' | 'links') => {
+    const targetCols = tab === 'posts' ? collections : linkCollections;
+    const col = targetCols.find((c) => c.id === id);
+    if (!col) return;
+    const nextPinned = !col.isPinned;
+
+    if (tab === 'posts') {
+      setCollections((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, isPinned: nextPinned } : c))
+      );
+    } else {
+      setLinkCollections((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, isPinned: nextPinned } : c))
+      );
+    }
+    await updateCollection(id, { isPinned: nextPinned }, activeCreatorUserId);
+  };
+
+  const handleDeleteCollection = async (id: string, tab: 'posts' | 'links') => {
+    if (tab === 'posts') {
+      setCollections((prev) => prev.filter((c) => c.id !== id));
+      if (activeCollectionId === id) setActiveCollectionId(null);
+    } else {
+      setLinkCollections((prev) => prev.filter((c) => c.id !== id));
+      if (activeLinkCollectionId === id) setActiveLinkCollectionId(null);
+    }
+    await deleteCollection(id, activeCreatorUserId);
+  };
+
+  const handleReorderCollections = async (reordered: Collection[], tab: 'posts' | 'links') => {
+    if (tab === 'posts') {
+      setCollections(reordered);
+    } else {
+      setLinkCollections(reordered);
+    }
+    await reorderCollections(reordered.map((c) => c.id), activeCreatorUserId);
+  };
+
+  const handleCreatedCollection = (newCol: Collection) => {
+    if (newCol.tabType === 'links') {
+      setLinkCollections((prev) => [newCol, ...prev]);
+      setActiveLinkCollectionId(newCol.id);
+      setShowLinkCollections(true);
+    } else {
+      setCollections((prev) => [newCol, ...prev]);
+      setActiveCollectionId(newCol.id);
+      setShowPostCollections(true);
+    }
+  };
 
   // Sticky header scroll detection & action state
   const followButtonRef = useRef<HTMLDivElement>(null);
@@ -185,15 +259,31 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
   // Listen for posts created via the LeftSidebar modal or inline PostComposer
   useEffect(() => {
     const handlePostCreated = (e: Event) => {
-      const customEvent = e as CustomEvent<Post>;
-      const newPost = customEvent.detail;
-      if (!newPost) return;
+      const customEvent = e as CustomEvent<Post | { post: Post; collectionId?: string | null }>;
+      const detail = customEvent.detail;
+      if (!detail) return;
+
+      const newPost = 'post' in detail ? detail.post : detail;
+      const targetColId = 'collectionId' in detail ? detail.collectionId : null;
 
       saveSessionPost(newPost);
       setPosts((prev) => {
         if (prev.some((p) => p.id === newPost.id)) return prev;
         return [newPost, ...prev];
       });
+
+      if (targetColId) {
+        setCollections((prev) =>
+          prev.map((c) =>
+            c.id === targetColId ? { ...c, itemIds: [newPost.id, ...c.itemIds] } : c
+          )
+        );
+        setLinkCollections((prev) =>
+          prev.map((c) =>
+            c.id === targetColId ? { ...c, itemIds: [newPost.id, ...c.itemIds] } : c
+          )
+        );
+      }
 
       if (newPost.type === 'link_card' || newPost.type === 'badge') {
         setActiveTab('links');
@@ -206,6 +296,17 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
     return () => window.removeEventListener('oomfs:post-created', handlePostCreated);
   }, []);
 
+  // Immediate hydration from local storage on mount to eliminate empty-state flash on refresh
+  useEffect(() => {
+    const cachedTargetId = (isValidUuid(authUser?.id) && isSelf) 
+      ? authUser!.id 
+      : (isValidUuid(userProfile.id) ? userProfile.id : (initialUser.id || `usr_${initialUser.username.toLowerCase()}`));
+    const localPosts = getLocalCollections(cachedTargetId).filter(c => c.tabType === 'posts');
+    const localLinks = getLocalCollections(cachedTargetId).filter(c => c.tabType === 'links');
+    if (localPosts.length > 0) setCollections(localPosts);
+    if (localLinks.length > 0) setLinkCollections(localLinks);
+  }, [authUser?.id, isSelf, userProfile.id, initialUser.id, initialUser.username]);
+
   // Fetch real Supabase data if this profile exists in DB (or if signed-in user created blocks)
   useEffect(() => {
     const loadSupabaseProfileAndBlocks = async () => {
@@ -216,7 +317,8 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
           .eq('username', initialUser.username.toLowerCase())
           .single();
 
-        let targetUserId = dbUser?.id || null;
+        // Effective user ID whose content/collections belong on this profile
+        const targetUserId = dbUser?.id || (isSelf && authUser?.id) || userProfile.id || initialUser.id || `usr_${initialUser.username.toLowerCase()}`;
 
         if (dbUser) {
           const followStats = await getProfileFollowStats(dbUser.id, authUser?.id);
@@ -241,12 +343,21 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
           setEditBio(dbUser.bio !== null && dbUser.bio !== undefined ? dbUser.bio : initialUser.bio);
           setEditLocation(dbUser.location ?? initialUser.location ?? '');
           setEditWebsite(dbUser.website ?? initialUser.website ?? '');
-        } else if (authUser?.id && initialUser.username.toLowerCase() === 'amberlyn') {
-          // If viewing the default landing demo profile while signed in, also surface blocks created by this user
-          targetUserId = authUser.id;
         }
 
-        if (targetUserId) {
+        // Fetch live curated collections (Supabase live DB with localStorage cache & fallback)
+        try {
+          const [dbPostCols, dbLinkCols] = await Promise.all([
+            getProfileCollections(targetUserId, 'posts'),
+            getProfileCollections(targetUserId, 'links')
+          ]);
+          setCollections(dbPostCols);
+          setLinkCollections(dbLinkCols);
+        } catch (colErr) {
+          console.error('Error loading collections:', colErr);
+        }
+
+        if (isValidUuid(targetUserId)) {
           const { data: dbBlocks, error } = await supabase
             .from('blocks')
             .select('*')
@@ -575,14 +686,17 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
     [posts]
   );
 
+  // All timeline posts
+  const allTimelinePosts = rawTimelinePosts;
+
   // Filter & custom-order timeline posts when a collection lens is selected
   const timelinePosts = useMemo(() => {
     if (!activeCollectionId) {
-      return rawTimelinePosts;
+      return allTimelinePosts;
     }
     const col = collections.find((c) => c.id === activeCollectionId);
     if (!col || !col.itemIds || col.itemIds.length === 0) {
-      return rawTimelinePosts;
+      return [];
     }
     const postMap = new Map(rawTimelinePosts.map((p) => [p.id, p]));
     const matchedPosts: Post[] = [];
@@ -592,14 +706,15 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
         matchedPosts.push(found);
       }
     }
-    // If the active collection specifies item IDs that aren't on this specific user profile
-    // (e.g. visiting a non-amberlyn profile or a profile with custom user-generated posts),
-    // provide a deterministic slice of this profile's timeline posts so the preset order demo is always functional
-    if (matchedPosts.length === 0 && rawTimelinePosts.length > 0) {
+    if (matchedPosts.length > 0) {
+      return matchedPosts;
+    }
+    // Prototype fallback for mock collections if browsing an account without matched mock IDs
+    if (col.id.startsWith('col_') && rawTimelinePosts.length > 0) {
       return rawTimelinePosts.slice(0, Math.min(rawTimelinePosts.length, col.itemIds.length));
     }
-    return matchedPosts;
-  }, [rawTimelinePosts, activeCollectionId, collections]);
+    return [];
+  }, [rawTimelinePosts, allTimelinePosts, activeCollectionId, collections]);
 
   // Unified Badge Wall posts
   const badgePosts = posts.filter(p => p.type === 'badge' && p.badgeData);
@@ -622,14 +737,17 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
     }))
   ], [posts, userProfile.links]);
 
+  // All combined link cards
+  const allLinkCards = rawLinkCards;
+
   // Filter & custom-order link cards when a link collection lens is selected
   const linkCards = useMemo(() => {
     if (!activeLinkCollectionId) {
-      return rawLinkCards;
+      return allLinkCards;
     }
     const col = linkCollections.find((c) => c.id === activeLinkCollectionId);
     if (!col || !col.itemIds || col.itemIds.length === 0) {
-      return rawLinkCards;
+      return [];
     }
     const linkMap = new Map(rawLinkCards.map((l) => [l.id, l]));
     const matchedLinks: typeof rawLinkCards = [];
@@ -639,12 +757,15 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
         matchedLinks.push(found);
       }
     }
+    if (matchedLinks.length > 0) {
+      return matchedLinks;
+    }
     // Fallback slice so presets always demonstrate custom curated subsets
-    if (matchedLinks.length === 0 && rawLinkCards.length > 0) {
+    if (col.id.startsWith('col_') && rawLinkCards.length > 0) {
       return rawLinkCards.slice(0, Math.min(rawLinkCards.length, col.itemIds.length));
     }
-    return matchedLinks;
-  }, [rawLinkCards, activeLinkCollectionId, linkCollections]);
+    return [];
+  }, [rawLinkCards, allLinkCards, activeLinkCollectionId, linkCollections]);
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
@@ -665,7 +786,7 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
               )}
             </h1>
             <span className="text-xs text-[#536471] truncate">
-              {activeCollectionId ? `${timelinePosts.length} of ${rawTimelinePosts.length}` : rawTimelinePosts.length} Posts
+              {activeCollectionId ? `${timelinePosts.length} of ${allTimelinePosts.length}` : allTimelinePosts.length} Posts
             </span>
           </div>
         </div>
@@ -893,6 +1014,8 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
             targetUser={userProfile}
             defaultType={blockType}
             compact={true}
+            collections={collections}
+            linkCollections={linkCollections}
             onClose={() => setComposerOpen(false)}
           />
         </div>
@@ -904,7 +1027,9 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
         <button
           onClick={() => {
             if (activeTab === 'posts') {
-              setShowPostCollections(prev => !prev);
+              if (collections.length > 0 || isSelf) {
+                setShowPostCollections(prev => !prev);
+              }
             } else {
               setActiveTab('posts');
             }
@@ -915,7 +1040,7 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
         >
           <div className="flex items-center justify-center gap-1.5">
             <span>Posts</span>
-            {activeTab === 'posts' && (
+            {activeTab === 'posts' && (collections.length > 0 || isSelf) && (
               <ChevronDown 
                 className={`w-3.5 h-3.5 text-[#536471] transition-transform duration-200 ${
                   showPostCollections ? 'rotate-180 text-[#1d9bf0]' : ''
@@ -948,7 +1073,9 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
         <button
           onClick={() => {
             if (activeTab === 'links') {
-              setShowLinkCollections(prev => !prev);
+              if (linkCollections.length > 0 || isSelf) {
+                setShowLinkCollections(prev => !prev);
+              }
             } else {
               setActiveTab('links');
             }
@@ -959,7 +1086,7 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
         >
           <div className="flex items-center justify-center gap-1.5">
             <span>Links</span>
-            {activeTab === 'links' && (
+            {activeTab === 'links' && (linkCollections.length > 0 || isSelf) && (
               <ChevronDown 
                 className={`w-3.5 h-3.5 text-[#536471] transition-transform duration-200 ${
                   showLinkCollections ? 'rotate-180 text-[#1d9bf0]' : ''
@@ -1001,7 +1128,9 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
                 activeCollectionId={activeCollectionId}
                 onSelectCollection={handleSelectPostCollection}
                 onOpenAllModal={() => setAllCollectionsModalOpen(true)}
-                totalCount={rawTimelinePosts.length}
+                totalCount={allTimelinePosts.length}
+                isSelf={isSelf}
+                onCreateCollection={() => setCreateCollectionTab('posts')}
               />
             )}
 
@@ -1040,7 +1169,12 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
 
             {timelinePosts.length > 0 ? (
               timelinePosts.map((post) => (
-                <PostCard key={post.id} post={post} onDelete={handleDeletePost} />
+                <PostCard 
+                  key={post.id} 
+                  post={post} 
+                  onDelete={handleDeletePost}
+                  onManageCollections={isSelf ? (p) => setManageItem({ id: p.id, title: p.text?.slice(0, 40) || 'Post', tabType: 'posts' }) : undefined}
+                />
               ))
             ) : (
               <div className="text-center py-12 text-[#536471] text-sm">
@@ -1120,7 +1254,9 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
                 activeCollectionId={activeLinkCollectionId}
                 onSelectCollection={handleSelectLinkCollection}
                 onOpenAllModal={() => setAllLinkCollectionsModalOpen(true)}
-                totalCount={rawLinkCards.length}
+                totalCount={allLinkCards.length}
+                isSelf={isSelf}
+                onCreateCollection={() => setCreateCollectionTab('links')}
               />
             )}
 
@@ -1235,9 +1371,25 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
                         {link.url.replace(/^https?:\/\//, '')}
                       </span>
                     </div>
-                    <div className="bg-[#1d9bf0] text-white text-xs font-bold px-4 py-2 rounded-full group-hover:bg-[#1a8cd8] transition-colors flex items-center gap-1 shrink-0">
-                      <span>Visit</span>
-                      <ExternalLink className="w-3.5 h-3.5" />
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {isSelf && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setManageItem({ id: link.id, title: link.title, tabType: 'links' });
+                          }}
+                          title="Organize into link collections"
+                          className="p-2 text-[#536471] hover:text-[#1d9bf0] hover:bg-[#1d9bf0]/10 rounded-full transition-colors cursor-pointer mr-1"
+                        >
+                          <FolderPlus className="w-4 h-4" />
+                        </button>
+                      )}
+                      <div className="bg-[#1d9bf0] text-white text-xs font-bold px-4 py-2 rounded-full group-hover:bg-[#1a8cd8] transition-colors flex items-center gap-1 shrink-0">
+                        <span>Visit</span>
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </div>
                     </div>
                   </a>
                 ))
@@ -1360,8 +1512,13 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
         collections={collections}
         activeCollectionId={activeCollectionId}
         onSelectCollection={handleSelectPostCollection}
-        totalCount={rawTimelinePosts.length}
+        totalCount={allTimelinePosts.length}
         itemTypeLabel="posts"
+        isSelf={isSelf}
+        onCreateCollection={() => setCreateCollectionTab('posts')}
+        onTogglePin={(id) => handleTogglePinCollection(id, 'posts')}
+        onDeleteCollection={(id) => handleDeleteCollection(id, 'posts')}
+        onReorderCollections={(reordered) => handleReorderCollections(reordered, 'posts')}
       />
 
       {/* All Collections Searchable Modal (Links) */}
@@ -1371,9 +1528,46 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
         collections={linkCollections}
         activeCollectionId={activeLinkCollectionId}
         onSelectCollection={handleSelectLinkCollection}
-        totalCount={rawLinkCards.length}
+        totalCount={allLinkCards.length}
         itemTypeLabel="links"
+        isSelf={isSelf}
+        onCreateCollection={() => setCreateCollectionTab('links')}
+        onTogglePin={(id) => handleTogglePinCollection(id, 'links')}
+        onDeleteCollection={(id) => handleDeleteCollection(id, 'links')}
+        onReorderCollections={(reordered) => handleReorderCollections(reordered, 'links')}
       />
+
+      {/* Add To Collection Modal (for organizing existing posts & links) */}
+      {manageItem && (
+        <AddToCollectionModal
+          isOpen={Boolean(manageItem)}
+          onClose={() => setManageItem(null)}
+          itemId={manageItem.id}
+          itemTitle={manageItem.title}
+          itemTypeLabel={manageItem.tabType === 'posts' ? 'post' : 'link'}
+          collections={manageItem.tabType === 'posts' ? collections : linkCollections}
+          userId={activeCreatorUserId}
+          tabType={manageItem.tabType}
+          onUpdateCollections={(updated) => {
+            if (manageItem.tabType === 'posts') {
+              setCollections(updated);
+            } else {
+              setLinkCollections(updated);
+            }
+          }}
+        />
+      )}
+
+      {/* Create Collection Modal */}
+      {createCollectionTab && (
+        <CreateCollectionModal
+          isOpen={Boolean(createCollectionTab)}
+          onClose={() => setCreateCollectionTab(null)}
+          userId={activeCreatorUserId}
+          tabType={createCollectionTab}
+          onCreated={handleCreatedCollection}
+        />
+      )}
     </div>
   );
 }

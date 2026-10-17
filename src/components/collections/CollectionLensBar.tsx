@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ChevronDown, LayoutGrid, X } from 'lucide-react';
+import { ChevronDown, LayoutGrid, X, Plus } from 'lucide-react';
 import { Collection } from '@/lib/mockData';
 
 interface CollectionLensBarProps {
@@ -11,6 +11,8 @@ interface CollectionLensBarProps {
   onOpenAllModal: () => void;
   totalPostsCount?: number;
   totalCount?: number;
+  isSelf?: boolean;
+  onCreateCollection?: () => void;
 }
 
 export default function CollectionLensBar({
@@ -19,7 +21,9 @@ export default function CollectionLensBar({
   onSelectCollection,
   onOpenAllModal,
   totalPostsCount,
-  totalCount
+  totalCount,
+  isSelf,
+  onCreateCollection
 }: CollectionLensBarProps) {
   const count = totalCount ?? totalPostsCount ?? 0;
   const pinnedCollections = collections.filter((c) => c.isPinned);
@@ -101,6 +105,19 @@ export default function CollectionLensBar({
           <LayoutGrid className="w-3.5 h-3.5 text-[#536471]" />
           <span>All ({collections.length})</span>
           <ChevronDown className="w-3.5 h-3.5 text-[#536471]" />
+        </button>
+      )}
+
+      {/* 5. "+ New" Collection Button (for profile owner) */}
+      {isSelf && onCreateCollection && (
+        <button
+          type="button"
+          onClick={onCreateCollection}
+          className="px-2.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1 bg-white border border-dashed border-[#1d9bf0] text-[#1d9bf0] hover:bg-[#1d9bf0]/10"
+          title="Create a new collection lens"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>{collections.length === 0 ? 'Create collection' : 'New'}</span>
         </button>
       )}
     </div>
