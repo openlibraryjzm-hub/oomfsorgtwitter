@@ -27,14 +27,14 @@
 
    *Detailed post format specifications and extension guides are available in [Post Types Context Doc](docs/post-types.md) and [Web Badges Context Doc](docs/badges.md).*
 
-4. **The 4 Distinct Profile Tabs:**  
+4. **The 4 Distinct Profile Tabs & Curated Collections:**  
    User profiles organize content across 4 clean tabs ordered left-to-right:
-   1. **Posts** (default): Actual posts (Standard, Carousel, Board). Supports full thread navigation (`/[username]/status/[id]`).
+   1. **Posts** (default): Actual posts (Standard, Carousel, Board). Supports full thread navigation (`/[username]/status/[id]`) and custom author-curated collection lenses (`Posts ▾`).
    2. **Comments**: Direct guestbook comments underneath an inline comment composer (flat, non-threaded).
-   3. **Links**: Linktree-style showcase of permanent bio links and link cards.
+   3. **Links**: Linktree-style showcase of permanent bio links, link cards, Badge Wall, and curated link presets (`Links ▾`).
    4. **Likes**: Posts liked by the user.
 
-   *Detailed profile layout rules and routing are available in [Profile Page Context Doc](docs/profile-page.md).*
+   *Detailed profile layout rules and routing are available in [Profile Page Context Doc](docs/profile-page.md) and [Collections Context Doc](docs/collections.md).*
 
 5. **"Profile-First" Strategy (Overcoming Cold Start):**  
    * We do **not** focus on global feeds, algorithmic discovery, or notifications yet.
@@ -69,6 +69,7 @@
 ├── docs/
 │   ├── backend.md                      # Supabase schema, RLS policies, RPC follow graph, & OAuth
 │   ├── badges.md                       # 88×31 Web Badge system, 3x HiDPI canvas, & Badge Wall gallery
+│   ├── collections.md                  # Curated collections & preset lenses architecture and data models
 │   ├── composer.md                     # Post composer architecture, flush builders, & media compression
 │   ├── followerlist.md                 # Network directory architecture (OOMFs, Following, Followers) & 4 view modes
 │   ├── post-types.md                   # Specification for active post formats & creation guide
@@ -102,6 +103,9 @@
 │   │   │   └── MainLayout.tsx          # 1:1 X.com layout shell (max-w-[1265px]) + compose modal
 │   │   ├── profile/
 │   │   │   └── ProfileView.tsx         # Core profile view, 4 tabs, Edit Profile modal, composer, Badge Wall
+│   │   ├── collections/
+│   │   │   ├── CollectionLensBar.tsx   # Quick-access stadium pills + modal trigger
+│   │   │   └── AllCollectionsModal.tsx # Searchable modal displaying all curated presets
 │   │   ├── network/
 │   │   │   ├── FollowButton.tsx        # Dynamic optimistic Follow/Unfollow action pill
 │   │   │   └── UserFollowItem.tsx      # 1:1 native follower list row component

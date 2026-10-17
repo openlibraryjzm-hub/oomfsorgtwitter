@@ -1,0 +1,108 @@
+'use client';
+
+import React from 'react';
+import { ChevronDown, LayoutGrid, X } from 'lucide-react';
+import { Collection } from '@/lib/mockData';
+
+interface CollectionLensBarProps {
+  collections: Collection[];
+  activeCollectionId: string | null;
+  onSelectCollection: (id: string | null) => void;
+  onOpenAllModal: () => void;
+  totalPostsCount?: number;
+  totalCount?: number;
+}
+
+export default function CollectionLensBar({
+  collections,
+  activeCollectionId,
+  onSelectCollection,
+  onOpenAllModal,
+  totalPostsCount,
+  totalCount
+}: CollectionLensBarProps) {
+  const count = totalCount ?? totalPostsCount ?? 0;
+  const pinnedCollections = collections.filter((c) => c.isPinned);
+  const activeCollection = collections.find((c) => c.id === activeCollectionId);
+  const isUnpinnedActive = activeCollection && !activeCollection.isPinned;
+
+  return (
+    <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-2.5 px-4 border-b border-[#eff3f4] bg-white select-none shrink-0">
+      {/* 1. "All" Feed Pill */}
+      <button
+        type="button"
+        onClick={() => onSelectCollection(null)}
+        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+          activeCollectionId === null
+            ? 'bg-[#0f1419] text-white shadow-xs'
+            : 'bg-white border border-[#eff3f4] text-[#536471] hover:bg-[#f7f9f9] hover:text-[#0f1419]'
+        }`}
+      >
+        All ({count})
+      </button>
+
+      {/* 2. Pinned Lenses (Top 4) */}
+      {pinnedCollections.map((col) => {
+        const isActive = activeCollectionId === col.id;
+        return (
+          <button
+            key={col.id}
+            type="button"
+            onClick={() => onSelectCollection(col.id)}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+              isActive
+                ? 'bg-[#0f1419] text-white shadow-xs'
+                : 'bg-white border border-[#eff3f4] text-[#536471] hover:bg-[#f7f9f9] hover:text-[#0f1419]'
+            }`}
+          >
+            {col.icon && <span className="text-xs">{col.icon}</span>}
+            <span>{col.title}</span>
+            <span
+              className={`text-[10px] ml-0.5 ${
+                isActive ? 'text-white/80' : 'text-[#536471]'
+              }`}
+            >
+              ({col.itemIds.length})
+            </span>
+          </button>
+        );
+      })}
+
+      {/* 3. Surface active unpinned collection if selected from modal */}
+      {isUnpinnedActive && (
+        <div className="flex items-center gap-1 bg-[#0f1419] text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-xs whitespace-nowrap shrink-0">
+          {activeCollection.icon && <span className="text-xs">{activeCollection.icon}</span>}
+          <span>{activeCollection.title}</span>
+          <span className="text-[10px] text-white/80 ml-0.5">
+            ({activeCollection.itemIds.length})
+          </span>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelectCollection(null);
+            }}
+            className="ml-1 p-0.5 hover:bg-white/20 rounded-full cursor-pointer transition-colors"
+            title="Reset to All"
+          >
+            <X className="w-3 h-3 text-white" />
+          </button>
+        </div>
+      )}
+
+      {/* 4. "Browse All (N) ▾" Scalability Pill */}
+      {collections.length > 0 && (
+        <button
+          type="button"
+          onClick={onOpenAllModal}
+          className="px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 bg-[#f7f9f9] border border-[#cfd9de] text-[#0f1419] hover:bg-[#eff3f4] hover:border-gray-400"
+          title={`Browse all ${collections.length} curated collections`}
+        >
+          <LayoutGrid className="w-3.5 h-3.5 text-[#536471]" />
+          <span>All ({collections.length})</span>
+          <ChevronDown className="w-3.5 h-3.5 text-[#536471]" />
+        </button>
+      )}
+    </div>
+  );
+}

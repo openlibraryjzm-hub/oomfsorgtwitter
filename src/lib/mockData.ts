@@ -101,6 +101,15 @@ export interface ThreadReply {
   isLiked?: boolean;
 }
 
+export interface Collection {
+  id: string;
+  title: string;
+  description?: string;
+  icon?: string;
+  itemIds: string[];
+  isPinned?: boolean;
+}
+
 export const MOCK_USERS: Record<string, User> = {
   amberlyn: {
     id: 'usr_1',
@@ -139,6 +148,27 @@ export const MOCK_USERS: Record<string, User> = {
         url: 'https://spotify.com',
         category: 'Music',
         clicks: 2310
+      },
+      {
+        id: 'l4_figma',
+        title: '📐 Figma Community: OOMFS UI Kit',
+        url: 'https://figma.com/@amberlyn',
+        category: 'Work',
+        clicks: 3410
+      },
+      {
+        id: 'l5_github',
+        title: '🐙 GitHub: open-source design components',
+        url: 'https://github.com/amberlyn',
+        category: 'Dev',
+        clicks: 1120
+      },
+      {
+        id: 'l6_cal',
+        title: '📅 Book 15m Design Advisory / Chat',
+        url: 'https://cal.com/amberlyn',
+        category: 'Work',
+        clicks: 530
       }
     ]
   },
@@ -357,6 +387,30 @@ export const MOCK_POSTS: Post[] = [
     repostsCount: 18,
     repliesCount: 7,
     viewsCount: '2.1K',
+    isLiked: false
+  },
+  {
+    id: 'post_amber_ui',
+    author: MOCK_USERS.amberlyn,
+    createdAt: '2h',
+    type: 'standard',
+    text: 'Deep dive into token-based design systems for mobile-first web applications. Published our complete Figma library breakdown & layout tokens 🎨👇',
+    likesCount: 142,
+    repostsCount: 35,
+    repliesCount: 18,
+    viewsCount: '4.2K',
+    isLiked: false
+  },
+  {
+    id: 'post_amber_film',
+    author: MOCK_USERS.amberlyn,
+    createdAt: '4h',
+    type: 'standard',
+    text: '35mm film scans from Shibuya & Shinjuku crossing. Late night rainy reflections and grain 🎞️☕',
+    likesCount: 89,
+    repostsCount: 12,
+    repliesCount: 6,
+    viewsCount: '1.8K',
     isLiked: false
   },
   {
@@ -740,3 +794,202 @@ export const MOCK_LIKED_POSTS: Record<string, Post[]> = {
     { ...MOCK_POSTS[0], isLiked: true }  // Amber's carousel post
   ]
 };
+
+export const MOCK_COLLECTIONS: Collection[] = [
+  {
+    id: 'col_highlights',
+    title: 'Highlights',
+    icon: '⭐',
+    description: 'Flagship launches, top design threads, and studio archives',
+    itemIds: ['post_carousel_1', 'post_amber_ui', 'post_board_1'],
+    isPinned: true
+  },
+  {
+    id: 'col_design_systems',
+    title: 'Design Systems',
+    icon: '🎨',
+    description: 'Tokens, component architecture, and responsive layout math',
+    itemIds: ['post_amber_ui', 'post_board_1'],
+    isPinned: true
+  },
+  {
+    id: 'col_tokyo_roll',
+    title: '35mm Tokyo',
+    icon: '📸',
+    description: 'Street photography, camera scans, and neon night walks',
+    itemIds: ['post_amber_film', 'post_carousel_1'],
+    isPinned: true
+  },
+  {
+    id: 'col_architecture',
+    title: 'Brutalism',
+    icon: '🌿',
+    description: 'Concrete pavilions, geometric facade studies, and minimalism',
+    itemIds: ['post_board_1', 'post_carousel_1'],
+    isPinned: true
+  },
+  {
+    id: 'col_shaders',
+    title: 'WebGL & Shaders',
+    icon: '⚡',
+    description: 'Interactive canvas shaders and kinetic typography experiments',
+    itemIds: ['post_carousel_1', 'post_amber_ui'],
+    isPinned: false
+  },
+  {
+    id: 'col_essays',
+    title: 'Essays & Notes',
+    icon: '📝',
+    description: 'Longform thoughts on digital gardening and web culture',
+    itemIds: ['post_amber_ui', 'post_amber_film'],
+    isPinned: false
+  },
+  {
+    id: 'col_setups',
+    title: 'Studio Setups',
+    icon: '☕',
+    description: 'Minimal workspaces, cable management, and daily tools',
+    itemIds: ['post_carousel_1', 'post_board_1'],
+    isPinned: false
+  },
+  {
+    id: 'col_launches',
+    title: 'Product Drops',
+    icon: '🚀',
+    description: 'Sprint retrospectives, v1 release notes, and product roadmap',
+    itemIds: ['post_amber_ui', 'post_carousel_1', 'post_board_1'],
+    isPinned: false
+  },
+  {
+    id: 'col_playlists',
+    title: 'Late Night Focus',
+    icon: '🎧',
+    description: 'Ambient electronic, lo-fi beats, and coding mixes',
+    itemIds: ['post_amber_film', 'post_carousel_1'],
+    isPinned: false
+  },
+  {
+    id: 'col_tools',
+    title: 'Dev Stack',
+    icon: '🛠️',
+    description: 'Next.js 16, Tailwind v4, Supabase, and frontend tooling',
+    itemIds: ['post_amber_ui', 'post_board_1'],
+    isPinned: false
+  },
+  {
+    id: 'col_best_2025',
+    title: 'Best of 2025',
+    icon: '🎯',
+    description: 'Annual retrospective of favorite creations and milestones',
+    itemIds: ['post_board_1', 'post_amber_ui', 'post_carousel_1'],
+    isPinned: false
+  },
+  {
+    id: 'col_retro_web',
+    title: 'Retro Web',
+    icon: '👾',
+    description: '88x31 pixel buttons, webrings, and early internet lore',
+    itemIds: ['post_amber_film', 'post_amber_ui'],
+    isPinned: false
+  }
+];
+
+export const MOCK_LINK_COLLECTIONS: Collection[] = [
+  {
+    id: 'col_link_featured',
+    title: '⭐ Starred & Top Links',
+    icon: '⭐',
+    description: 'Top priority links, main portfolio, and primary community',
+    itemIds: ['l1', 'l4_figma', 'post_1'],
+    isPinned: true
+  },
+  {
+    id: 'col_link_work',
+    title: '💼 Work & Case Studies',
+    icon: '💼',
+    description: 'Client case studies, Figma design systems, and advisory',
+    itemIds: ['l1', 'post_1', 'l4_figma', 'l6_cal'],
+    isPinned: true
+  },
+  {
+    id: 'col_link_writing',
+    title: '📝 Writing & Essays',
+    icon: '📝',
+    description: 'Substack publications, deep dives, and design notes',
+    itemIds: ['l2', 'post_1'],
+    isPinned: true
+  },
+  {
+    id: 'col_link_music',
+    title: '🎧 Sound & Playlists',
+    icon: '🎧',
+    description: 'Spotify focus playlists, ambient sets, and synth mixes',
+    itemIds: ['l3'],
+    isPinned: true
+  },
+  {
+    id: 'col_link_dev',
+    title: '🛠️ Code & Open Source',
+    icon: '🛠️',
+    description: 'GitHub repos, UI components, and TypeScript templates',
+    itemIds: ['l5_github', 'l4_figma'],
+    isPinned: false
+  },
+  {
+    id: 'col_link_socials',
+    title: '🌐 Socials & Networks',
+    icon: '🌐',
+    description: 'Connect across X, Bluesky, Mastodon, and GitHub',
+    itemIds: ['l5_github', 'l2', 'l1'],
+    isPinned: false
+  },
+  {
+    id: 'col_link_side_quests',
+    title: '🚀 Side Quests & Drops',
+    icon: '🚀',
+    description: 'Experimental microsites, weekend hackathons, and fun tools',
+    itemIds: ['l4_figma', 'l3', 'l1'],
+    isPinned: false
+  },
+  {
+    id: 'col_link_advisory',
+    title: '☕ Office Hours & Chat',
+    icon: '☕',
+    description: '1-on-1 chats, portfolio critiques, and founder mentoring',
+    itemIds: ['l6_cal', 'l1'],
+    isPinned: false
+  },
+  {
+    id: 'col_link_inspiration',
+    title: '💡 Design Inspo & Assets',
+    icon: '💡',
+    description: 'Color palettes, font foundries, and tactile web experiments',
+    itemIds: ['l4_figma', 'l1', 'l2'],
+    isPinned: false
+  },
+  {
+    id: 'col_link_communities',
+    title: '💬 Communities & Discords',
+    icon: '💬',
+    description: 'Design engineering servers, creator circles, and webrings',
+    itemIds: ['l5_github', 'l2'],
+    isPinned: false
+  },
+  {
+    id: 'col_link_reading_list',
+    title: '📚 Reading List 2026',
+    icon: '📚',
+    description: 'Curated articles, book recommendations, and philosophy notes',
+    itemIds: ['l2', 'post_1'],
+    isPinned: false
+  },
+  {
+    id: 'col_link_archive',
+    title: '📦 Archive & Legacy',
+    icon: '📦',
+    description: 'Legacy 2023-2025 experiments, archived archives, and drafts',
+    itemIds: ['l3', 'l5_github', 'l6_cal'],
+    isPinned: false
+  }
+];
+

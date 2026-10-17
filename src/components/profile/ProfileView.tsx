@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { 
   ArrowLeft, 
@@ -9,7 +9,8 @@ import {
   Sparkles, 
   Plus, 
   X,
-  LogIn
+  LogIn,
+  ChevronDown
 } from 'lucide-react';
 import { 
   User, 
@@ -18,11 +19,16 @@ import {
   MOCK_LIKED_POSTS, 
   CURRENT_USER, 
   Post, 
-  Comment
+  Comment,
+  MOCK_COLLECTIONS,
+  MOCK_LINK_COLLECTIONS,
+  Collection
 } from '@/lib/mockData';
 import PostCard from '@/components/feed/PostCard';
 import CommentCard from '@/components/feed/CommentCard';
 import PostComposer from '@/components/feed/PostComposer';
+import CollectionLensBar from '@/components/collections/CollectionLensBar';
+import AllCollectionsModal from '@/components/collections/AllCollectionsModal';
 import { saveSessionPost } from '@/lib/postStore';
 import { useAuth } from '@/context/AuthContext';
 import { createClient } from '@/lib/supabase/client';
@@ -45,6 +51,32 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
   const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [isHoveringFollow, setIsHoveringFollow] = useState(false);
   const [userProfile, setUserProfile] = useState<User>(initialUser);
+
+  // Curated collections / presets state (shared placeholders across profiles)
+  const [collections] = useState<Collection[]>(MOCK_COLLECTIONS);
+  const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
+  const [allCollectionsModalOpen, setAllCollectionsModalOpen] = useState(false);
+  const [showPostCollections, setShowPostCollections] = useState(false);
+
+  // Curated link collections / presets state (shared placeholders across profiles)
+  const [linkCollections] = useState<Collection[]>(MOCK_LINK_COLLECTIONS);
+  const [activeLinkCollectionId, setActiveLinkCollectionId] = useState<string | null>(null);
+  const [allLinkCollectionsModalOpen, setAllLinkCollectionsModalOpen] = useState(false);
+  const [showLinkCollections, setShowLinkCollections] = useState(false);
+
+  const handleSelectPostCollection = (id: string | null) => {
+    setActiveCollectionId(id);
+    if (id !== null) {
+      setShowPostCollections(true);
+    }
+  };
+
+  const handleSelectLinkCollection = (id: string | null) => {
+    setActiveLinkCollectionId(id);
+    if (id !== null) {
+      setShowLinkCollections(true);
+    }
+  };
 
   // Check if viewing own profile
   const isSelf = Boolean(
@@ -468,14 +500,43 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
     }
   };
 
-  // Timeline posts (Standard, Carousel, Board) - excludes link cards and badges
-  const timelinePosts = posts.filter(p => p.type !== 'link_card' && p.type !== 'badge');
+  // Raw timeline posts (Standard, Carousel, Board) - excludes link cards and badges
+  const rawTimelinePosts = useMemo(
+    () => posts.filter((p) => p.type !== 'link_card' && p.type !== 'badge'),
+    [posts]
+  );
+
+  // Filter & custom-order timeline posts when a collection lens is selected
+  const timelinePosts = useMemo(() => {
+    if (!activeCollectionId) {
+      return rawTimelinePosts;
+    }
+    const col = collections.find((c) => c.id === activeCollectionId);
+    if (!col || !col.itemIds || col.itemIds.length === 0) {
+      return rawTimelinePosts;
+    }
+    const postMap = new Map(rawTimelinePosts.map((p) => [p.id, p]));
+    const matchedPosts: Post[] = [];
+    for (const id of col.itemIds) {
+      const found = postMap.get(id);
+      if (found) {
+        matchedPosts.push(found);
+      }
+    }
+    // If the active collection specifies item IDs that aren't on this specific user profile
+    // (e.g. visiting a non-amberlyn profile or a profile with custom user-generated posts),
+    // provide a deterministic slice of this profile's timeline posts so the preset order demo is always functional
+    if (matchedPosts.length === 0 && rawTimelinePosts.length > 0) {
+      return rawTimelinePosts.slice(0, Math.min(rawTimelinePosts.length, col.itemIds.length));
+    }
+    return matchedPosts;
+  }, [rawTimelinePosts, activeCollectionId, collections]);
 
   // Unified Badge Wall posts
   const badgePosts = posts.filter(p => p.type === 'badge' && p.badgeData);
 
-  // Combined links (user profile links + link_card posts)
-  const linkCards = [
+  // Raw combined links (user profile links + link_card posts)
+  const rawLinkCards = useMemo(() => [
     ...posts.filter(p => p.type === 'link_card' && p.linkData).map(p => ({
       id: p.id,
       title: p.linkData!.title,
@@ -490,7 +551,31 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
       description: l.category ? `Category: ${l.category}` : undefined,
       clicks: l.clicks
     }))
-  ];
+  ], [posts, userProfile.links]);
+
+  // Filter & custom-order link cards when a link collection lens is selected
+  const linkCards = useMemo(() => {
+    if (!activeLinkCollectionId) {
+      return rawLinkCards;
+    }
+    const col = linkCollections.find((c) => c.id === activeLinkCollectionId);
+    if (!col || !col.itemIds || col.itemIds.length === 0) {
+      return rawLinkCards;
+    }
+    const linkMap = new Map(rawLinkCards.map((l) => [l.id, l]));
+    const matchedLinks: typeof rawLinkCards = [];
+    for (const id of col.itemIds) {
+      const found = linkMap.get(id);
+      if (found) {
+        matchedLinks.push(found);
+      }
+    }
+    // Fallback slice so presets always demonstrate custom curated subsets
+    if (matchedLinks.length === 0 && rawLinkCards.length > 0) {
+      return rawLinkCards.slice(0, Math.min(rawLinkCards.length, col.itemIds.length));
+    }
+    return matchedLinks;
+  }, [rawLinkCards, activeLinkCollectionId, linkCollections]);
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
@@ -511,7 +596,7 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
               )}
             </h1>
             <span className="text-xs text-[#536471]">
-              {timelinePosts.length} Posts
+              {activeCollectionId ? `${timelinePosts.length} of ${rawTimelinePosts.length}` : rawTimelinePosts.length} Posts
             </span>
           </div>
         </div>
@@ -675,12 +760,30 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
       <div className="flex border-b border-[#eff3f4] mt-4 font-medium text-sm text-[#536471]">
         {/* 1. Posts */}
         <button
-          onClick={() => setActiveTab('posts')}
+          onClick={() => {
+            if (activeTab === 'posts') {
+              setShowPostCollections(prev => !prev);
+            } else {
+              setActiveTab('posts');
+            }
+          }}
           className={`flex-1 py-3.5 text-center relative hover:bg-[#f7f9f9] transition-colors font-bold cursor-pointer ${
             activeTab === 'posts' ? 'text-[#0f1419]' : ''
           }`}
         >
-          Posts
+          <div className="flex items-center justify-center gap-1.5">
+            <span>Posts</span>
+            {activeTab === 'posts' && (
+              <ChevronDown 
+                className={`w-3.5 h-3.5 text-[#536471] transition-transform duration-200 ${
+                  showPostCollections ? 'rotate-180 text-[#1d9bf0]' : ''
+                }`}
+              />
+            )}
+            {activeCollectionId && (
+              <span className="w-1.5 h-1.5 rounded-full bg-[#1d9bf0] shrink-0" title="Preset collection active" />
+            )}
+          </div>
           {activeTab === 'posts' && (
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-1 bg-[#1d9bf0] rounded-full" />
           )}
@@ -701,12 +804,30 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
 
         {/* 3. Links */}
         <button
-          onClick={() => setActiveTab('links')}
+          onClick={() => {
+            if (activeTab === 'links') {
+              setShowLinkCollections(prev => !prev);
+            } else {
+              setActiveTab('links');
+            }
+          }}
           className={`flex-1 py-3.5 text-center relative hover:bg-[#f7f9f9] transition-colors font-bold cursor-pointer ${
             activeTab === 'links' ? 'text-[#0f1419]' : ''
           }`}
         >
-          Links
+          <div className="flex items-center justify-center gap-1.5">
+            <span>Links</span>
+            {activeTab === 'links' && (
+              <ChevronDown 
+                className={`w-3.5 h-3.5 text-[#536471] transition-transform duration-200 ${
+                  showLinkCollections ? 'rotate-180 text-[#1d9bf0]' : ''
+                }`}
+              />
+            )}
+            {activeLinkCollectionId && (
+              <span className="w-1.5 h-1.5 rounded-full bg-[#1d9bf0] shrink-0" title="Preset collection active" />
+            )}
+          </div>
           {activeTab === 'links' && (
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-1 bg-[#1d9bf0] rounded-full" />
           )}
@@ -731,13 +852,64 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
         {/* 1. POSTS TAB */}
         {activeTab === 'posts' && (
           <div>
+            {/* Secondary Row: Curated Collection Lens Bar (Hidden by default, toggle by clicking Posts tab) */}
+            {showPostCollections && (
+              <CollectionLensBar
+                collections={collections}
+                activeCollectionId={activeCollectionId}
+                onSelectCollection={handleSelectPostCollection}
+                onOpenAllModal={() => setAllCollectionsModalOpen(true)}
+                totalCount={rawTimelinePosts.length}
+              />
+            )}
+
+            {/* Active Lens Indicator Banner if filtered */}
+            {activeCollectionId && (() => {
+              const activeCol = collections.find((c) => c.id === activeCollectionId);
+              return activeCol ? (
+                <div className="flex items-center justify-between px-4 py-2 bg-blue-50/60 border-b border-blue-100/80 text-xs text-[#0f1419]">
+                  <div className="flex items-center gap-1.5 truncate">
+                    <span className="text-sm">{activeCol.icon || '📁'}</span>
+                    <span className="font-semibold text-blue-950">Viewing collection:</span>
+                    <span className="font-bold text-[#1d9bf0] truncate">{activeCol.title}</span>
+                    <span className="text-gray-500 font-medium">({timelinePosts.length} posts in custom order)</span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 ml-2">
+                    {!showPostCollections && (
+                      <button
+                        type="button"
+                        onClick={() => setShowPostCollections(true)}
+                        className="text-xs font-semibold text-[#1d9bf0] hover:underline cursor-pointer"
+                      >
+                        Change preset
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleSelectPostCollection(null)}
+                      className="text-xs font-semibold text-[#536471] hover:text-[#0f1419] hover:underline cursor-pointer"
+                    >
+                      Clear filter
+                    </button>
+                  </div>
+                </div>
+              ) : null;
+            })()}
+
             {timelinePosts.length > 0 ? (
               timelinePosts.map((post) => (
                 <PostCard key={post.id} post={post} onDelete={handleDeletePost} />
               ))
             ) : (
               <div className="text-center py-12 text-[#536471] text-sm">
-                No posts yet. Click <b>&quot;Create Post&quot;</b> above to share your first post!
+                No posts in this collection yet.{' '}
+                <button
+                  type="button"
+                  onClick={() => setActiveCollectionId(null)}
+                  className="text-[#1d9bf0] hover:underline font-semibold cursor-pointer"
+                >
+                  View all posts
+                </button>
               </div>
             )}
           </div>
@@ -798,95 +970,148 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
 
         {/* 3. LINKS TAB */}
         {activeTab === 'links' && (
-          <div className="p-4 flex flex-col gap-4">
-            {/* 1. THE BADGE WALL (Minimized: direct badges without title/add header) */}
-            {badgePosts.length > 0 && (
-              <div className="border border-[#eff3f4] rounded-2xl bg-white p-3 sm:p-3.5 shadow-2xs">
-                <div className="flex flex-wrap gap-3 items-start justify-start">
-                  {badgePosts.map((post) => {
-                    const b = post.badgeData!;
-                    return (
-                      <div
-                        key={post.id}
-                        className="relative group/badge-item flex flex-col items-center w-[88px] gap-1 shrink-0"
+          <div>
+            {/* Secondary Row: Curated Link Collections Lens Bar (Hidden by default, toggle by clicking Links tab) */}
+            {showLinkCollections && (
+              <CollectionLensBar
+                collections={linkCollections}
+                activeCollectionId={activeLinkCollectionId}
+                onSelectCollection={handleSelectLinkCollection}
+                onOpenAllModal={() => setAllLinkCollectionsModalOpen(true)}
+                totalCount={rawLinkCards.length}
+              />
+            )}
+
+            {/* Active Lens Indicator Banner if filtered */}
+            {activeLinkCollectionId && (() => {
+              const activeCol = linkCollections.find((c) => c.id === activeLinkCollectionId);
+              return activeCol ? (
+                <div className="flex items-center justify-between px-4 py-2 bg-blue-50/60 border-b border-blue-100/80 text-xs text-[#0f1419]">
+                  <div className="flex items-center gap-1.5 truncate">
+                    <span className="text-sm">{activeCol.icon || '📁'}</span>
+                    <span className="font-semibold text-blue-950">Viewing collection:</span>
+                    <span className="font-bold text-[#1d9bf0] truncate">{activeCol.title}</span>
+                    <span className="text-gray-500 font-medium">({linkCards.length} links in custom order)</span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 ml-2">
+                    {!showLinkCollections && (
+                      <button
+                        type="button"
+                        onClick={() => setShowLinkCollections(true)}
+                        className="text-xs font-semibold text-[#1d9bf0] hover:underline cursor-pointer"
                       >
-                        <a
-                          href={b.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title={`${b.title} • ${b.url.replace(/^https?:\/\//, '')}`}
-                          className="block w-[88px] h-[31px] shrink-0 rounded-xs overflow-hidden border border-black/25 shadow-xs hover:shadow-md hover:scale-105 active:scale-95 transition-all select-none cursor-pointer"
-                          style={b.badgeType !== 'image' ? { background: b.bgColor || '#0f1419' } : undefined}
-                        >
-                          {b.badgeType === 'image' && b.imageUrl ? (
-                            <img
-                              src={b.imageUrl}
-                              alt={b.title}
-                              className="w-[88px] h-[31px] object-cover block"
-                            />
-                          ) : null}
-                        </a>
-
-                        {b.showText !== false && (b.label || b.title) && (
-                          <span className="text-[10px] font-semibold text-[#536471] group-hover/badge-item:text-[#0f1419] text-center truncate w-full leading-tight transition-colors">
-                            {b.label || b.title}
-                          </span>
-                        )}
-
-                        {/* Delete button for profile owner */}
-                        {isSelf && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeletePost(post.id);
-                            }}
-                            title="Delete badge from wall"
-                            className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-600 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover/badge-item:opacity-100 transition-opacity shadow-xs hover:bg-red-700 cursor-pointer z-10"
-                          >
-                            ×
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {linkCards.length > 0 ? (
-              linkCards.map((link) => (
-                <a
-                  key={link.id}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="p-4 border border-[#eff3f4] rounded-2xl bg-white hover:border-[#1d9bf0] hover:shadow-xs transition-all flex items-center justify-between group"
-                >
-                  <div className="flex flex-col gap-0.5 min-w-0 pr-4">
-                    <span className="font-bold text-[#0f1419] text-base group-hover:text-[#1d9bf0] transition-colors truncate">
-                      {link.title}
-                    </span>
-                    {link.description && (
-                      <p className="text-xs text-[#536471] line-clamp-1">
-                        {link.description}
-                      </p>
+                        Change preset
+                      </button>
                     )}
-                    <span className="text-xs text-[#1d9bf0] font-mono truncate">
-                      {link.url.replace(/^https?:\/\//, '')}
-                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectLinkCollection(null)}
+                      className="text-xs font-semibold text-[#536471] hover:text-[#0f1419] hover:underline cursor-pointer"
+                    >
+                      Clear filter
+                    </button>
                   </div>
-                  <div className="bg-[#1d9bf0] text-white text-xs font-bold px-4 py-2 rounded-full group-hover:bg-[#1a8cd8] transition-colors flex items-center gap-1 shrink-0">
-                    <span>Visit</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
+                </div>
+              ) : null;
+            })()}
+
+            <div className="p-4 flex flex-col gap-4">
+              {/* 1. THE BADGE WALL (only shown on 'All' or when not filtered) */}
+              {badgePosts.length > 0 && !activeLinkCollectionId && (
+                <div className="border border-[#eff3f4] rounded-2xl bg-white p-3 sm:p-3.5 shadow-2xs">
+                  <div className="flex flex-wrap gap-3 items-start justify-start">
+                    {badgePosts.map((post) => {
+                      const b = post.badgeData!;
+                      return (
+                        <div
+                          key={post.id}
+                          className="relative group/badge-item flex flex-col items-center w-[88px] gap-1 shrink-0"
+                        >
+                          <a
+                            href={b.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title={`${b.title} • ${b.url.replace(/^https?:\/\//, '')}`}
+                            className="block w-[88px] h-[31px] shrink-0 rounded-xs overflow-hidden border border-black/25 shadow-xs hover:shadow-md hover:scale-105 active:scale-95 transition-all select-none cursor-pointer"
+                            style={b.badgeType !== 'image' ? { background: b.bgColor || '#0f1419' } : undefined}
+                          >
+                            {b.badgeType === 'image' && b.imageUrl ? (
+                              <img
+                                src={b.imageUrl}
+                                alt={b.title}
+                                className="w-[88px] h-[31px] object-cover block"
+                              />
+                            ) : null}
+                          </a>
+
+                          {b.showText !== false && (b.label || b.title) && (
+                            <span className="text-[10px] font-semibold text-[#536471] group-hover/badge-item:text-[#0f1419] text-center truncate w-full leading-tight transition-colors">
+                              {b.label || b.title}
+                            </span>
+                          )}
+
+                          {/* Delete button for profile owner */}
+                          {isSelf && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeletePost(post.id);
+                              }}
+                              title="Delete badge from wall"
+                              className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-600 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover/badge-item:opacity-100 transition-opacity shadow-xs hover:bg-red-700 cursor-pointer z-10"
+                            >
+                              ×
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                </a>
-              ))
-            ) : (
-              <div className="text-center py-6 text-[#536471] text-sm">
-                No bio links listed yet.
-              </div>
-            )}
+                </div>
+              )}
+
+              {linkCards.length > 0 ? (
+                linkCards.map((link) => (
+                  <a
+                    key={link.id}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-4 border border-[#eff3f4] rounded-2xl bg-white hover:border-[#1d9bf0] hover:shadow-xs transition-all flex items-center justify-between group"
+                  >
+                    <div className="flex flex-col gap-0.5 min-w-0 pr-4">
+                      <span className="font-bold text-[#0f1419] text-base group-hover:text-[#1d9bf0] transition-colors truncate">
+                        {link.title}
+                      </span>
+                      {link.description && (
+                        <p className="text-xs text-[#536471] line-clamp-1">
+                          {link.description}
+                        </p>
+                      )}
+                      <span className="text-xs text-[#1d9bf0] font-mono truncate">
+                        {link.url.replace(/^https?:\/\//, '')}
+                      </span>
+                    </div>
+                    <div className="bg-[#1d9bf0] text-white text-xs font-bold px-4 py-2 rounded-full group-hover:bg-[#1a8cd8] transition-colors flex items-center gap-1 shrink-0">
+                      <span>Visit</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </div>
+                  </a>
+                ))
+              ) : (
+                <div className="text-center py-10 text-[#536471] text-sm">
+                  No links in this collection yet.{' '}
+                  <button
+                    type="button"
+                    onClick={() => setActiveLinkCollectionId(null)}
+                    className="text-[#1d9bf0] hover:underline font-semibold cursor-pointer"
+                  >
+                    View all links
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -985,6 +1210,28 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
           </div>
         </div>
       )}
+
+      {/* All Collections Searchable Modal (Posts) */}
+      <AllCollectionsModal
+        isOpen={allCollectionsModalOpen}
+        onClose={() => setAllCollectionsModalOpen(false)}
+        collections={collections}
+        activeCollectionId={activeCollectionId}
+        onSelectCollection={handleSelectPostCollection}
+        totalCount={rawTimelinePosts.length}
+        itemTypeLabel="posts"
+      />
+
+      {/* All Collections Searchable Modal (Links) */}
+      <AllCollectionsModal
+        isOpen={allLinkCollectionsModalOpen}
+        onClose={() => setAllLinkCollectionsModalOpen(false)}
+        collections={linkCollections}
+        activeCollectionId={activeLinkCollectionId}
+        onSelectCollection={handleSelectLinkCollection}
+        totalCount={rawLinkCards.length}
+        itemTypeLabel="links"
+      />
     </div>
   );
 }
