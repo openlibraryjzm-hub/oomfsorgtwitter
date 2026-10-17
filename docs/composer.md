@@ -70,7 +70,13 @@ async function compressImageFile(
 2. **Aspect Ratio Preservation**: Calculates proportional width and height, scaling the largest dimension to $1080\text{px}$ while never forcing square crops.
 3. **Canvas Rasterization**: Renders the image onto an HTML5 `<canvas>`.
 4. **JPEG Encoding**: Exports a base64 Data URL at `0.82` compression quality, drastically reducing payload size while retaining crisp mobile and desktop HD clarity.
-5. **Direct Payload Storage**: The compressed data URL is stored directly inside `public.blocks.content` JSONB in Supabase.
+### 88×31 Web Badge Compression Pipeline (`compressBadgeImage`)
+For image badges (`badgeType: 'image'`), `compressBadgeImage(file)` performs client-side center-cropping and downscaling:
+1. **Source Detection**: If an authentic $88 \times 31$ retro button is uploaded, its raw pixels are preserved 1:1 without rescaling blur.
+2. **$3\times$ HiDPI Master ($264 \times 93\text{px}$)**: For standard photos, logos, and art, graphics are rendered onto a $3\times$ canvas ($264 \times 93\text{px}$) with `imageSmoothingQuality = 'high'` so badges look razor-sharp on modern Retina, mobile, and 4K screens.
+3. **PNG Encoding**: Exports as a clean PNG data URL (~$8\text{–}14\text{ KB}$ payload) stored inside `public.blocks.content`, eliminating JPEG compression block artifacts.
+
+*For detailed visual specifications and gallery layout rules, see [Web Badges Documentation](badges.md).*
 
 ---
 
@@ -83,11 +89,11 @@ When the user taps **"Post"**:
        │
        ▼
 1. Validation Check (`canSubmit()`)
-   - standard: text.trim().length > 0
-   - carousel: mediaItems.length >= 1
-   - board:    mediaItems.length >= 3
+   - standard:  text.trim().length > 0
+   - carousel:  mediaItems.length >= 1
+   - board:     mediaItems.length >= 3
    - link_card: linkTitle && linkUrl
-   - badge:    badgeUrl && (badgeLabel || badgeTitle)
+   - badge:     badgeUrl && (badgeMode === 'image' ? badgeImageUrl && (!badgeShowText || badgeText) : (!badgeShowText || badgeText))
        │
        ▼
 2. Supabase Persistence (`public.blocks`)
@@ -113,4 +119,3 @@ When the user taps **"Post"**:
 To accelerate testing, the composer includes built-in preset loaders:
 * **"Load 5 Sample Slides"**: Immediately populates a 5-slide photo carousel with Unsplash test images and captions.
 * **"Load 5 Sample Board Images"**: Immediately populates a 5-image curated architecture/design board.
-* **Badge Presets**: One-click quick presets for popular buttons (Neocities, GitHub, Spotify).

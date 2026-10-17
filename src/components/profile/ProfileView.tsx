@@ -27,6 +27,7 @@ import { saveSessionPost } from '@/lib/postStore';
 import { useAuth } from '@/context/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { formatTwitterAvatar } from '@/lib/utils';
+import { getProfileFollowStats, toggleFollow, isValidUuid } from '@/lib/follows';
 
 interface ProfileViewProps {
   user: User;
@@ -39,12 +40,17 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
   // 4 tabs requested left-to-right: 1. Posts (default), 2. Comments, 3. Links, 4. Likes
   const [activeTab, setActiveTab] = useState<'posts' | 'comments' | 'links' | 'likes'>('posts');
   const [isFollowing, setIsFollowing] = useState(false);
+  const [isMutual, setIsMutual] = useState(false);
+  const [followsYou, setFollowsYou] = useState(false);
+  const [isFollowLoading, setIsFollowLoading] = useState(false);
+  const [isHoveringFollow, setIsHoveringFollow] = useState(false);
   const [userProfile, setUserProfile] = useState<User>(initialUser);
 
   // Check if viewing own profile
   const isSelf = Boolean(
     (authProfile && authProfile.username.toLowerCase() === initialUser.username.toLowerCase()) || 
-    (authUser && authProfile?.username === initialUser.username)
+    (authUser && authProfile?.username === initialUser.username) ||
+    (authUser && userProfile.id && authUser.id === userProfile.id)
   );
 
   // Posts state
@@ -126,6 +132,11 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
         let targetUserId = dbUser?.id || null;
 
         if (dbUser) {
+          const followStats = await getProfileFollowStats(dbUser.id, authUser?.id);
+          setIsFollowing(followStats.isFollowing);
+          setIsMutual(followStats.isMutual);
+          setFollowsYou(followStats.followsYou);
+
           setUserProfile(prev => ({
             ...prev,
             id: dbUser.id,
@@ -135,6 +146,9 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
             bio: dbUser.bio !== null && dbUser.bio !== undefined ? dbUser.bio : prev.bio,
             location: dbUser.location ?? prev.location,
             website: dbUser.website ?? prev.website,
+            followersCount: followStats.followersCount,
+            followingCount: followStats.followingCount,
+            oomfsCount: followStats.oomfsCount,
           }));
           setEditName(dbUser.name ?? initialUser.name);
           setEditBio(dbUser.bio !== null && dbUser.bio !== undefined ? dbUser.bio : initialUser.bio);
@@ -240,6 +254,93 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
 
     loadSupabaseProfileAndBlocks();
   }, [initialUser.username, authUser?.id]);
+
+  // Keep follow status and counts in sync with Supabase
+  useEffect(() => {
+    const profileId = userProfile.id;
+    if (isValidUuid(profileId)) {
+      getProfileFollowStats(profileId, authUser?.id).then((stats) => {
+        setIsFollowing(stats.isFollowing);
+        setIsMutual(stats.isMutual);
+        setFollowsYou(stats.followsYou);
+        setUserProfile((prev) => ({
+          ...prev,
+          followersCount: stats.followersCount,
+          followingCount: stats.followingCount,
+          oomfsCount: stats.oomfsCount,
+        }));
+      });
+    }
+  }, [userProfile.id, authUser?.id]);
+
+  // Toggle follow/unfollow with optimistic UI updates
+  const handleToggleFollow = async () => {
+    if (!authUser) {
+      signInWithTwitter();
+      return;
+    }
+    if (isSelf || isFollowLoading) return;
+
+    const targetUserId = userProfile.id;
+    const currentFollowing = isFollowing;
+    const wasMutual = isMutual;
+
+    setIsFollowLoading(true);
+
+    // Optimistic UI updates
+    setIsFollowing(!currentFollowing);
+    if (currentFollowing) {
+      // Unfollowing
+      setIsMutual(false);
+      setUserProfile((prev) => ({
+        ...prev,
+        followersCount: Math.max(0, prev.followersCount - 1),
+        oomfsCount: wasMutual ? Math.max(0, prev.oomfsCount - 1) : prev.oomfsCount,
+      }));
+    } else {
+      // Following
+      setUserProfile((prev) => ({
+        ...prev,
+        followersCount: prev.followersCount + 1,
+      }));
+    }
+
+    try {
+      if (isValidUuid(targetUserId)) {
+        const res = await toggleFollow(targetUserId, authUser.id, currentFollowing);
+        if (!res.success) {
+          console.error('Failed to toggle follow in Supabase:', res.error);
+          // Rollback
+          setIsFollowing(currentFollowing);
+          setIsMutual(wasMutual);
+          setUserProfile((prev) => ({
+            ...prev,
+            followersCount: currentFollowing ? prev.followersCount + 1 : Math.max(0, prev.followersCount - 1),
+            oomfsCount: wasMutual ? prev.oomfsCount + 1 : prev.oomfsCount,
+          }));
+        } else {
+          // Re-fetch exact counts and mutual status
+          const freshStats = await getProfileFollowStats(targetUserId, authUser.id);
+          setIsFollowing(freshStats.isFollowing);
+          setIsMutual(freshStats.isMutual);
+          setFollowsYou(freshStats.followsYou);
+          setUserProfile((prev) => ({
+            ...prev,
+            followersCount: freshStats.followersCount,
+            followingCount: freshStats.followingCount,
+            oomfsCount: freshStats.oomfsCount,
+          }));
+        }
+      }
+    } catch (err) {
+      console.error('Error in handleToggleFollow:', err);
+      // Rollback
+      setIsFollowing(currentFollowing);
+      setIsMutual(wasMutual);
+    } finally {
+      setIsFollowLoading(false);
+    }
+  };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -468,14 +569,19 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
             </button>
           ) : (
             <button
-              onClick={() => setIsFollowing(!isFollowing)}
-              className={`font-bold text-sm px-5 py-2 rounded-full transition-colors cursor-pointer ${
+              onClick={handleToggleFollow}
+              onMouseEnter={() => setIsHoveringFollow(true)}
+              onMouseLeave={() => setIsHoveringFollow(false)}
+              disabled={isFollowLoading}
+              className={`font-bold text-sm min-w-[105px] py-2 px-5 rounded-full transition-all cursor-pointer ${
                 isFollowing
-                  ? 'border border-[#eff3f4] text-[#0f1419] hover:border-red-200 hover:bg-red-50 hover:text-red-600'
+                  ? isHoveringFollow
+                    ? 'border border-red-200 bg-red-50 text-red-600'
+                    : 'border border-[#cfd9de] text-[#0f1419] bg-white hover:border-red-200 hover:bg-red-50 hover:text-red-600'
                   : 'bg-[#0f1419] hover:bg-[#272c30] text-white'
-              }`}
+              } ${isFollowLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
             >
-              {isFollowing ? 'Following' : 'Follow'}
+              {isFollowing ? (isHoveringFollow ? 'Unfollow' : 'Following') : 'Follow'}
             </button>
           )}
         </div>
@@ -490,9 +596,22 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
               <CheckCircle2 className="w-5 h-5 text-[#1d9bf0] fill-[#1d9bf0] text-white" />
             )}
           </h2>
-          <span className="text-sm text-[#536471]">
-            @{userProfile.username}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-[#536471]">
+              @{userProfile.username}
+            </span>
+            {!isSelf && (
+              isMutual ? (
+                <span className="bg-[#1d9bf0]/10 text-[#1d9bf0] text-[11px] font-bold px-1.5 py-0.5 rounded shrink-0">
+                  OOMFS
+                </span>
+              ) : followsYou ? (
+                <span className="bg-[#eff3f4] text-[#536471] text-[11px] font-medium px-1.5 py-0.5 rounded shrink-0">
+                  Follows you
+                </span>
+              ) : null
+            )}
+          </div>
         </div>
 
         {/* Bio Text */}
@@ -505,20 +624,26 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
         {/* Stats Row */}
         <div className="flex items-center gap-4 text-xs pt-1">
           <Link 
-            href="/oomfs"
+            href={`/${userProfile.username}/oomfs`}
             className="flex items-center gap-1 hover:underline cursor-pointer"
           >
             <span className="font-extrabold text-[#1d9bf0]">{userProfile.oomfsCount}</span>
             <span className="font-medium text-[#1d9bf0]">oomfs</span>
           </Link>
-          <div className="flex items-center gap-1">
+          <Link 
+            href={`/${userProfile.username}/following`}
+            className="flex items-center gap-1 hover:underline cursor-pointer"
+          >
             <span className="font-bold text-[#0f1419]">{userProfile.followingCount}</span>
             <span className="text-[#536471]">Following</span>
-          </div>
-          <div className="flex items-center gap-1">
+          </Link>
+          <Link 
+            href={`/${userProfile.username}/followers`}
+            className="flex items-center gap-1 hover:underline cursor-pointer"
+          >
             <span className="font-bold text-[#0f1419]">{userProfile.followersCount.toLocaleString()}</span>
             <span className="text-[#536471]">Followers</span>
-          </div>
+          </Link>
         </div>
       </div>
 
@@ -677,13 +802,13 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
             {/* 1. THE BADGE WALL (Minimized: direct badges without title/add header) */}
             {badgePosts.length > 0 && (
               <div className="border border-[#eff3f4] rounded-2xl bg-white p-3 sm:p-3.5 shadow-2xs">
-                <div className="flex flex-wrap gap-2 items-center justify-start">
+                <div className="flex flex-wrap gap-3 items-start justify-start">
                   {badgePosts.map((post) => {
                     const b = post.badgeData!;
                     return (
                       <div
                         key={post.id}
-                        className="relative group/badge-item shrink-0"
+                        className="relative group/badge-item flex flex-col items-center w-[88px] gap-1 shrink-0"
                       >
                         <a
                           href={b.url}
@@ -691,31 +816,22 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
                           rel="noopener noreferrer"
                           title={`${b.title} • ${b.url.replace(/^https?:\/\//, '')}`}
                           className="block w-[88px] h-[31px] shrink-0 rounded-xs overflow-hidden border border-black/25 shadow-xs hover:shadow-md hover:scale-105 active:scale-95 transition-all select-none cursor-pointer"
+                          style={b.badgeType !== 'image' ? { background: b.bgColor || '#0f1419' } : undefined}
                         >
                           {b.badgeType === 'image' && b.imageUrl ? (
                             <img
                               src={b.imageUrl}
                               alt={b.title}
                               className="w-[88px] h-[31px] object-cover block"
-                              style={{ imageRendering: 'pixelated' }}
                             />
-                          ) : (
-                            <div
-                              className="w-[88px] h-[31px] flex items-center overflow-hidden font-mono text-[9px] font-extrabold"
-                              style={{ backgroundColor: b.bgColor || '#0f1419', color: b.textColor || '#ffffff' }}
-                            >
-                              {b.sublabel && (
-                                <span className="bg-black/35 h-full px-1.5 flex items-center justify-center border-r border-white/20 uppercase tracking-tight shrink-0">
-                                  {b.sublabel}
-                                </span>
-                              )}
-                              <span className="flex-1 px-1 text-center truncate tracking-tight uppercase flex items-center justify-center gap-0.5">
-                                {b.icon && <span className="text-[10px]">{b.icon}</span>}
-                                <span className="truncate">{b.label || b.title}</span>
-                              </span>
-                            </div>
-                          )}
+                          ) : null}
                         </a>
+
+                        {b.showText !== false && (b.label || b.title) && (
+                          <span className="text-[10px] font-semibold text-[#536471] group-hover/badge-item:text-[#0f1419] text-center truncate w-full leading-tight transition-colors">
+                            {b.label || b.title}
+                          </span>
+                        )}
 
                         {/* Delete button for profile owner */}
                         {isSelf && (

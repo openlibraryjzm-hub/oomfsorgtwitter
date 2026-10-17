@@ -1,8 +1,7 @@
 import React, { Suspense } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import ProfileView from '@/components/profile/ProfileView';
-import { MOCK_USERS, User } from '@/lib/mockData';
-import { createClient } from '@/lib/supabase/client';
+import { resolveUserProfile } from '@/lib/resolveUser';
 
 interface UserProfilePageProps {
   params: Promise<{ username: string }>;
@@ -22,52 +21,7 @@ async function ProfileContent({ params }: { params: Promise<{ username: string }
   const rawUsername = resolvedParams?.username;
   const username = rawUsername ? rawUsername.toLowerCase() : 'amberlyn';
 
-  const supabase = createClient();
-  const { data: dbUser } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('username', username)
-    .single();
-
-  let user: User;
-
-  if (dbUser) {
-    user = {
-      id: dbUser.id,
-      username: dbUser.username,
-      name: dbUser.name || dbUser.username,
-      avatar: dbUser.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
-      banner: dbUser.banner_url || '',
-      bio: dbUser.bio ?? '', // Real bio from Supabase!
-      location: dbUser.location || '',
-      website: dbUser.website || `oomfs.org/${dbUser.username}`,
-      joined: dbUser.created_at 
-        ? new Date(dbUser.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-        : 'October 2026',
-      followingCount: 0,
-      followersCount: 0,
-      oomfsCount: 0,
-      isVerified: false,
-      links: []
-    };
-  } else if (MOCK_USERS[username]) {
-    user = MOCK_USERS[username];
-  } else {
-    user = {
-      id: `usr_${username}`,
-      username: username,
-      name: username.charAt(0).toUpperCase() + username.slice(1),
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
-      banner: '',
-      bio: '',
-      joined: 'October 2026',
-      followingCount: 0,
-      followersCount: 0,
-      oomfsCount: 0,
-      isVerified: false,
-      links: []
-    };
-  }
+  const user = await resolveUserProfile(username);
 
   return <ProfileView user={user} />;
 }

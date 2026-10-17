@@ -10,10 +10,16 @@ Profiles are routed under dynamic paths using Next.js App Router:
 
 ```
 src/app/[username]/
-├── page.tsx                     # Server component: fetches Supabase profile or resolves mock fallback
+├── page.tsx                     # Server component: resolves profile and stats
+├── oomfs/page.tsx               # Interconnected OOMFs (mutuals) route
+├── following/page.tsx           # Interconnected Following route
+├── followers/page.tsx           # Interconnected Followers route
 └── status/[id]/
     ├── page.tsx                 # Server component: resolves focal post from Supabase or mock data
     └── ThreadClientView.tsx     # Client component: renders focal post + thread replies + reply composer
+
+src/components/network/
+└── UserNetworkView.tsx          # 1:1 X/Twitter interconnected tabs (OOMFs, Following, Followers) + live follow actions
 
 src/components/profile/
 └── ProfileView.tsx              # Primary profile component (Header, stats, tabs, composer drawer, modals)
@@ -48,10 +54,10 @@ The profile header sits at the top of `ProfileView.tsx` and adheres strictly to 
    - Display name + Verified badge.
    - Handle (`@username`).
    - Bio: Multi-line text preserving whitespace. **Crucial Rule**: Always use nullish coalescing (`dbUser.bio !== null && dbUser.bio !== undefined ? dbUser.bio : fallback`) to prevent empty strings or brief bios from falling back to default text.
-   - **Streamlined Stats Row**: Ordered left-to-right:
-     1. **`0 oomfs`** (leftmost): Lowercase label styled in light Twitter blue (`#1d9bf0`) with the number slightly bolder (`font-extrabold` vs `font-medium`), linking directly to `/oomfs`.
-     2. **`Following`** count: Authentic black bold number + muted secondary label.
-     3. **`Followers`** count: Authentic black bold number + muted secondary label.
+   - **Streamlined Stats Row**: Ordered left-to-right (each linking directly to its interconnected tab):
+     1. **`0 oomfs`** (leftmost): Styled in light Twitter blue (`#1d9bf0`) with the number slightly bolder, linking to `/[username]/oomfs`.
+     2. **`Following`** count: Authentic black bold number + muted secondary label, linking to `/[username]/following`.
+     3. **`Followers`** count: Authentic black bold number + muted secondary label, linking to `/[username]/followers`.
 
 ---
 
@@ -79,7 +85,11 @@ Tabs are ordered left-to-right to optimize content discovery and render with cle
 ### 3. Links (Third from Left)
 - **Role**: Curated bio link showcase and retro web button hub.
 - **Composition**:
-  - **The Badge Wall (Top Section)**: Displays early-web 88×31 button badges packed tightly together within the center column without chrome or top headers.
+  - **The Badge Wall (Top Section)**: Aggregates all early-web 88×31 button badges into a single unified gallery sitting directly above larger link cards.
+    - **88px Column Grid**: Rendered as `flex flex-wrap gap-3 items-start justify-start`. Each badge is formatted as an 88px wide column (`w-[88px] flex flex-col items-center gap-1`).
+    - **Universal Underneath Labels**: The 88×31 button sits on top (pure visual artwork or color gradient), and the label is rendered underneath in clean, high-contrast typography (`text-[10px] font-semibold text-[#536471] group-hover/badge-item:text-[#0f1419] truncate w-full text-center`).
+    - **Owner Controls**: Hovering reveals an inline `×` delete action in the top-right corner of the badge for profile owners, updating local and remote state instantly.
+    - *Full technical specifications, canvas compression, and styling rules are detailed in [Web Badges Context Doc](badges.md).*
   - **Featured Link Cards (Bottom Section)**: Showcases high-contrast Linktree-style cards with title, description, domain badge, and a high-visibility `"Visit ↗"` button (from `user.links` and `link_card` blocks) directly without promotional banners.
 
 ### 4. Likes (Fourth / Rightmost)

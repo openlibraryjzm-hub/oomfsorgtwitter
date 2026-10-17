@@ -126,9 +126,15 @@ export interface Post {
 - **Key Features**:
   - **Exclusively on the Links Tab**: Filtered out of the primary timeline; aggregates into a single unified **Badge Wall** situated directly above larger link cards.
   - **Zero Card Clutter**: Badges are freed from standard Twitter card wrappers (no repeated avatar, handle, or timestamp per item) and pack together super tightly.
-  - **Center Column Constrained**: Stays bounded within the 600px center feed column (`w-[88px] h-[31px]` buttons with responsive flex wrap) without spilling over into sidebars or margins.
-  - **Customizable**: Supports both classic 88×31 Image/GIF buttons and custom split-pill text badges with custom background colors, tags, and icons.
-  - **Interactive**: Hover tooltip with outbound domain and visit link; profile owners can delete badges directly on hover.
+  - **Dual Mode Creation (Color vs. Image)**:
+    - **Color Badges (`badgeType: 'custom'`)**: Visual $88 \times 31$ buttons featuring custom color presets, a rainbow spectrum picker, and dynamic gradient effects (`Angle`, `Solid`, `Sheen`, `Glow`).
+    - **Image Badges (`badgeType: 'image'`)**: Client-side canvas center-crops and compresses any uploaded graphic down to exact $88 \times 31$ dimensions.
+  - **Universal Underneath Label**:
+    - Rather than obscuring small $88 \times 31$ buttons with text overlays or complex frosted scrims, titles and destination labels are placed directly **underneath** the badge.
+    - Each badge forms an $88\text{px}$ wide gallery tile (`w-[88px] flex flex-col items-center gap-1`), authentic to early-webring galleries.
+    - Labels can be toggled off (`showText: false`) for buttons with pre-baked pixel graphics.
+  - **Interactive**: Outbound link click; profile owners can delete badges directly on hover.
+  - *For complete canvas compression, HiDPI Retina pipelines, and Badge Wall gallery architecture, see [Web Badges Documentation](badges.md).*
 
 ---
 

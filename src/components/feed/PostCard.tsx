@@ -331,7 +331,7 @@ export default function PostCard({ post, onDelete, isThreadView = false }: PostC
     const b = post.badgeData;
 
     return (
-      <div className="mt-2.5 inline-flex flex-col gap-1.5" onClick={(e) => e.stopPropagation()}>
+      <div className="mt-2.5 inline-flex flex-col items-start gap-1.5" onClick={(e) => e.stopPropagation()}>
         <a
           href={b.url}
           target="_blank"
@@ -340,42 +340,37 @@ export default function PostCard({ post, onDelete, isThreadView = false }: PostC
           className="group/badge inline-block shrink-0 transition-transform hover:scale-105"
         >
           {b.badgeType === 'image' && b.imageUrl ? (
-            <img
-              src={b.imageUrl}
-              alt={b.title}
-              className="w-[88px] h-[31px] object-cover rounded-xs border border-black/20 shadow-xs block"
-              style={{ imageRendering: 'pixelated' }}
-            />
+            <div className="w-[88px] h-[31px] rounded-xs overflow-hidden border border-black/20 shadow-xs block">
+              <img
+                src={b.imageUrl}
+                alt={b.title}
+                className="w-[88px] h-[31px] object-cover block"
+              />
+            </div>
           ) : (
             <div
-              className="w-[88px] h-[31px] rounded-xs flex items-center overflow-hidden border border-black/30 shadow-xs font-mono text-[9px] font-extrabold select-none"
-              style={{ backgroundColor: b.bgColor || '#0f1419', color: b.textColor || '#ffffff' }}
-            >
-              {b.sublabel && (
-                <span className="bg-black/30 h-full px-1.5 flex items-center justify-center tracking-tight border-r border-white/20 uppercase">
-                  {b.sublabel}
-                </span>
-              )}
-              <span className="flex-1 px-1 text-center truncate tracking-tight uppercase flex items-center justify-center gap-1">
-                {b.icon && <span>{b.icon}</span>}
-                <span>{b.label || b.title}</span>
-              </span>
-            </div>
+              className="w-[88px] h-[31px] rounded-xs overflow-hidden border border-black/30 shadow-xs"
+              style={{
+                background: b.bgColor || '#0f1419'
+              }}
+            />
           )}
         </a>
-        <div className="flex items-center gap-1 text-[11px] text-[#536471]">
-          <span className="font-semibold text-[#0f1419]">{b.title}</span>
-          <span>·</span>
-          <a
-            href={b.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[#1d9bf0] hover:underline flex items-center gap-0.5"
-          >
-            <span>{b.url.replace(/^https?:\/\//, '')}</span>
-            <ExternalLink className="w-3 h-3" />
-          </a>
-        </div>
+        {b.showText !== false && (b.label || b.title) && (
+          <div className="flex items-center gap-1.5 text-xs text-[#536471]">
+            <span className="font-semibold text-[#0f1419]">{b.label || b.title}</span>
+            <span>·</span>
+            <a
+              href={b.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#1d9bf0] hover:underline flex items-center gap-0.5 font-mono text-[11px]"
+            >
+              <span>{b.url.replace(/^https?:\/\//, '')}</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
+        )}
       </div>
     );
   };

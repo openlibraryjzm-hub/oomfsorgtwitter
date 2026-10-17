@@ -22,9 +22,10 @@
    * 🎞️ **Carousel (`carousel`)**: Uncapped horizontal photo strip (`>4` slides) with a universal small header bar, natural portrait/landscape aspect ratio preservation (no forced square crops), desktop chevrons, and individual bottom overlay captions.
    * 📌 **Board (`board`)**: Pinterest-style visual curation boards (`3+` images). Renders as a 3-image preview on the profile timeline (`50%` left half, two `25%` stacked right images with a `+N` badge) and expands into a full **2-column Pinterest masonry grid** in the dedicated thread view (`/[username]/status/[id]`).
    * 🔗 **Bio Link Card (`link_card`)**: High-visibility link showcase button with title, domain badge, description, and direct visit action. Showcased on the profile **Links** tab.
+   * 🏷️ **Web Badge (`badge`)**: Early-web 88×31 retro button badges. Features a dual-mode creation engine (Color gradient presets or 3x HiDPI PNG image uploads) with universal underneath micro-labels. Aggregates into the **Badge Wall** at the top of the **Links** tab.
    * 💬 **Flat Comments (`comment`)**: Direct profile guestbook comments (non-threaded, no replies or quotes).
 
-   *Detailed post format specifications and extension guides are available in [Post Types Context Doc](docs/post-types.md).*
+   *Detailed post format specifications and extension guides are available in [Post Types Context Doc](docs/post-types.md) and [Web Badges Context Doc](docs/badges.md).*
 
 4. **The 4 Distinct Profile Tabs:**  
    User profiles organize content across 4 clean tabs ordered left-to-right:
@@ -66,14 +67,21 @@
 
 ```
 ├── docs/
+│   ├── backend.md                      # Supabase schema, RLS policies, RPC follow graph, & OAuth
+│   ├── badges.md                       # 88×31 Web Badge system, 3x HiDPI canvas, & Badge Wall gallery
 │   ├── composer.md                     # Post composer architecture, flush builders, & media compression
+│   ├── followerlist.md                 # Network directory architecture (OOMFs, Following, Followers) & 4 view modes
 │   ├── post-types.md                   # Specification for active post formats & creation guide
 │   └── profile-page.md                 # Profile page architecture, 4 tabs, and thread routing
+├── supabase_follows_rpc.sql            # Supabase RPC migration for bidirectional mutual follower queries
 ├── .env.local                          # Supabase project URL and API keys
 ├── src/
 │   ├── app/
 │   │   ├── [username]/
 │   │   │   ├── page.tsx                # Dynamic profile route (SSR with Supabase fetch + mock fallback)
+│   │   │   ├── followers/page.tsx      # In-app Followers list with mutual badges
+│   │   │   ├── following/page.tsx      # In-app Following list with mutual badges
+│   │   │   ├── oomfs/page.tsx          # Dedicated mutuals directory (A ↔ B)
 │   │   │   └── status/[id]/
 │   │   │       ├── page.tsx            # Thread route SSR resolver (Supabase blocks + mock fallback)
 │   │   │       └── ThreadClientView.tsx# Client thread view (2-col Board expansion, replies feed)
@@ -93,15 +101,19 @@
 │   │   │   ├── RightSidebar.tsx        # 1:1 Right spacer column (350px) for layout geometry + footer links
 │   │   │   └── MainLayout.tsx          # 1:1 X.com layout shell (max-w-[1265px]) + compose modal
 │   │   ├── profile/
-│   │   │   └── ProfileView.tsx         # Core profile view, 4 tabs, Edit Profile modal, composer
+│   │   │   └── ProfileView.tsx         # Core profile view, 4 tabs, Edit Profile modal, composer, Badge Wall
+│   │   ├── network/
+│   │   │   ├── FollowButton.tsx        # Dynamic optimistic Follow/Unfollow action pill
+│   │   │   └── UserFollowItem.tsx      # 1:1 native follower list row component
 │   │   └── feed/
-│   │       ├── PostCard.tsx            # 1:1 timeline post rendering (Standard, Carousel, Board)
+│   │       ├── PostCard.tsx            # 1:1 timeline post rendering (Standard, Carousel, Board, Badge)
 │   │       ├── CommentCard.tsx         # Flat guestbook comment card (non-threaded)
 │   │       └── PostComposer.tsx        # Unified post composer with flush builders & bottom icon toggles
 │   │
 │   ├── context/
 │   │   └── AuthContext.tsx             # Supabase auth session, profile state, signInWithTwitter, signOut
 │   ├── lib/
+│   │   ├── follows.ts                  # Client follow toggle & network directory resolver
 │   │   ├── mockData.ts                 # Offline mock accounts & sample content for prototyping
 │   │   ├── postStore.ts                # Client runtime store for newly created session posts
 │   │   ├── utils.ts                    # formatTwitterAvatar() (400x400 HD upscaler)
@@ -203,7 +215,7 @@ npm run build
 * [x] Custom Post Formats: Uncapped Photo Carousel & Pinterest-style Board
 * [x] Board Timeline 3-image preview + Thread 2-column masonry grid expansion
 * [x] Unified Post Composer with local file upload compression & sample presets
-* [ ] Follow / Unfollow button wired to `public.follows`
-* [ ] Real-time mutual follower count calculation (SQL view or RPC)
+* [x] Follow / Unfollow button wired to `public.follows`
+* [x] Real-time mutual follower count calculation (SQL view or RPC)
 * [ ] Custom link click tracking / analytics for bio links
 * [ ] Dynamic Open Graph (OG) image generation for Twitter Cards (`oomfs.org/[username]`)

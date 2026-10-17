@@ -48,6 +48,8 @@ export interface BadgeData {
   bgColor?: string;
   textColor?: string;
   icon?: string;
+  overlayStyle?: 'scrim' | 'plaque' | 'auto';
+  showText?: boolean;
 }
 
 export interface Post {
