@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { 
   ArrowLeft, 
@@ -10,7 +10,12 @@ import {
   Plus, 
   X,
   LogIn,
-  ChevronDown
+  ChevronDown,
+  Filter,
+  Search,
+  Paintbrush,
+  DollarSign,
+  MoreHorizontal
 } from 'lucide-react';
 import { 
   User, 
@@ -37,6 +42,50 @@ import { getProfileFollowStats, toggleFollow, isValidUuid } from '@/lib/follows'
 
 interface ProfileViewProps {
   user: User;
+}
+
+function XLogo({ className = "w-3.5 h-3.5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={`fill-current ${className}`}>
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+  );
+}
+
+function CatShushIcon({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      {/* Cat ears & head outline */}
+      <path d="M4 10 L4 4 L9 6 C11 5.4 13 5.4 15 6 L20 4 L20 10 C21.2 15 18 20 12 20 C6 20 2.8 15 4 10 Z" />
+      {/* Eyes: playful curved arcs */}
+      <path d="M7 11.5 C7.8 10.3 9.2 10.3 10 11.5" />
+      <path d="M14 11.5 C14.8 10.3 16.2 10.3 17 11.5" />
+      {/* Whiskers */}
+      <path d="M2 12.5 L4.5 13.5" />
+      <path d="M2 15 L4.5 14.5" />
+      <path d="M22 12.5 L19.5 13.5" />
+      <path d="M22 15 L19.5 14.5" />
+      {/* Tiny nose */}
+      <path d="M11.5 12 L12.5 12 L12 12.7 Z" fill="currentColor" stroke="none" />
+      {/* Shushing Paw over mouth */}
+      <path
+        d="M10.5 20 V14.5 C10.5 13.7 11.17 13 12 13 C12.83 13 13.5 13.7 13.5 14.5 V20"
+        fill="currentColor"
+        fillOpacity="0.15"
+      />
+      {/* Paw pad division line */}
+      <path d="M12 13 V15" />
+    </svg>
+  );
 }
 
 export default function ProfileView({ user: initialUser }: ProfileViewProps) {
@@ -84,6 +133,12 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
     (authUser && authProfile?.username === initialUser.username) ||
     (authUser && userProfile.id && authUser.id === userProfile.id)
   );
+
+  // Sticky header scroll detection & action state
+  const followButtonRef = useRef<HTMLDivElement>(null);
+  const [isScrolledPastFollow, setIsScrolledPastFollow] = useState(false);
+  const [isHoveringStickyFollow, setIsHoveringStickyFollow] = useState(false);
+  const shouldShowStickyFollow = !isSelf && Boolean(authUser) && isScrolledPastFollow;
 
   // Posts state
   const [posts, setPosts] = useState<Post[]>(() => {
@@ -304,6 +359,20 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
       });
     }
   }, [userProfile.id, authUser?.id]);
+
+  // Track scroll position past the main profile follow/action button to toggle sticky header action
+  useEffect(() => {
+    const checkPosition = () => {
+      if (!followButtonRef.current) return;
+      const rect = followButtonRef.current.getBoundingClientRect();
+      setIsScrolledPastFollow(rect.bottom < 53);
+    };
+
+    window.addEventListener('scroll', checkPosition, { passive: true });
+    checkPosition();
+
+    return () => window.removeEventListener('scroll', checkPosition);
+  }, []);
 
   // Toggle follow/unfollow with optimistic UI updates
   const handleToggleFollow = async () => {
@@ -581,34 +650,89 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
     <div className="flex flex-col min-h-screen bg-white">
       {/* Top Header Bar */}
       <header className="sticky top-0 bg-white/90 backdrop-blur-md z-20 flex items-center justify-between px-4 py-2 border-b border-[#eff3f4]">
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-3 sm:gap-6 min-w-0">
           <Link 
             href="/" 
-            className="p-2 hover:bg-[#f7f9f9] rounded-full transition-colors"
+            className="p-2 hover:bg-[#f7f9f9] rounded-full transition-colors shrink-0"
           >
             <ArrowLeft className="w-5 h-5 text-[#0f1419]" />
           </Link>
-          <div className="flex flex-col">
-            <h1 className="font-extrabold text-lg text-[#0f1419] leading-tight flex items-center gap-1">
-              {userProfile.name}
+          <div className="flex flex-col min-w-0">
+            <h1 className="font-extrabold text-lg text-[#0f1419] leading-tight flex items-center gap-1 truncate">
+              <span className="truncate">{userProfile.name}</span>
               {userProfile.isVerified && (
-                <CheckCircle2 className="w-4 h-4 text-[#1d9bf0] fill-[#1d9bf0] text-white" />
+                <CheckCircle2 className="w-4 h-4 text-[#1d9bf0] fill-[#1d9bf0] text-white shrink-0" />
               )}
             </h1>
-            <span className="text-xs text-[#536471]">
+            <span className="text-xs text-[#536471] truncate">
               {activeCollectionId ? `${timelinePosts.length} of ${rawTimelinePosts.length}` : rawTimelinePosts.length} Posts
             </span>
           </div>
         </div>
 
-        {/* Action Trigger - Always accessible to draft & test posts */}
-        <button
-          onClick={() => setComposerOpen(!composerOpen)}
-          className="bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-bold text-xs px-3.5 py-1.5 rounded-full flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
-        >
-          {composerOpen ? <X className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
-          <span>{composerOpen ? 'Close Composer' : 'Create Post'}</span>
-        </button>
+        {/* Right Action Area: Persistent "View on X" + Dynamic [Filter/Search] or [Follow/Following] on scroll */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Back to X profile link */}
+          <a
+            href={`https://x.com/${userProfile.username}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={`View @${userProfile.username} on X`}
+            aria-label={`View @${userProfile.username} on X`}
+            className="border border-[#cfd9de] hover:bg-[#eff3f4] text-[#0f1419] font-bold text-xs py-1.5 px-3 rounded-full flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+          >
+            <span className="truncate max-w-[120px] sm:max-w-none">View @{userProfile.username} on</span>
+            <XLogo className="w-3 h-3 text-[#0f1419] shrink-0" />
+          </a>
+
+          {/* Dynamic group: transitions between [Filter] [Search] and sticky [Follow/Following] */}
+          <div className="flex items-center gap-1 transition-all duration-200">
+            {shouldShowStickyFollow ? (
+              <button
+                onClick={handleToggleFollow}
+                onMouseEnter={() => setIsHoveringStickyFollow(true)}
+                onMouseLeave={() => setIsHoveringStickyFollow(false)}
+                disabled={isFollowLoading}
+                className={`font-bold text-xs sm:text-sm min-w-[90px] py-1.5 px-4 rounded-full transition-all cursor-pointer ${
+                  isFollowing
+                    ? isHoveringStickyFollow
+                      ? 'border border-red-200 bg-red-50 text-red-600'
+                      : 'border border-[#cfd9de] text-[#0f1419] bg-white hover:border-red-200 hover:bg-red-50 hover:text-red-600'
+                    : 'bg-[#0f1419] hover:bg-[#272c30] text-white'
+                } ${isFollowLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+              >
+                {isFollowing ? (isHoveringStickyFollow ? 'Unfollow' : 'Following') : 'Follow'}
+              </button>
+            ) : (
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  aria-label="More"
+                  title="More"
+                  className="p-2 hover:bg-[#0f1419]/10 rounded-full text-[#0f1419] transition-colors cursor-pointer"
+                >
+                  <MoreHorizontal className="w-5 h-5" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Filter"
+                  title="Filter"
+                  className="p-2 hover:bg-[#0f1419]/10 rounded-full text-[#0f1419] transition-colors cursor-pointer"
+                >
+                  <Filter className="w-5 h-5" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Search"
+                  title="Search"
+                  className="p-2 hover:bg-[#0f1419]/10 rounded-full text-[#0f1419] transition-colors cursor-pointer"
+                >
+                  <Search className="w-5 h-5" />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </header>
 
       {/* Banner */}
@@ -636,7 +760,19 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
         </div>
 
         {/* Action buttons */}
-        <div className="flex items-center gap-2 mb-2">
+        <div ref={followButtonRef} className="flex items-center gap-2 mb-2">
+          {/* Ask! button (only visible when viewing another user's profile) */}
+          {!isSelf && (
+            <button
+              type="button"
+              className="border border-[#cfd9de] hover:bg-[#0f1419]/5 text-[#0f1419] font-bold text-sm px-4 py-2 rounded-full transition-colors flex items-center gap-1.5 cursor-pointer"
+              title={`Ask @${userProfile.username}`}
+            >
+              <CatShushIcon className="w-4 h-4 text-[#0f1419]" />
+              <span>Ask!</span>
+            </button>
+          )}
+
           {isSelf ? (
             <button 
               onClick={() => setEditModalOpen(true)}
@@ -706,29 +842,35 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
           </p>
         )}
 
-        {/* Stats Row */}
-        <div className="flex items-center gap-4 text-xs pt-1">
+        {/* Stats & Actions Row: Focused on OOMFs with auxiliary Canvas and Tip action buttons */}
+        <div className="flex items-center gap-2.5 pt-1 flex-wrap">
           <Link 
             href={`/${userProfile.username}/oomfs`}
-            className="flex items-center gap-1 hover:underline cursor-pointer"
+            className="flex items-center gap-1.5 hover:underline cursor-pointer mr-1"
           >
-            <span className="font-extrabold text-[#1d9bf0]">{userProfile.oomfsCount}</span>
-            <span className="font-medium text-[#1d9bf0]">oomfs</span>
+            <span className="font-extrabold text-base text-[#1d9bf0]">{userProfile.oomfsCount}</span>
+            <span className="font-semibold text-sm text-[#1d9bf0]">oomfs</span>
           </Link>
-          <Link 
-            href={`/${userProfile.username}/following`}
-            className="flex items-center gap-1 hover:underline cursor-pointer"
+
+          {/* Canvas Button (placeholder) */}
+          <button
+            type="button"
+            className="border border-[#cfd9de] hover:bg-[#0f1419]/5 text-[#0f1419] font-bold text-xs py-1 px-3 rounded-full flex items-center gap-1.5 transition-colors cursor-pointer"
+            title="Canvas"
           >
-            <span className="font-bold text-[#0f1419]">{userProfile.followingCount}</span>
-            <span className="text-[#536471]">Following</span>
-          </Link>
-          <Link 
-            href={`/${userProfile.username}/followers`}
-            className="flex items-center gap-1 hover:underline cursor-pointer"
+            <Paintbrush className="w-3.5 h-3.5 text-[#536471]" />
+            <span>Canvas</span>
+          </button>
+
+          {/* Tip Button (placeholder) */}
+          <button
+            type="button"
+            className="border border-[#cfd9de] hover:bg-[#0f1419]/5 text-[#0f1419] font-bold text-xs py-1 px-3 rounded-full flex items-center gap-1.5 transition-colors cursor-pointer"
+            title="Tip"
           >
-            <span className="font-bold text-[#0f1419]">{userProfile.followersCount.toLocaleString()}</span>
-            <span className="text-[#536471]">Followers</span>
-          </Link>
+            <DollarSign className="w-3.5 h-3.5 text-[#536471]" />
+            <span>Tip</span>
+          </button>
         </div>
       </div>
 

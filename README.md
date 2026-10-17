@@ -72,6 +72,7 @@
 │   ├── collections.md                  # Curated collections & preset lenses architecture and data models
 │   ├── composer.md                     # Post composer architecture, flush builders, & media compression
 │   ├── followerlist.md                 # Network directory architecture (OOMFs, Following, Followers) & 4 view modes
+│   ├── navigation.md                   # Global shell geometry, left sidebar registry (7 items), & responsive layout
 │   ├── post-types.md                   # Specification for active post formats & creation guide
 │   └── profile-page.md                 # Profile page architecture, 4 tabs, and thread routing
 ├── supabase_follows_rpc.sql            # Supabase RPC migration for bidirectional mutual follower queries
@@ -98,7 +99,7 @@
 │   │
 │   ├── components/
 │   │   ├── layout/
-│   │   │   ├── LeftSidebar.tsx         # 1:1 Left navigation (275px), icon logo, profile pill, "Post" button
+│   │   │   ├── LeftSidebar.tsx         # 1:1 Left navigation (275px), 7-item registry, profile pill, "Post" button
 │   │   │   ├── RightSidebar.tsx        # 1:1 Right spacer column (350px) for layout geometry + footer links
 │   │   │   └── MainLayout.tsx          # 1:1 X.com layout shell (max-w-[1265px]) + compose modal
 │   │   ├── profile/

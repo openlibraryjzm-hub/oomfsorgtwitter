@@ -42,13 +42,18 @@ The profile header sits at the top of `ProfileView.tsx` and adheres strictly to 
 
 1. **Top Navigation Bar**:
    - Back button (`←`), user display name, verified checkmark, and active post count.
-   - **`"Create Post"` Trigger**: Toggles the unified post composer drawer. Always accessible so visitors or owners can quickly draft posts.
+   - **Top Actions & Dynamic Scroll Swap**:
+     - **Persistent "Back to X" Link**: A clean pill button (`View @username on 𝕏`) linking directly to `https://x.com/[username]` in a new tab, clarifying that `oomfs.org` is a complementary profile layer.
+     - **Header Action Icons**: Native circular icon buttons: **`More`** (three dots), **`Filter`** (funnel), and **`Search`** (magnifier, furthest to the right).
+     - **Dynamic Follow Swap**: When scrolling down past the profile's primary Follow/Following button, the sticky header dynamically swaps the action icon buttons into a compact **`Follow` / `Following`** action pill (when viewing another profile while authenticated). Scrolling back up restores the icon buttons.
+     - On own profile (`isSelf`) or when logged out, the action icons persist alongside the X link without swapping.
 
 2. **Banner & Avatar**:
    - Banner: Height responsive (`h-44 sm:h-52`), object-cover with fallback gradient.
    - Avatar: Circular avatar overlapping banner (`-mt-16 sm:-mt-20`). Always run through `formatTwitterAvatar()` to ensure 400×400 HD resolution instead of Twitter's pixelated default `_normal.jpg`.
 
 3. **Action Row**:
+   - **`"Ask!"` Auxiliary Pill** (Viewing others' profiles only): Rendered immediately to the left of the primary action button with a custom monochrome shushing cat face (`CatShushIcon`). Hidden when viewing own profile.
    - **Contextual Action Button**:
      - Viewing own profile: **`"Edit profile"`** opens the native edit modal.
      - Viewing another profile (logged out): **`"Connect X"`** triggers Twitter OAuth 2.0 PKCE.
@@ -58,10 +63,10 @@ The profile header sits at the top of `ProfileView.tsx` and adheres strictly to 
    - Display name + Verified badge.
    - Handle (`@username`).
    - Bio: Multi-line text preserving whitespace. **Crucial Rule**: Always use nullish coalescing (`dbUser.bio !== null && dbUser.bio !== undefined ? dbUser.bio : fallback`) to prevent empty strings or brief bios from falling back to default text.
-   - **Streamlined Stats Row**: Ordered left-to-right (each linking directly to its interconnected tab):
-     1. **`0 oomfs`** (leftmost): Styled in light Twitter blue (`#1d9bf0`) with the number slightly bolder, linking to `/[username]/oomfs`.
-     2. **`Following`** count: Authentic black bold number + muted secondary label, linking to `/[username]/following`.
-     3. **`Followers`** count: Authentic black bold number + muted secondary label, linking to `/[username]/followers`.
+   - **Focused Stats & Actions Row**:
+     - Prominently showcases **`[N] oomfs`** (`#1d9bf0`, enlarged font weight and size) linking directly to the mutuals directory (`/[username]/oomfs`).
+     - Profile-facing `Following` and `Followers` counters are removed to focus exclusively on mutual OOMFs.
+     - Features auxiliary native capsules to the right: **`Canvas`** (with Paintbrush icon, linking to the user's collaborative r/place-style canvas) and **`Tip`** (with `$` DollarSign icon for direct support).
 
 ---
 

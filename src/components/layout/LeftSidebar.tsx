@@ -11,7 +11,10 @@ import {
   MoreHorizontal, 
   Feather,
   LogOut,
-  LogIn
+  LogIn,
+  Bookmark,
+  Settings,
+  Tv
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { CURRENT_USER } from '@/lib/mockData';
@@ -35,7 +38,10 @@ export default function LeftSidebar({ onOpenComposer }: LeftSidebarProps) {
     { label: 'Home', href: '/', icon: Home },
     { label: 'Explore', href: '/explore', icon: Search },
     { label: 'Notifications', href: '/notifications', icon: Bell },
+    { label: 'localyt.tv', icon: Tv, isNonFunctional: true },
+    { label: 'Bookmarks', icon: Bookmark, isNonFunctional: true },
     { label: 'Profile', href: `/${activeUsername}`, icon: UserIcon },
+    { label: 'Settings', icon: Settings, isNonFunctional: true },
   ];
 
   return (
@@ -55,12 +61,29 @@ export default function LeftSidebar({ onOpenComposer }: LeftSidebarProps) {
         <nav className="flex flex-col gap-1">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.href || (item.label === 'Profile' && pathname === `/${activeUsername}`);
+            const isActive = !item.isNonFunctional && (pathname === item.href || (item.label === 'Profile' && pathname === `/${activeUsername}`));
+
+            if (item.isNonFunctional) {
+              return (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={(e) => e.preventDefault()}
+                  className="flex items-center gap-4 px-4 py-3 rounded-full transition-colors w-fit xl:w-full text-[#0f1419] hover:bg-[#f7f9f9] font-normal cursor-pointer text-left"
+                  title={item.label}
+                >
+                  <div className="relative flex items-center justify-center">
+                    <Icon className="w-6 h-6 stroke-[1.75]" />
+                  </div>
+                  <span className="text-lg hidden xl:inline flex-1">{item.label}</span>
+                </button>
+              );
+            }
 
             return (
               <Link
                 key={item.label}
-                href={item.href}
+                href={item.href!}
                 className={`flex items-center gap-4 px-4 py-3 rounded-full transition-colors w-fit xl:w-full ${
                   isActive 
                     ? 'font-bold text-[#0f1419]' 
