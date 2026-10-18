@@ -10,6 +10,8 @@ create table if not exists public.collections (
   icon text default '📁',
   is_pinned boolean default false,
   is_exclusive boolean default false, -- When true: visible ONLY inside this collection, hidden from main "All" feed
+  slug text,
+  is_default boolean default false,
   sort_order integer default 0,
   created_at timestamptz default timezone('utc'::text, now()) not null
 );
@@ -27,6 +29,7 @@ create table if not exists public.collection_items (
 -- Indexes for fast lookup
 create index if not exists idx_collections_user_id on public.collections(user_id);
 create index if not exists idx_collections_tab_type on public.collections(tab_type);
+create unique index if not exists idx_collections_user_slug on public.collections(user_id, slug) where tab_type = 'links' and slug is not null;
 create index if not exists idx_collection_items_collection_id on public.collection_items(collection_id);
 create index if not exists idx_collection_items_item_id on public.collection_items(item_id);
 

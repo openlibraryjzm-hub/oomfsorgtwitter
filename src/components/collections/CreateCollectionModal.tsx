@@ -1,9 +1,7 @@
-'use client';
-
-import React, { useState } from 'react';
-import { X, Star, FolderPlus } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Star, FolderPlus, Globe } from 'lucide-react';
 import { Collection } from '@/lib/mockData';
-import { createCollection } from '@/lib/collections';
+import { createCollection, slugify } from '@/lib/collections';
 
 interface CreateCollectionModalProps {
   isOpen: boolean;
@@ -11,32 +9,45 @@ interface CreateCollectionModalProps {
   userId: string;
   tabType: 'posts' | 'links';
   onCreated: (newCol: Collection) => void;
+  username?: string;
 }
 
-const EMOJI_PRESETS = ['📁', '⭐', '🎨', '📸', '🌿', '⚡', '📝', '☕', '💼', '🎧', '🛠️', '💡', '🚀', '👾', '📚'];
+const EMOJI_PRESETS = ['📁', '⭐', '🎨', '📸', '🌿', '⚡', '📝', '☕', '💼', '🎧', '🛠️', '💡', '🚀', '👾', '📚', '🌐', '🛍️', '📦'];
 
 export default function CreateCollectionModal({
   isOpen,
   onClose,
   userId,
   tabType,
-  onCreated
+  onCreated,
+  username
 }: CreateCollectionModalProps) {
+  const isLinkPage = tabType === 'links';
   const [title, setTitle] = useState('');
+  const [slug, setSlug] = useState('');
+  const [slugEdited, setSlugEdited] = useState(false);
   const [description, setDescription] = useState('');
-  const [icon, setIcon] = useState('📁');
+  const [icon, setIcon] = useState(isLinkPage ? '🌐' : '📁');
   const [isPinned, setIsPinned] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!slugEdited && isLinkPage) {
+      setSlug(slugify(title));
+    }
+  }, [title, slugEdited, isLinkPage]);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
-      setError('Please provide a collection title');
+      setError(isLinkPage ? 'Please provide a page title' : 'Please provide a collection title');
       return;
     }
+
+    const computedSlug = isLinkPage ? (slug.trim() || slugify(title) || `page-${Date.now()}`) : undefined;
 
     setIsSubmitting(true);
     setError(null);
@@ -49,7 +60,8 @@ export default function CreateCollectionModal({
       description: description.trim() || undefined,
       icon,
       isPinned,
-      isExclusive: false
+      isExclusive: false,
+      slug: computedSlug
     });
 
     if (newCol) {
@@ -57,8 +69,10 @@ export default function CreateCollectionModal({
       onClose();
       // Reset form
       setTitle('');
+      setSlug('');
+      setSlugEdited(false);
       setDescription('');
-      setIcon('📁');
+      setIcon(isLinkPage ? '🌐' : '📁');
       setIsPinned(false);
     } else {
       // Mock fallback if user is in offline/demo mode or DB not connected
@@ -71,6 +85,7 @@ export default function CreateCollectionModal({
         icon,
         isPinned,
         isExclusive: false,
+        slug: computedSlug,
         itemIds: []
       };
       onCreated(fallbackCol);
@@ -92,14 +107,14 @@ export default function CreateCollectionModal({
         <div className="flex items-center justify-between px-4 py-3 border-b border-[#eff3f4]">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-[#1d9bf0]/10 flex items-center justify-center text-[#1d9bf0]">
-              <FolderPlus className="w-4 h-4" />
+              {isLinkPage ? <Globe className="w-4 h-4" /> : <FolderPlus className="w-4 h-4" />}
             </div>
             <div>
               <h3 className="font-extrabold text-[#0f1419] text-base leading-tight">
-                New {tabType === 'posts' ? 'Post' : 'Link'} Collection
+                {isLinkPage ? 'New Link Page' : 'New Post Collection'}
               </h3>
               <p className="text-xs text-[#536471]">
-                Curate a custom lens for your profile
+                {isLinkPage ? 'Create a distinct page for your links and web badges' : 'Curate a custom lens for your profile'}
               </p>
             </div>
           </div>
@@ -123,7 +138,7 @@ export default function CreateCollectionModal({
           {/* Icon + Title Input */}
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold text-[#0f1419]">
-              Title & Icon
+              {isLinkPage ? 'Page Title & Icon *' : 'Title & Icon *'}
             </label>
             <div className="flex items-center gap-2">
               <div className="relative group shrink-0">
@@ -138,7 +153,7 @@ export default function CreateCollectionModal({
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Design Systems, 35mm Tokyo"
+                placeholder={isLinkPage ? 'e.g. Work & Projects, Shop, Music' : 'e.g. Design Systems, 35mm Tokyo'}
                 className="flex-1 bg-white border border-[#cfd9de] focus:border-[#1d9bf0] rounded-xl px-3 py-2 text-sm text-[#0f1419] outline-none"
                 autoFocus
               />
@@ -161,6 +176,31 @@ export default function CreateCollectionModal({
             </div>
           </div>
 
+          {/* URL Slug (for Link Pages) */}
+          {isLinkPage && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-[#0f1419] flex items-center justify-between">
+                <span>Page URL Slug *</span>
+                <span className="text-[11px] font-normal text-[#536471]">
+                  oomfs.org/{username || 'you'}/links/<span className="font-mono text-[#1d9bf0] font-semibold">{slug || 'page'}</span>
+                </span>
+              </label>
+              <div className="flex items-center bg-[#f7f9f9] border border-[#cfd9de] focus-within:border-[#1d9bf0] rounded-xl px-3 py-2 text-xs">
+                <span className="text-[#536471] font-mono select-none mr-1">/links/</span>
+                <input
+                  type="text"
+                  value={slug}
+                  onChange={(e) => {
+                    setSlugEdited(true);
+                    setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''));
+                  }}
+                  placeholder="portfolio"
+                  className="flex-1 bg-transparent text-[#0f1419] font-mono outline-none"
+                />
+              </div>
+            </div>
+          )}
+
           {/* Description */}
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold text-[#0f1419]">
@@ -170,7 +210,7 @@ export default function CreateCollectionModal({
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="e.g. Architectural studies, client drops"
+              placeholder={isLinkPage ? 'e.g. Client case studies, client drops, and advisory' : 'e.g. Architectural studies, client drops'}
               className="bg-white border border-[#cfd9de] focus:border-[#1d9bf0] rounded-xl px-3 py-2 text-xs text-[#0f1419] outline-none"
             />
           </div>
@@ -187,7 +227,7 @@ export default function CreateCollectionModal({
                     Pin to quick-access bar
                   </div>
                   <p className="text-[11px] text-[#536471] leading-snug mt-0.5">
-                    Surface this preset as a stadium pill directly above your profile feed.
+                    Surface this {isLinkPage ? 'page' : 'preset'} as a stadium pill directly above your profile feed.
                   </p>
                 </div>
               </div>
@@ -214,7 +254,7 @@ export default function CreateCollectionModal({
               disabled={isSubmitting || !title.trim()}
               className="px-5 py-2 text-xs font-bold bg-[#0f1419] hover:bg-[#272c30] disabled:opacity-40 text-white rounded-full transition-colors cursor-pointer shadow-xs"
             >
-              {isSubmitting ? 'Creating...' : 'Create Collection'}
+              {isSubmitting ? 'Creating...' : isLinkPage ? 'Create Link Page' : 'Create Collection'}
             </button>
           </div>
         </form>

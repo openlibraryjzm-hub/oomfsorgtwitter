@@ -14,6 +14,9 @@ src/app/[username]/
 ├── oomfs/page.tsx               # Interconnected OOMFs (mutuals) route
 ├── following/page.tsx           # Interconnected Following route
 ├── followers/page.tsx           # Interconnected Followers route
+├── links/
+│   ├── page.tsx                 # Dedicated Links tab route (Main link page)
+│   └── [slug]/page.tsx          # Dedicated Link Page route (custom slug)
 └── status/[id]/
     ├── page.tsx                 # Server component: resolves focal post from Supabase or mock data
     └── ThreadClientView.tsx     # Client component: renders focal post + thread replies + reply composer
@@ -93,15 +96,18 @@ Tabs are ordered left-to-right to optimize content discovery and render with cle
   - Deletion: Permitted for the profile owner or the comment author.
 
 ### 3. Links (Third from Left)
-- **Role**: Curated bio link showcase, link preset hub, and retro web button gallery.
-- **Curated Link Collections**: Clicking the active **`Links ▾`** tab header toggles the expandable link presets bar (e.g. *Featured*, *Work*, *Writing*, *Audio*), dynamically rearranging links in custom sequence. Creators can assign links to presets via `FolderPlus`, create new link presets, and reorder them with drag-and-drop.
-- **Composition**:
-  - **The Badge Wall (Top Section)**: Aggregates all early-web 88×31 button badges into a single unified gallery sitting directly above larger link cards when viewing all links.
-    - **88px Column Grid**: Rendered as `flex flex-wrap gap-3 items-start justify-start`. Each badge is formatted as an 88px wide column (`w-[88px] flex flex-col items-center gap-1`).
-    - **Universal Underneath Labels**: The 88×31 button sits on top (pure visual artwork or color gradient), and the label is rendered underneath in clean, high-contrast typography (`text-[10px] font-semibold text-[#536471] group-hover/badge-item:text-[#0f1419] truncate w-full text-center`).
-    - **Owner Controls**: Hovering reveals an inline `×` delete action in the top-right corner of the badge for profile owners, updating local and remote state instantly.
-    - *Full technical specifications, canvas compression, and styling rules are detailed in [Web Badges Context Doc](badges.md).*
-  - **Featured Link Cards (Bottom Section)**: Showcases high-contrast Linktree-style cards with title, description, domain badge, and a high-visibility `"Visit ↗"` button (from `user.links` and `link_card` blocks) directly without promotional banners.
+- **Role**: Curated bio link showcase, standalone Link Pages, retro 88×31 Web Badge galleries, and circular OOMF avatar plaques.
+- **Standalone Link Pages (vs Posts Playlists)**:
+  - While Posts collections act as filtered lenses ("playlists") over the unified master post feed, Link Pages are **distinct, standalone pages**.
+  - **Leftmost Anchor**: The leftmost pill on the Links bar represents the **Main / Default Page** (`[ 🌐 Main (N) ]`), accessible directly at `/[username]/links`.
+  - **Custom Sub-Pages & URLs**: Creators can create dedicated link pages with custom URL slugs (`/[username]/links/[slug]`, e.g., `/amberlyn/links/work`, `/amberlyn/links/writing`).
+  - **Zero-Flicker Navigation**: In-app switching between link pages uses `window.history.replaceState` for instant, 0ms transitions without re-mounting or page reload, while direct visits render via server components (`src/app/[username]/links/[slug]/page.tsx`).
+  - **Destination Composer**: In `PostComposer`, bio links and badges have a direct top selector: `Publish to Link Page: [ 🌐 Main ▾ ]`.
+  - **Model B Unified Flow & Drag-and-Drop Reordering**:
+    - Rather than hard-separating badges and links into disconnected sections, items render in a unified custom sequence (`itemIds`).
+    - Consecutive badges (both rectangular $88 \times 31$ buttons and circular $52 \times 52\text{px}$ avatars) naturally cluster together in an authentic Badge Wall plaque (`border rounded-2xl bg-white p-3.5`), while link cards expand full-width (`w-full`) to take their own row.
+    - **Reorder Mode**: Profile owners click `[ ⇅ Reorder ]` in the page header to safely drag and swap badges or reorder link cards without triggering accidental link clicks. Reordering automatically synchronizes to Supabase and `localStorage`.
+  - *Complete technical specifications for collections vs link pages are in [Collections Context Doc](collections.md) and [Link Pages Documentation](links.md).*
 
 ### 4. Likes (Fourth / Rightmost)
 - **Role**: Dedicated feed showcasing posts liked by the user.

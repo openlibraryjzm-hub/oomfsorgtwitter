@@ -41,7 +41,7 @@ export interface BoardImage {
 export interface BadgeData {
   title: string;
   url: string;
-  badgeType: 'image' | 'custom';
+  badgeType: 'image' | 'custom' | 'avatar';
   imageUrl?: string;
   label?: string;
   sublabel?: string;
@@ -50,6 +50,7 @@ export interface BadgeData {
   icon?: string;
   overlayStyle?: 'scrim' | 'plaque' | 'auto';
   showText?: boolean;
+  targetUsername?: string;
 }
 
 export interface Post {
@@ -109,6 +110,8 @@ export interface Collection {
   itemIds: string[];
   isPinned?: boolean;
   isExclusive?: boolean; // When true: visible ONLY inside this collection, hidden from main "All" feed
+  slug?: string;
+  isDefault?: boolean;
   tabType?: 'posts' | 'links';
   userId?: string;
   sortOrder?: number;
@@ -605,6 +608,25 @@ export const MOCK_POSTS: Post[] = [
     viewsCount: '890'
   },
   {
+    id: 'post_badge_oomf_1',
+    author: MOCK_USERS.amberlyn,
+    createdAt: '1h',
+    type: 'badge',
+    text: 'Featured mutual friend Kyle',
+    badgeData: {
+      title: 'Kyle Vance',
+      url: '/dev_kyle',
+      badgeType: 'avatar',
+      imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
+      label: '@dev_kyle',
+      targetUsername: 'dev_kyle'
+    },
+    likesCount: 19,
+    repostsCount: 3,
+    repliesCount: 1,
+    viewsCount: '410'
+  },
+  {
     id: 'post_kyle_1',
     author: MOCK_USERS.dev_kyle,
     createdAt: '2h',
@@ -805,6 +827,7 @@ export const MOCK_COLLECTIONS: Collection[] = [
     id: 'col_highlights',
     title: 'Highlights',
     icon: '⭐',
+    tabType: 'posts',
     description: 'Flagship launches, top design threads, and studio archives',
     itemIds: ['post_carousel_1', 'post_amber_ui', 'post_board_1'],
     isPinned: true
@@ -813,6 +836,7 @@ export const MOCK_COLLECTIONS: Collection[] = [
     id: 'col_design_systems',
     title: 'Design Systems',
     icon: '🎨',
+    tabType: 'posts',
     description: 'Tokens, component architecture, and responsive layout math',
     itemIds: ['post_amber_ui', 'post_board_1'],
     isPinned: true
@@ -821,6 +845,7 @@ export const MOCK_COLLECTIONS: Collection[] = [
     id: 'col_tokyo_roll',
     title: '35mm Tokyo',
     icon: '📸',
+    tabType: 'posts',
     description: 'Street photography, camera scans, and neon night walks',
     itemIds: ['post_amber_film', 'post_carousel_1'],
     isPinned: true
@@ -829,6 +854,7 @@ export const MOCK_COLLECTIONS: Collection[] = [
     id: 'col_architecture',
     title: 'Brutalism',
     icon: '🌿',
+    tabType: 'posts',
     description: 'Concrete pavilions, geometric facade studies, and minimalism',
     itemIds: ['post_board_1', 'post_carousel_1'],
     isPinned: true
@@ -837,6 +863,7 @@ export const MOCK_COLLECTIONS: Collection[] = [
     id: 'col_shaders',
     title: 'WebGL & Shaders',
     icon: '⚡',
+    tabType: 'posts',
     description: 'Interactive canvas shaders and kinetic typography experiments',
     itemIds: ['post_carousel_1', 'post_amber_ui'],
     isPinned: false
@@ -845,6 +872,7 @@ export const MOCK_COLLECTIONS: Collection[] = [
     id: 'col_essays',
     title: 'Essays & Notes',
     icon: '📝',
+    tabType: 'posts',
     description: 'Longform thoughts on digital gardening and web culture',
     itemIds: ['post_amber_ui', 'post_amber_film'],
     isPinned: false
@@ -853,6 +881,7 @@ export const MOCK_COLLECTIONS: Collection[] = [
     id: 'col_setups',
     title: 'Studio Setups',
     icon: '☕',
+    tabType: 'posts',
     description: 'Minimal workspaces, cable management, and daily tools',
     itemIds: ['post_carousel_1', 'post_board_1'],
     isPinned: false
@@ -861,6 +890,7 @@ export const MOCK_COLLECTIONS: Collection[] = [
     id: 'col_launches',
     title: 'Product Drops',
     icon: '🚀',
+    tabType: 'posts',
     description: 'Sprint retrospectives, v1 release notes, and product roadmap',
     itemIds: ['post_amber_ui', 'post_carousel_1', 'post_board_1'],
     isPinned: false
@@ -869,6 +899,7 @@ export const MOCK_COLLECTIONS: Collection[] = [
     id: 'col_playlists',
     title: 'Late Night Focus',
     icon: '🎧',
+    tabType: 'posts',
     description: 'Ambient electronic, lo-fi beats, and coding mixes',
     itemIds: ['post_amber_film', 'post_carousel_1'],
     isPinned: false
@@ -877,6 +908,7 @@ export const MOCK_COLLECTIONS: Collection[] = [
     id: 'col_tools',
     title: 'Dev Stack',
     icon: '🛠️',
+    tabType: 'posts',
     description: 'Next.js 16, Tailwind v4, Supabase, and frontend tooling',
     itemIds: ['post_amber_ui', 'post_board_1'],
     isPinned: false
@@ -885,6 +917,7 @@ export const MOCK_COLLECTIONS: Collection[] = [
     id: 'col_best_2025',
     title: 'Best of 2025',
     icon: '🎯',
+    tabType: 'posts',
     description: 'Annual retrospective of favorite creations and milestones',
     itemIds: ['post_board_1', 'post_amber_ui', 'post_carousel_1'],
     isPinned: false
@@ -893,6 +926,7 @@ export const MOCK_COLLECTIONS: Collection[] = [
     id: 'col_retro_web',
     title: 'Retro Web',
     icon: '👾',
+    tabType: 'posts',
     description: '88x31 pixel buttons, webrings, and early internet lore',
     itemIds: ['post_amber_film', 'post_amber_ui'],
     isPinned: false
@@ -901,100 +935,106 @@ export const MOCK_COLLECTIONS: Collection[] = [
 
 export const MOCK_LINK_COLLECTIONS: Collection[] = [
   {
-    id: 'col_link_featured',
-    title: '⭐ Starred & Top Links',
-    icon: '⭐',
-    description: 'Top priority links, main portfolio, and primary community',
-    itemIds: ['l1', 'l4_figma', 'post_1'],
-    isPinned: true
+    id: 'col_link_main',
+    title: 'Main',
+    icon: '🌐',
+    slug: 'main',
+    tabType: 'links',
+    isDefault: true,
+    isPinned: true,
+    description: 'Primary bio links, core socials, and featured badges',
+    itemIds: ['post_badge_1', 'post_badge_oomf_1', 'post_badge_2', 'post_badge_3', 'post_badge_4', 'l1', 'l2', 'l3', 'post_1']
   },
   {
     id: 'col_link_work',
-    title: '💼 Work & Case Studies',
+    title: 'Work & Projects',
     icon: '💼',
+    slug: 'work',
+    tabType: 'links',
     description: 'Client case studies, Figma design systems, and advisory',
-    itemIds: ['l1', 'post_1', 'l4_figma', 'l6_cal'],
+    itemIds: ['post_badge_6', 'l1', 'post_1', 'l4_figma', 'l6_cal'],
     isPinned: true
   },
   {
     id: 'col_link_writing',
-    title: '📝 Writing & Essays',
+    title: 'Writing & Essays',
     icon: '📝',
+    slug: 'writing',
+    tabType: 'links',
     description: 'Substack publications, deep dives, and design notes',
-    itemIds: ['l2', 'post_1'],
+    itemIds: ['post_badge_5', 'l2'],
     isPinned: true
   },
   {
     id: 'col_link_music',
-    title: '🎧 Sound & Playlists',
+    title: 'Sound & Playlists',
     icon: '🎧',
+    slug: 'sound',
+    tabType: 'links',
     description: 'Spotify focus playlists, ambient sets, and synth mixes',
     itemIds: ['l3'],
     isPinned: true
   },
   {
     id: 'col_link_dev',
-    title: '🛠️ Code & Open Source',
+    title: 'Code & Open Source',
     icon: '🛠️',
+    slug: 'code',
+    tabType: 'links',
     description: 'GitHub repos, UI components, and TypeScript templates',
-    itemIds: ['l5_github', 'l4_figma'],
+    itemIds: ['post_badge_7', 'post_badge_8', 'l5_github'],
     isPinned: false
   },
   {
     id: 'col_link_socials',
-    title: '🌐 Socials & Networks',
+    title: 'Socials & Networks',
     icon: '🌐',
+    slug: 'socials',
+    tabType: 'links',
     description: 'Connect across X, Bluesky, Mastodon, and GitHub',
     itemIds: ['l5_github', 'l2', 'l1'],
     isPinned: false
   },
   {
     id: 'col_link_side_quests',
-    title: '🚀 Side Quests & Drops',
+    title: 'Side Quests & Drops',
     icon: '🚀',
+    slug: 'drops',
+    tabType: 'links',
     description: 'Experimental microsites, weekend hackathons, and fun tools',
     itemIds: ['l4_figma', 'l3', 'l1'],
     isPinned: false
   },
   {
     id: 'col_link_advisory',
-    title: '☕ Office Hours & Chat',
+    title: 'Office Hours & Chat',
     icon: '☕',
+    slug: 'office-hours',
+    tabType: 'links',
     description: '1-on-1 chats, portfolio critiques, and founder mentoring',
     itemIds: ['l6_cal', 'l1'],
     isPinned: false
   },
   {
-    id: 'col_link_inspiration',
-    title: '💡 Design Inspo & Assets',
-    icon: '💡',
-    description: 'Color palettes, font foundries, and tactile web experiments',
-    itemIds: ['l4_figma', 'l1', 'l2'],
-    isPinned: false
-  },
-  {
-    id: 'col_link_communities',
-    title: '💬 Communities & Discords',
-    icon: '💬',
-    description: 'Design engineering servers, creator circles, and webrings',
-    itemIds: ['l5_github', 'l2'],
-    isPinned: false
-  },
-  {
     id: 'col_link_reading_list',
-    title: '📚 Reading List 2026',
+    title: 'Reading List 2026',
     icon: '📚',
+    slug: 'reading',
+    tabType: 'links',
     description: 'Curated articles, book recommendations, and philosophy notes',
     itemIds: ['l2', 'post_1'],
     isPinned: false
   },
   {
     id: 'col_link_archive',
-    title: '📦 Archive & Legacy',
+    title: 'Archive & Legacy',
     icon: '📦',
+    slug: 'archive',
+    tabType: 'links',
     description: 'Legacy 2023-2025 experiments, archived archives, and drafts',
     itemIds: ['l3', 'l5_github', 'l6_cal'],
     isPinned: false
   }
 ];
+
 

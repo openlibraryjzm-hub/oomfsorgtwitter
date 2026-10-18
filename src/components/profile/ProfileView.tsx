@@ -16,7 +16,10 @@ import {
   Paintbrush,
   DollarSign,
   MoreHorizontal,
-  FolderPlus
+  FolderPlus,
+  ArrowUpDown,
+  Check,
+  GripVertical
 } from 'lucide-react';
 import { 
   User, 
@@ -37,15 +40,26 @@ import CollectionLensBar from '@/components/collections/CollectionLensBar';
 import AllCollectionsModal from '@/components/collections/AllCollectionsModal';
 import CreateCollectionModal from '@/components/collections/CreateCollectionModal';
 import AddToCollectionModal from '@/components/collections/AddToCollectionModal';
-import { saveSessionPost } from '@/lib/postStore';
+import { saveSessionPost, getAllSessionPosts } from '@/lib/postStore';
 import { useAuth } from '@/context/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { formatTwitterAvatar } from '@/lib/utils';
 import { getProfileFollowStats, toggleFollow, isValidUuid } from '@/lib/follows';
-import { getProfileCollections, updateCollection, deleteCollection, reorderCollections, getLocalCollections } from '@/lib/collections';
+import { 
+  getProfileCollections, 
+  updateCollection, 
+  deleteCollection, 
+  reorderCollections, 
+  reorderCollectionItems,
+  getLocalCollections,
+  isLinkCollection,
+  isPostCollection
+} from '@/lib/collections';
 
 interface ProfileViewProps {
   user: User;
+  initialTab?: 'posts' | 'comments' | 'links' | 'likes';
+  initialLinkPageSlug?: string;
 }
 
 function XLogo({ className = "w-3.5 h-3.5" }: { className?: string }) {
@@ -92,12 +106,16 @@ function CatShushIcon({ className = "w-4 h-4" }: { className?: string }) {
   );
 }
 
-export default function ProfileView({ user: initialUser }: ProfileViewProps) {
+export default function ProfileView({ 
+  user: initialUser,
+  initialTab = 'posts',
+  initialLinkPageSlug
+}: ProfileViewProps) {
   const { user: authUser, profile: authProfile, signInWithTwitter } = useAuth();
   const supabase = createClient();
 
   // 4 tabs requested left-to-right: 1. Posts (default), 2. Comments, 3. Links, 4. Likes
-  const [activeTab, setActiveTab] = useState<'posts' | 'comments' | 'links' | 'likes'>('posts');
+  const [activeTab, setActiveTab] = useState<'posts' | 'comments' | 'links' | 'likes'>(initialTab);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isMutual, setIsMutual] = useState(false);
   const [followsYou, setFollowsYou] = useState(false);
@@ -108,6 +126,15 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
   // Curated collections / presets state (only showcase demo amberlyn gets mock placeholders; others start clean or sync from Supabase)
   const isDemoProfile = initialUser.username.toLowerCase() === 'amberlyn';
   const [collections, setCollections] = useState<Collection[]>(() => {
+    if (typeof window !== 'undefined') {
+      const cached = getLocalCollections(initialUser.id);
+      let postCols = cached.filter(isPostCollection);
+      if (postCols.length === 0 && isDemoProfile) {
+        const altCached = getLocalCollections('amberlyn');
+        postCols = altCached.filter(isPostCollection);
+      }
+      if (postCols.length > 0) return postCols;
+    }
     return isDemoProfile ? MOCK_COLLECTIONS : [];
   });
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
@@ -116,11 +143,33 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
 
   // Curated link collections / presets state
   const [linkCollections, setLinkCollections] = useState<Collection[]>(() => {
+    if (typeof window !== 'undefined') {
+      const cached = getLocalCollections(initialUser.id);
+      let linkCols = cached.filter(isLinkCollection);
+      if (linkCols.length === 0 && isDemoProfile) {
+        const altCached = getLocalCollections('amberlyn');
+        linkCols = altCached.filter(isLinkCollection);
+      }
+      if (linkCols.length > 0) return linkCols;
+    }
     return isDemoProfile ? MOCK_LINK_COLLECTIONS : [];
   });
-  const [activeLinkCollectionId, setActiveLinkCollectionId] = useState<string | null>(null);
+  const [activeLinkCollectionId, setActiveLinkCollectionId] = useState<string | null>(() => {
+    if (initialLinkPageSlug) {
+      const isDemo = initialUser.username.toLowerCase() === 'amberlyn';
+      const initialCols = isDemo ? MOCK_LINK_COLLECTIONS : [];
+      const matched = initialCols.find(c => c.slug === initialLinkPageSlug || c.id === initialLinkPageSlug);
+      return matched ? matched.id : initialLinkPageSlug;
+    }
+    return null;
+  });
   const [allLinkCollectionsModalOpen, setAllLinkCollectionsModalOpen] = useState(false);
-  const [showLinkCollections, setShowLinkCollections] = useState(false);
+  const [showLinkCollections, setShowLinkCollections] = useState(Boolean(initialLinkPageSlug || initialTab === 'links'));
+
+  // Reorder mode states for Link Pages (Model B unified drag & drop)
+  const [isReordering, setIsReordering] = useState(false);
+  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+  const [dragOverItemId, setDragOverItemId] = useState<string | null>(null);
 
   // Item assignment & collection creation modals
   const [manageItem, setManageItem] = useState<{
@@ -138,9 +187,20 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
   };
 
   const handleSelectLinkCollection = (id: string | null) => {
+    setIsReordering(false);
+    setDraggedItemId(null);
+    setDragOverItemId(null);
     setActiveLinkCollectionId(id);
     if (id !== null) {
       setShowLinkCollections(true);
+    }
+    if (typeof window !== 'undefined') {
+      const col = linkCollections.find((c) => c.id === id);
+      if (!col || col.isDefault || col.slug === 'main' || id === null) {
+        window.history.replaceState(null, '', `/${userProfile.username}/links`);
+      } else if (col.slug) {
+        window.history.replaceState(null, '', `/${userProfile.username}/links/${col.slug}`);
+      }
     }
   };
 
@@ -216,8 +276,13 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
 
   // Posts state
   const [posts, setPosts] = useState<Post[]>(() => {
-    const defaultPosts = MOCK_POSTS.filter(p => p.author.username === initialUser.username);
-    return defaultPosts.length > 0 ? defaultPosts : [
+    const defaultPosts = MOCK_POSTS.filter(p => p.author.username.toLowerCase() === initialUser.username.toLowerCase());
+    const sessionPosts = (typeof window !== 'undefined' ? getAllSessionPosts() : []).filter(
+      p => p.author?.username?.toLowerCase() === initialUser.username.toLowerCase()
+    );
+    const combined = [...sessionPosts, ...defaultPosts];
+    const unique = Array.from(new Map(combined.map(p => [p.id, p])).values());
+    return unique.length > 0 ? unique : [
       {
         id: `post_sample_${initialUser.username}`,
         author: initialUser,
@@ -272,7 +337,9 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
         return [newPost, ...prev];
       });
 
-      if (targetColId) {
+      const isMainTarget = !targetColId || targetColId === 'main' || targetColId === 'col_link_main';
+
+      if (targetColId && !isMainTarget) {
         setCollections((prev) =>
           prev.map((c) =>
             c.id === targetColId ? { ...c, itemIds: [newPost.id, ...c.itemIds] } : c
@@ -281,6 +348,14 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
         setLinkCollections((prev) =>
           prev.map((c) =>
             c.id === targetColId ? { ...c, itemIds: [newPost.id, ...c.itemIds] } : c
+          )
+        );
+      } else if (newPost.type === 'link_card' || newPost.type === 'badge') {
+        setLinkCollections((prev) =>
+          prev.map((c) =>
+            (c.isDefault || c.slug === 'main' || c.id === 'col_link_main' || c.id === 'main')
+              ? { ...c, itemIds: [newPost.id, ...c.itemIds] }
+              : c
           )
         );
       }
@@ -296,13 +371,30 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
     return () => window.removeEventListener('oomfs:post-created', handlePostCreated);
   }, []);
 
-  // Immediate hydration from local storage on mount to eliminate empty-state flash on refresh
+  // Immediate hydration from local storage & session posts on mount to eliminate empty-state flash on refresh
   useEffect(() => {
+    const sessionPosts = getAllSessionPosts().filter(
+      p => p.author?.username?.toLowerCase() === initialUser.username.toLowerCase()
+    );
+    if (sessionPosts.length > 0) {
+      setPosts((prev) => {
+        const existingIds = new Set(prev.map(p => p.id));
+        const newToAdd = sessionPosts.filter(p => !existingIds.has(p.id));
+        return newToAdd.length > 0 ? [...newToAdd, ...prev] : prev;
+      });
+    }
+
     const cachedTargetId = (isValidUuid(authUser?.id) && isSelf) 
       ? authUser!.id 
       : (isValidUuid(userProfile.id) ? userProfile.id : (initialUser.id || `usr_${initialUser.username.toLowerCase()}`));
-    const localPosts = getLocalCollections(cachedTargetId).filter(c => c.tabType === 'posts');
-    const localLinks = getLocalCollections(cachedTargetId).filter(c => c.tabType === 'links');
+    let localPosts = getLocalCollections(cachedTargetId).filter(isPostCollection);
+    let localLinks = getLocalCollections(cachedTargetId).filter(isLinkCollection);
+    if (localLinks.length === 0 && initialUser.username.toLowerCase() === 'amberlyn') {
+      localLinks = getLocalCollections('amberlyn').filter(isLinkCollection);
+    }
+    if (localPosts.length === 0 && initialUser.username.toLowerCase() === 'amberlyn') {
+      localPosts = getLocalCollections('amberlyn').filter(isPostCollection);
+    }
     if (localPosts.length > 0) setCollections(localPosts);
     if (localLinks.length > 0) setLinkCollections(localLinks);
   }, [authUser?.id, isSelf, userProfile.id, initialUser.id, initialUser.username]);
@@ -351,8 +443,19 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
             getProfileCollections(targetUserId, 'posts'),
             getProfileCollections(targetUserId, 'links')
           ]);
-          setCollections(dbPostCols);
-          setLinkCollections(dbLinkCols);
+          if (dbPostCols && dbPostCols.length > 0) {
+            setCollections(dbPostCols);
+          }
+          if (dbLinkCols && dbLinkCols.length > 0) {
+            setLinkCollections(dbLinkCols);
+          }
+          if (initialLinkPageSlug) {
+            const match = dbLinkCols.find((c) => c.slug === initialLinkPageSlug || c.id === initialLinkPageSlug);
+            if (match) {
+              setActiveLinkCollectionId(match.id);
+              setShowLinkCollections(true);
+            }
+          }
         } catch (colErr) {
           console.error('Error loading collections:', colErr);
         }
@@ -716,8 +819,48 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
     return [];
   }, [rawTimelinePosts, allTimelinePosts, activeCollectionId, collections]);
 
+  // Identify the main/default link collection
+  const mainLinkCollection = useMemo(() => {
+    return linkCollections.find((c) => c.isDefault || c.slug === 'main' || c.id === 'col_link_main') || {
+      id: 'main',
+      title: 'Main',
+      icon: '🌐',
+      slug: 'main',
+      isDefault: true,
+      description: 'Primary bio links, core socials, and featured badges',
+      itemIds: ['post_badge_1', 'post_badge_oomf_1', 'post_badge_2', 'post_badge_3', 'post_badge_4', 'l1', 'l2', 'l3', 'post_1']
+    };
+  }, [linkCollections]);
+
+  // Current active link collection object
+  const activeLinkCollection = useMemo(() => {
+    if (!activeLinkCollectionId || activeLinkCollectionId === 'main' || activeLinkCollectionId === mainLinkCollection.id) {
+      return mainLinkCollection;
+    }
+    return linkCollections.find((c) => c.id === activeLinkCollectionId) || mainLinkCollection;
+  }, [activeLinkCollectionId, linkCollections, mainLinkCollection]);
+
+  const isMainPageActive = !activeLinkCollection || activeLinkCollection.isDefault || activeLinkCollection.slug === 'main' || activeLinkCollection.id === mainLinkCollection.id;
+
   // Unified Badge Wall posts
-  const badgePosts = posts.filter(p => p.type === 'badge' && p.badgeData);
+  const allBadgePosts = useMemo(
+    () => posts.filter(p => p.type === 'badge' && p.badgeData),
+    [posts]
+  );
+
+  // Per-page badge posts (distinct badge wall per page)
+  const pageBadgePosts = useMemo(() => {
+    return allBadgePosts.filter((p) => {
+      if (activeLinkCollection?.itemIds && activeLinkCollection.itemIds.includes(p.id)) {
+        return true;
+      }
+      const pPage = (p.badgeData as any)?.pageId;
+      if (isMainPageActive) {
+        return !pPage || pPage === 'main' || pPage === mainLinkCollection.id;
+      }
+      return pPage === activeLinkCollection?.id || (activeLinkCollection?.slug && pPage === activeLinkCollection.slug);
+    });
+  }, [allBadgePosts, activeLinkCollection, isMainPageActive, mainLinkCollection.id]);
 
   // Raw combined links (user profile links + link_card posts)
   const rawLinkCards = useMemo(() => [
@@ -726,46 +869,182 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
       title: p.linkData!.title,
       url: p.linkData!.url,
       description: p.linkData!.description || p.text,
-      clicks: 120
+      clicks: 120,
+      pageId: (p.linkData as any)?.pageId
     })),
     ...userProfile.links.map(l => ({
       id: l.id,
       title: l.title,
       url: l.url,
       description: l.category ? `Category: ${l.category}` : undefined,
-      clicks: l.clicks
+      clicks: l.clicks,
+      pageId: 'main'
     }))
   ], [posts, userProfile.links]);
 
-  // All combined link cards
-  const allLinkCards = rawLinkCards;
+  // Eligible link cards for this page
+  const pageLinkCards = useMemo(() => {
+    return rawLinkCards.filter((l) => {
+      if (activeLinkCollection?.itemIds && activeLinkCollection.itemIds.includes(l.id)) {
+        return true;
+      }
+      if (isMainPageActive) {
+        return !l.pageId || l.pageId === 'main' || l.pageId === mainLinkCollection.id;
+      }
+      return l.pageId === activeLinkCollection?.id || (activeLinkCollection?.slug && l.pageId === activeLinkCollection.slug);
+    });
+  }, [rawLinkCards, activeLinkCollection, isMainPageActive, mainLinkCollection.id]);
 
-  // Filter & custom-order link cards when a link collection lens is selected
-  const linkCards = useMemo(() => {
-    if (!activeLinkCollectionId) {
-      return allLinkCards;
-    }
-    const col = linkCollections.find((c) => c.id === activeLinkCollectionId);
-    if (!col || !col.itemIds || col.itemIds.length === 0) {
-      return [];
-    }
-    const linkMap = new Map(rawLinkCards.map((l) => [l.id, l]));
-    const matchedLinks: typeof rawLinkCards = [];
-    for (const id of col.itemIds) {
-      const found = linkMap.get(id);
-      if (found) {
-        matchedLinks.push(found);
+  // Model B: Unified ordered items for the active link page
+  const unifiedPageItems = useMemo(() => {
+    const badgeMap = new Map(pageBadgePosts.map((p) => [p.id, p]));
+    const linkMap = new Map(pageLinkCards.map((l) => [l.id, l]));
+
+    const items: Array<
+      | { id: string; kind: 'badge'; post: Post }
+      | { id: string; kind: 'link_card'; link: (typeof rawLinkCards)[number] }
+    > = [];
+
+    if (activeLinkCollection?.itemIds && activeLinkCollection.itemIds.length > 0) {
+      for (const id of activeLinkCollection.itemIds) {
+        if (badgeMap.has(id)) {
+          items.push({ id, kind: 'badge', post: badgeMap.get(id)! });
+          badgeMap.delete(id);
+        } else if (linkMap.has(id)) {
+          items.push({ id, kind: 'link_card', link: linkMap.get(id)! });
+          linkMap.delete(id);
+        }
       }
     }
-    if (matchedLinks.length > 0) {
-      return matchedLinks;
+
+    // Append any unassigned badges on this page
+    for (const [id, post] of badgeMap.entries()) {
+      items.push({ id, kind: 'badge', post });
     }
-    // Fallback slice so presets always demonstrate custom curated subsets
-    if (col.id.startsWith('col_') && rawLinkCards.length > 0) {
-      return rawLinkCards.slice(0, Math.min(rawLinkCards.length, col.itemIds.length));
+
+    // Append any unassigned link cards on this page
+    for (const [id, link] of linkMap.entries()) {
+      items.push({ id, kind: 'link_card', link });
     }
-    return [];
-  }, [rawLinkCards, allLinkCards, activeLinkCollectionId, linkCollections]);
+
+    return items;
+  }, [pageBadgePosts, pageLinkCards, activeLinkCollection]);
+
+  // Model B: Render groups where consecutive badges group into a cluster, while link cards take full rows
+  const renderGroups = useMemo(() => {
+    type RenderGroup = 
+      | {
+          type: 'badge_cluster';
+          key: string;
+          items: Array<{ id: string; post: Post }>;
+        }
+      | {
+          type: 'link_card';
+          key: string;
+          link: (typeof rawLinkCards)[number];
+        };
+
+    const groups: RenderGroup[] = [];
+    let currentBadgeCluster: Array<{ id: string; post: Post }> = [];
+
+    for (const item of unifiedPageItems) {
+      if (item.kind === 'badge') {
+        currentBadgeCluster.push({ id: item.id, post: item.post });
+      } else {
+        if (currentBadgeCluster.length > 0) {
+          groups.push({
+            type: 'badge_cluster',
+            key: `cluster-${currentBadgeCluster.map((b) => b.id).join('-')}`,
+            items: currentBadgeCluster
+          });
+          currentBadgeCluster = [];
+        }
+        groups.push({
+          type: 'link_card',
+          key: `link-${item.id}`,
+          link: item.link
+        });
+      }
+    }
+
+    if (currentBadgeCluster.length > 0) {
+      groups.push({
+        type: 'badge_cluster',
+        key: `cluster-${currentBadgeCluster.map((b) => b.id).join('-')}`,
+        items: currentBadgeCluster
+      });
+    }
+
+    return groups;
+  }, [unifiedPageItems, rawLinkCards]);
+
+  // Drag-and-drop handlers for unified Link Page items
+  const handleItemDragStart = (e: React.DragEvent, id: string) => {
+    if (!isReordering) return;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', id);
+    setDraggedItemId(id);
+  };
+
+  const handleItemDragOver = (e: React.DragEvent, id: string) => {
+    if (!isReordering || !draggedItemId) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverItemId !== id) {
+      setDragOverItemId(id);
+    }
+  };
+
+  const handleItemDrop = async (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    if (!isReordering || !draggedItemId || draggedItemId === targetId) {
+      setDraggedItemId(null);
+      setDragOverItemId(null);
+      return;
+    }
+
+    const currentIds = unifiedPageItems.map((item) => item.id);
+    const sourceIndex = currentIds.indexOf(draggedItemId);
+    const targetIndex = currentIds.indexOf(targetId);
+
+    if (sourceIndex === -1 || targetIndex === -1) {
+      setDraggedItemId(null);
+      setDragOverItemId(null);
+      return;
+    }
+
+    const updatedIds = [...currentIds];
+    const [moved] = updatedIds.splice(sourceIndex, 1);
+    updatedIds.splice(targetIndex, 0, moved);
+
+    const targetColId = activeLinkCollection?.id || mainLinkCollection.id || 'col_link_main';
+
+    const isMain = targetColId === 'col_link_main' || targetColId === 'main' || Boolean(activeLinkCollection?.isDefault || activeLinkCollection?.slug === 'main');
+
+    // Optimistically update React state
+    setLinkCollections((prev) => {
+      const exists = prev.some((c) => c.id === targetColId || (isMain && (c.isDefault || c.slug === 'main' || c.id === 'col_link_main' || c.id === 'main')));
+      if (exists) {
+        return prev.map((c) => {
+          const isMatch = c.id === targetColId || (isMain && (c.isDefault || c.slug === 'main' || c.id === 'col_link_main' || c.id === 'main'));
+          return isMatch ? { ...c, itemIds: updatedIds, tabType: 'links' as const } : c;
+        });
+      }
+      return [...prev, { ...mainLinkCollection, id: targetColId, itemIds: updatedIds, tabType: 'links' as const }];
+    });
+
+    setDraggedItemId(null);
+    setDragOverItemId(null);
+
+    // Persist to Supabase and LocalStorage
+    const effectiveUserId = (isSelf && authUser?.id) || userProfile.id || initialUser.id || `usr_${initialUser.username.toLowerCase()}`;
+    await reorderCollectionItems(targetColId, updatedIds, effectiveUserId);
+  };
+
+  const handleItemDragEnd = () => {
+    setDraggedItemId(null);
+    setDragOverItemId(null);
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
@@ -1032,6 +1311,9 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
               }
             } else {
               setActiveTab('posts');
+              if (typeof window !== 'undefined') {
+                window.history.replaceState(null, '', `/${userProfile.username}`);
+              }
             }
           }}
           className={`flex-1 py-3.5 text-center relative hover:bg-[#f7f9f9] transition-colors font-bold cursor-pointer ${
@@ -1078,6 +1360,14 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
               }
             } else {
               setActiveTab('links');
+              if (typeof window !== 'undefined') {
+                const col = linkCollections.find((c) => c.id === activeLinkCollectionId);
+                if (col && !col.isDefault && col.slug && col.slug !== 'main') {
+                  window.history.replaceState(null, '', `/${userProfile.username}/links/${col.slug}`);
+                } else {
+                  window.history.replaceState(null, '', `/${userProfile.username}/links`);
+                }
+              }
             }
           }}
           className={`flex-1 py-3.5 text-center relative hover:bg-[#f7f9f9] transition-colors font-bold cursor-pointer ${
@@ -1247,162 +1537,335 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
         {/* 3. LINKS TAB */}
         {activeTab === 'links' && (
           <div>
-            {/* Secondary Row: Curated Link Collections Lens Bar (Hidden by default, toggle by clicking Links tab) */}
+            {/* Secondary Row: Curated Link Pages Bar (Shown by default or toggled) */}
             {showLinkCollections && (
               <CollectionLensBar
+                mode="links"
                 collections={linkCollections}
                 activeCollectionId={activeLinkCollectionId}
                 onSelectCollection={handleSelectLinkCollection}
                 onOpenAllModal={() => setAllLinkCollectionsModalOpen(true)}
-                totalCount={allLinkCards.length}
+                totalCount={unifiedPageItems.length}
                 isSelf={isSelf}
                 onCreateCollection={() => setCreateCollectionTab('links')}
               />
             )}
 
-            {/* Active Lens Indicator Banner if filtered */}
-            {activeLinkCollectionId && (() => {
-              const activeCol = linkCollections.find((c) => c.id === activeLinkCollectionId);
-              return activeCol ? (
-                <div className="flex items-center justify-between px-4 py-2 bg-blue-50/60 border-b border-blue-100/80 text-xs text-[#0f1419]">
-                  <div className="flex items-center gap-1.5 truncate">
-                    <span className="text-sm">{activeCol.icon || '📁'}</span>
-                    <span className="font-semibold text-blue-950">Viewing collection:</span>
-                    <span className="font-bold text-[#1d9bf0] truncate">{activeCol.title}</span>
-                    <span className="text-gray-500 font-medium">({linkCards.length} links in custom order)</span>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0 ml-2">
-                    {!showLinkCollections && (
-                      <button
-                        type="button"
-                        onClick={() => setShowLinkCollections(true)}
-                        className="text-xs font-semibold text-[#1d9bf0] hover:underline cursor-pointer"
-                      >
-                        Change preset
-                      </button>
+            {/* Active Link Page Header */}
+            <div className="flex items-center justify-between px-4 py-3 bg-[#f7f9f9]/80 border-b border-[#eff3f4]">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="text-xl shrink-0">{activeLinkCollection?.icon || '🌐'}</span>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-extrabold text-[#0f1419] text-sm leading-tight truncate">
+                      {activeLinkCollection?.title || 'Main Page'}
+                    </h3>
+                    {activeLinkCollection?.slug && activeLinkCollection.slug !== 'main' && (
+                      <span className="text-[10px] font-mono text-[#1d9bf0] bg-blue-50 px-1.5 py-0.5 rounded-md shrink-0">
+                        /{activeLinkCollection.slug}
+                      </span>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => handleSelectLinkCollection(null)}
-                      className="text-xs font-semibold text-[#536471] hover:text-[#0f1419] hover:underline cursor-pointer"
-                    >
-                      Clear filter
-                    </button>
                   </div>
+                  {activeLinkCollection?.description && (
+                    <p className="text-xs text-[#536471] truncate mt-0.5">
+                      {activeLinkCollection.description}
+                    </p>
+                  )}
                 </div>
-              ) : null;
-            })()}
-
-            <div className="p-4 flex flex-col gap-4">
-              {/* 1. THE BADGE WALL (only shown on 'All' or when not filtered) */}
-              {badgePosts.length > 0 && !activeLinkCollectionId && (
-                <div className="border border-[#eff3f4] rounded-2xl bg-white p-3 sm:p-3.5 shadow-2xs">
-                  <div className="flex flex-wrap gap-3 items-start justify-start">
-                    {badgePosts.map((post) => {
-                      const b = post.badgeData!;
-                      return (
-                        <div
-                          key={post.id}
-                          className="relative group/badge-item flex flex-col items-center w-[88px] gap-1 shrink-0"
-                        >
-                          <a
-                            href={b.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title={`${b.title} • ${b.url.replace(/^https?:\/\//, '')}`}
-                            className="block w-[88px] h-[31px] shrink-0 rounded-xs overflow-hidden border border-black/25 shadow-xs hover:shadow-md hover:scale-105 active:scale-95 transition-all select-none cursor-pointer"
-                            style={b.badgeType !== 'image' ? { background: b.bgColor || '#0f1419' } : undefined}
-                          >
-                            {b.badgeType === 'image' && b.imageUrl ? (
-                              <img
-                                src={b.imageUrl}
-                                alt={b.title}
-                                className="w-[88px] h-[31px] object-cover block"
-                              />
-                            ) : null}
-                          </a>
-
-                          {b.showText !== false && (b.label || b.title) && (
-                            <span className="text-[10px] font-semibold text-[#536471] group-hover/badge-item:text-[#0f1419] text-center truncate w-full leading-tight transition-colors">
-                              {b.label || b.title}
-                            </span>
-                          )}
-
-                          {/* Delete button for profile owner */}
-                          {isSelf && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeletePost(post.id);
-                              }}
-                              title="Delete badge from wall"
-                              className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-600 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover/badge-item:opacity-100 transition-opacity shadow-xs hover:bg-red-700 cursor-pointer z-10"
-                            >
-                              ×
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {linkCards.length > 0 ? (
-                linkCards.map((link) => (
-                  <a
-                    key={link.id}
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-4 border border-[#eff3f4] rounded-2xl bg-white hover:border-[#1d9bf0] hover:shadow-xs transition-all flex items-center justify-between group"
-                  >
-                    <div className="flex flex-col gap-0.5 min-w-0 pr-4">
-                      <span className="font-bold text-[#0f1419] text-base group-hover:text-[#1d9bf0] transition-colors truncate">
-                        {link.title}
-                      </span>
-                      {link.description && (
-                        <p className="text-xs text-[#536471] line-clamp-1">
-                          {link.description}
-                        </p>
-                      )}
-                      <span className="text-xs text-[#1d9bf0] font-mono truncate">
-                        {link.url.replace(/^https?:\/\//, '')}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {isSelf && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setManageItem({ id: link.id, title: link.title, tabType: 'links' });
-                          }}
-                          title="Organize into link collections"
-                          className="p-2 text-[#536471] hover:text-[#1d9bf0] hover:bg-[#1d9bf0]/10 rounded-full transition-colors cursor-pointer mr-1"
-                        >
-                          <FolderPlus className="w-4 h-4" />
-                        </button>
-                      )}
-                      <div className="bg-[#1d9bf0] text-white text-xs font-bold px-4 py-2 rounded-full group-hover:bg-[#1a8cd8] transition-colors flex items-center gap-1 shrink-0">
-                        <span>Visit</span>
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </div>
-                    </div>
-                  </a>
-                ))
-              ) : (
-                <div className="text-center py-10 text-[#536471] text-sm">
-                  No links in this collection yet.{' '}
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                {isSelf && unifiedPageItems.length > 1 && (
                   <button
                     type="button"
-                    onClick={() => setActiveLinkCollectionId(null)}
-                    className="text-[#1d9bf0] hover:underline font-semibold cursor-pointer"
+                    onClick={() => {
+                      setIsReordering(!isReordering);
+                      setDraggedItemId(null);
+                      setDragOverItemId(null);
+                    }}
+                    className={`text-xs font-bold px-3 py-1 rounded-full transition-all cursor-pointer flex items-center gap-1.5 ${
+                      isReordering
+                        ? 'bg-[#0f1419] text-white hover:bg-black shadow-xs'
+                        : 'text-[#536471] hover:text-[#0f1419] hover:bg-[#0f1419]/5'
+                    }`}
                   >
-                    View all links
+                    {isReordering ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                        <span>Done</span>
+                      </>
+                    ) : (
+                      <>
+                        <ArrowUpDown className="w-3.5 h-3.5" />
+                        <span>Reorder</span>
+                      </>
+                    )}
                   </button>
+                )}
+                {isSelf && !isReordering && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBlockType('link_card');
+                      setComposerOpen(true);
+                    }}
+                    className="text-xs font-bold text-[#1d9bf0] hover:bg-[#1d9bf0]/10 px-2.5 py-1 rounded-full transition-colors cursor-pointer"
+                  >
+                    + Add Link
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Reorder Mode Notification Banner */}
+            {isReordering && (
+              <div className="bg-[#1d9bf0]/10 border-b border-[#1d9bf0]/20 px-4 py-2 flex items-center justify-between text-xs text-[#0f1419]">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="w-2 h-2 rounded-full bg-[#1d9bf0] animate-pulse shrink-0" />
+                  <span className="truncate">
+                    <strong>Reorder Mode</strong>: Drag badges and link cards to rearrange. Links are paused while reordering.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsReordering(false);
+                    setDraggedItemId(null);
+                    setDragOverItemId(null);
+                  }}
+                  className="font-bold text-[#1d9bf0] hover:underline cursor-pointer ml-3 shrink-0"
+                >
+                  Done
+                </button>
+              </div>
+            )}
+
+            <div className="p-4 flex flex-col gap-4">
+              {/* MODEL B UNIFIED ITEMS FLOW */}
+              {renderGroups.map((group) => {
+                if (group.type === 'badge_cluster') {
+                  return (
+                    <div
+                      key={group.key}
+                      className={`border rounded-2xl bg-white p-3 sm:p-3.5 shadow-2xs transition-colors ${
+                        isReordering ? 'border-[#1d9bf0]/30 bg-[#f7f9f9]/50' : 'border-[#eff3f4]'
+                      }`}
+                    >
+                      <div className="flex flex-wrap gap-3 items-start justify-start">
+                        {group.items.map(({ id, post }) => {
+                          const b = post.badgeData!;
+                          const isItemDragged = draggedItemId === id;
+                          const isDropTarget = dragOverItemId === id && draggedItemId !== null && draggedItemId !== id;
+
+                          return (
+                            <div
+                              key={id}
+                              draggable={isReordering}
+                              onDragStart={(e) => handleItemDragStart(e, id)}
+                              onDragOver={(e) => handleItemDragOver(e, id)}
+                              onDrop={(e) => handleItemDrop(e, id)}
+                              onDragEnd={handleItemDragEnd}
+                              className={`relative group/badge-item flex flex-col items-center w-[88px] gap-1 shrink-0 transition-all select-none ${
+                                isReordering ? 'cursor-grab active:cursor-grabbing' : ''
+                              } ${
+                                isItemDragged ? 'opacity-30 scale-95' : ''
+                              } ${
+                                isDropTarget ? (b.badgeType === 'avatar' ? 'ring-2 ring-[#1d9bf0] ring-offset-2 scale-105 rounded-full' : 'ring-2 ring-[#1d9bf0] ring-offset-2 scale-105 rounded-xs') : ''
+                              }`}
+                            >
+                              {b.badgeType === 'avatar' ? (
+                                <a
+                                  href={b.url}
+                                  target={b.url.startsWith('http') ? '_blank' : undefined}
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => {
+                                    if (isReordering) {
+                                      e.preventDefault();
+                                    }
+                                  }}
+                                  title={`${b.title} • ${b.url}`}
+                                  className="block w-[52px] h-[52px] rounded-full overflow-hidden border border-black/15 shadow-2xs hover:shadow-md hover:scale-105 active:scale-95 transition-all select-none cursor-pointer my-0.5"
+                                >
+                                  <img
+                                    src={b.imageUrl}
+                                    alt={b.title}
+                                    className="w-[52px] h-[52px] rounded-full object-cover block pointer-events-none"
+                                  />
+                                </a>
+                              ) : (
+                                <a
+                                  href={b.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => {
+                                    if (isReordering) {
+                                      e.preventDefault();
+                                    }
+                                  }}
+                                  title={`${b.title} • ${b.url.replace(/^https?:\/\//, '')}`}
+                                  className="block w-[88px] h-[31px] shrink-0 rounded-xs overflow-hidden border border-black/25 shadow-xs hover:shadow-md hover:scale-105 active:scale-95 transition-all select-none cursor-pointer"
+                                  style={b.badgeType !== 'image' ? { background: b.bgColor || '#0f1419' } : undefined}
+                                >
+                                  {b.badgeType === 'image' && b.imageUrl ? (
+                                    <img
+                                      src={b.imageUrl}
+                                      alt={b.title}
+                                      className="w-[88px] h-[31px] object-cover block pointer-events-none"
+                                    />
+                                  ) : null}
+                                </a>
+                              )}
+
+                              {b.showText !== false && (b.label || b.title) && (
+                                <span className="text-[10px] font-semibold text-[#536471] group-hover/badge-item:text-[#0f1419] text-center truncate w-full leading-tight transition-colors">
+                                  {b.label || b.title}
+                                </span>
+                              )}
+
+                              {/* Delete button for profile owner (hidden while reordering) */}
+                              {isSelf && !isReordering && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeletePost(post.id);
+                                  }}
+                                  title="Delete badge from this page"
+                                  className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-600 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover/badge-item:opacity-100 transition-opacity shadow-xs hover:bg-red-700 cursor-pointer z-10"
+                                >
+                                  ×
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                }
+
+                // Link Card (Full Row)
+                const link = group.link;
+                const isItemDragged = draggedItemId === link.id;
+                const isDropTarget = dragOverItemId === link.id && draggedItemId !== null && draggedItemId !== link.id;
+
+                return (
+                  <div
+                    key={group.key}
+                    draggable={isReordering}
+                    onDragStart={(e) => handleItemDragStart(e, link.id)}
+                    onDragOver={(e) => handleItemDragOver(e, link.id)}
+                    onDrop={(e) => handleItemDrop(e, link.id)}
+                    onDragEnd={handleItemDragEnd}
+                    className={`relative transition-all select-none ${
+                      isReordering ? 'cursor-grab active:cursor-grabbing' : ''
+                    } ${
+                      isItemDragged ? 'opacity-30 scale-[0.99]' : ''
+                    } ${
+                      isDropTarget ? 'ring-2 ring-[#1d9bf0] ring-offset-2 rounded-2xl' : ''
+                    }`}
+                  >
+                    <a
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => {
+                        if (isReordering) {
+                          e.preventDefault();
+                        }
+                      }}
+                      className={`p-4 border rounded-2xl bg-white transition-all flex items-center justify-between group ${
+                        isReordering
+                          ? 'border-[#1d9bf0]/30 hover:border-[#1d9bf0]'
+                          : 'border-[#eff3f4] hover:border-[#1d9bf0] hover:shadow-xs'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0 pr-4">
+                        {/* Grip handle in reorder mode */}
+                        {isReordering && (
+                          <div className="text-[#536471] hover:text-[#0f1419] shrink-0">
+                            <GripVertical className="w-5 h-5 text-[#536471]/60" />
+                          </div>
+                        )}
+                        <div className="flex flex-col gap-0.5 min-w-0">
+                          <span className="font-bold text-[#0f1419] text-base group-hover:text-[#1d9bf0] transition-colors truncate">
+                            {link.title}
+                          </span>
+                          {link.description && (
+                            <p className="text-xs text-[#536471] line-clamp-1">
+                              {link.description}
+                            </p>
+                          )}
+                          <span className="text-xs text-[#1d9bf0] font-mono truncate">
+                            {link.url.replace(/^https?:\/\//, '')}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {isSelf && !isReordering && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setManageItem({ id: link.id, title: link.title, tabType: 'links' });
+                            }}
+                            title="Organize into link pages"
+                            className="p-2 text-[#536471] hover:text-[#1d9bf0] hover:bg-[#1d9bf0]/10 rounded-full transition-colors cursor-pointer mr-1"
+                          >
+                            <FolderPlus className="w-4 h-4" />
+                          </button>
+                        )}
+                        <div className={`text-white text-xs font-bold px-4 py-2 rounded-full flex items-center gap-1 shrink-0 ${
+                          isReordering ? 'bg-gray-400' : 'bg-[#1d9bf0] group-hover:bg-[#1a8cd8]'
+                        }`}>
+                          <span>Visit</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </div>
+                      </div>
+                    </a>
+                  </div>
+                );
+              })}
+
+              {/* 3. Empty State for this page */}
+              {unifiedPageItems.length === 0 && (
+                <div className="text-center py-12 px-4 flex flex-col items-center justify-center gap-2">
+                  <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center text-2xl mb-1">
+                    {activeLinkCollection?.icon || '🌐'}
+                  </div>
+                  <h4 className="font-bold text-[#0f1419] text-sm">
+                    No links or badges on this page yet
+                  </h4>
+                  <p className="text-xs text-[#536471] max-w-sm">
+                    {isSelf
+                      ? `Publish links or 88×31 web badges directly to "${activeLinkCollection?.title || 'this page'}".`
+                      : `@${userProfile.username} has not added any items to this page yet.`}
+                  </p>
+                  {isSelf && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBlockType('link_card');
+                          setComposerOpen(true);
+                        }}
+                        className="bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-bold text-xs px-4 py-2 rounded-full transition-colors cursor-pointer"
+                      >
+                        + Add Bio Link
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBlockType('badge');
+                          setComposerOpen(true);
+                        }}
+                        className="bg-white border border-[#cfd9de] hover:bg-gray-50 text-[#0f1419] font-bold text-xs px-4 py-2 rounded-full transition-colors cursor-pointer"
+                      >
+                        + Add Badge
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1528,7 +1991,7 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
         collections={linkCollections}
         activeCollectionId={activeLinkCollectionId}
         onSelectCollection={handleSelectLinkCollection}
-        totalCount={allLinkCards.length}
+        totalCount={rawLinkCards.length + allBadgePosts.length}
         itemTypeLabel="links"
         isSelf={isSelf}
         onCreateCollection={() => setCreateCollectionTab('links')}
@@ -1566,6 +2029,7 @@ export default function ProfileView({ user: initialUser }: ProfileViewProps) {
           userId={activeCreatorUserId}
           tabType={createCollectionTab}
           onCreated={handleCreatedCollection}
+          username={userProfile.username}
         />
       )}
     </div>

@@ -17,8 +17,8 @@ Unlike generic social platforms with rigid 4-image grid constraints, `oomfs.org`
 | **Standard** | `'standard'` | 1:1 X-style text post with optional single attachment | Expanded focal view with thread replies |
 | **Carousel** | `'carousel'` | Uncapped horizontal scroll strip, universal header, per-image captions | Uncapped horizontal scroll strip, full header & captions |
 | **Board** | `'board'` | Pinterest-style 3-image preview (`50%` left, `25%`+`25%` right, `+N` badge) | Expanded 2-column Pinterest-style masonry grid |
-| **Bio Link Card** | `'link_card'` | Compact link showcase button (featured on the **Links** profile tab) | Link showcase with direct outbound destination |
-| **Web Badge** | `'badge'` | Exclusively in the **Links** tab (unified Badge Wall above cards) | Compact 88×31 button badge with outbound destination |
+| **Bio Link Card** | `'link_card'` | Full-width outbound link card on the **Links** profile tab & sub-pages | Link showcase with direct outbound destination |
+| **Web Badge & Avatar Badge** | `'badge'` | 88×31 buttons & circular avatars in the **Links** tab (Model B dynamic plaques) | Compact button badge with outbound destination |
 
 ---
 
@@ -58,13 +58,16 @@ export interface LinkData {
 export interface BadgeData {
   title: string;
   url: string;
-  badgeType: 'image' | 'custom';
+  badgeType: 'image' | 'custom' | 'avatar';
   imageUrl?: string;
   label?: string;
   sublabel?: string;
   bgColor?: string;
   textColor?: string;
   icon?: string;
+  showText?: boolean;
+  targetUsername?: string;
+  pageId?: string;
 }
 
 export interface Post {
@@ -119,22 +122,25 @@ export interface Post {
 - **Purpose**: Curated link showcase for Linktree replacement.
 - **Key Features**:
   - Highlights title, domain URL (with `https://` stripped for clean display), optional description, and a `"Visit ↗"` pill.
-  - Primed for display under the **3. Links** tab on the profile page, but can also be shared directly on the timeline.
+  - Takes up a full-width (`w-full`) row on the **3. Links** tab and custom link sub-pages (`/[username]/links/[slug]`).
+  - Integrated into Model B unified flow, allowing authors to freely drag and reorder cards among badge clusters.
+  - Can target specific link pages during drafting via the composer collection selector dropdown.
 
-### 5. Web Badge (`type: 'badge'`)
-- **Purpose**: Early-internet 88×31 button badges & micro-links.
-- **Key Features**:
-  - **Exclusively on the Links Tab**: Filtered out of the primary timeline; aggregates into a single unified **Badge Wall** situated directly above larger link cards.
-  - **Zero Card Clutter**: Badges are freed from standard Twitter card wrappers (no repeated avatar, handle, or timestamp per item) and pack together super tightly.
-  - **Dual Mode Creation (Color vs. Image)**:
-    - **Color Badges (`badgeType: 'custom'`)**: Visual $88 \times 31$ buttons featuring custom color presets, a rainbow spectrum picker, and dynamic gradient effects (`Angle`, `Solid`, `Sheen`, `Glow`).
-    - **Image Badges (`badgeType: 'image'`)**: Client-side canvas center-crops and compresses any uploaded graphic down to exact $88 \times 31$ dimensions.
-  - **Universal Underneath Label**:
-    - Rather than obscuring small $88 \times 31$ buttons with text overlays or complex frosted scrims, titles and destination labels are placed directly **underneath** the badge.
-    - Each badge forms an $88\text{px}$ wide gallery tile (`w-[88px] flex flex-col items-center gap-1`), authentic to early-webring galleries.
-    - Labels can be toggled off (`showText: false`) for buttons with pre-baked pixel graphics.
-  - **Interactive**: Outbound link click; profile owners can delete badges directly on hover.
-  - *For complete canvas compression, HiDPI Retina pipelines, and Badge Wall gallery architecture, see [Web Badges Documentation](badges.md).*
+### 5. Web Badge & OOMF Avatar Badge (`type: 'badge'`)
+- **Purpose**: Nostalgic micro-links and visual mutual badges for link-in-bio curation.
+- **Key Formats**:
+  1. **Color Badges (`badgeType: 'custom'`)**: Visual $88 \times 31$ buttons featuring custom color presets, a rainbow spectrum picker, and dynamic gradient effects (`Angle`, `Solid`, `Sheen`, `Glow`).
+  2. **Image Badges (`badgeType: 'image'`)**: Client-side canvas center-crops and downscales uploaded graphics to authentic $88 \times 31$ dimensions ($3\times$ Retina master $264 \times 93\text{px}$ PNG).
+  3. **OOMF Avatar Badges (`badgeType: 'avatar'`)**: Circular $52\text{px} \times 52\text{px}$ profile badges (`rounded-full border border-black/15 shadow-2xs`) honoring mutual friends, collaborators, and followed accounts, linked directly to their profile (`/[username]`).
+- **Universal Underneath Label**:
+  - Rather than obscuring small buttons with text overlays or complex frosted scrims, titles and destination labels are placed directly **underneath** the badge.
+  - Each badge forms an $88\text{px}$ wide gallery tile (`w-[88px] flex flex-col items-center gap-1`).
+  - Labels can be toggled off (`showText: false`) for buttons with pre-baked pixel graphics.
+- **Model B Unified Flow & Reordering**:
+  - Badges and link cards co-exist in an author-defined sequence (`itemIds`).
+  - Consecutive badges naturally group into an authentic Badge Wall plaque (`border rounded-2xl bg-white p-3.5`), while link cards take full-width rows.
+  - Profile owners can toggle Reorder Mode (`[ ⇅ Reorder ]`) to safely drag and swap badges or link cards.
+- *For complete architectural details, see [Web Badges Documentation](badges.md) and [Link Pages Documentation](links.md).*
 
 ---
 
@@ -147,7 +153,7 @@ Post drafting can be initiated from:
 1. **Left Sidebar `"Post"` Button**: Accessible from anywhere in the app; opens the composer in a modal overlay.
 2. **Profile Page Header `"Create Post"` Button**: Toggles the composer drawer at the top of the profile.
 
-Format switching is controlled via the **bottom icon action bar** (`ImageIcon`, `Layers`, `LayoutGrid`, `Link2`, `Sparkles`). Special format builders (Carousel, Board, Bio Link, Badge) sit completely flush at the top of the composer without redundant tweet textareas.
+Format switching is controlled via the **bottom icon action bar** (`ImageIcon`, `Layers`, `LayoutGrid`, `Link2`, `Sparkles`, `Users`). Special format builders (Carousel, Board, Bio Link, Badge) sit completely flush at the top of the composer without redundant tweet textareas.
 
 *For full composer architecture and media pipeline details, see [Composer Documentation](composer.md).*
 

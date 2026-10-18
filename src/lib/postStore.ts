@@ -37,3 +37,22 @@ export function getSessionPost(id: string): Post | null {
   }
   return null;
 }
+
+export function getAllSessionPosts(): Post[] {
+  if (typeof window !== 'undefined') {
+    try {
+      const existingRaw = window.sessionStorage.getItem(STORAGE_KEY);
+      if (existingRaw) {
+        const existing: Record<string, Post> = JSON.parse(existingRaw);
+        const posts = Object.values(existing);
+        for (const p of posts) {
+          memoryStore.set(p.id, p);
+        }
+        return posts;
+      }
+    } catch {
+      return [];
+    }
+  }
+  return Array.from(memoryStore.values());
+}

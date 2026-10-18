@@ -10,15 +10,68 @@ export function isValidUuid(id: string | null | undefined): boolean {
 }
 
 /**
+ * Determine if a collection belongs to the Links tab.
+ */
+export function isLinkCollection(c: Collection): boolean {
+  return c.tabType === 'links' || (!c.tabType && (c.id.startsWith('col_link_') || Boolean(c.slug) || Boolean(c.isDefault)));
+}
+
+/**
+ * Determine if a collection belongs to the Posts timeline tab.
+ */
+export function isPostCollection(c: Collection): boolean {
+  return c.tabType === 'posts' || (!c.tabType && !c.id.startsWith('col_link_') && !c.slug && !c.isDefault);
+}
+
+/**
  * Read cached/offline collections from localStorage for a given user or handle.
  */
 export function getLocalCollections(userId: string): Collection[] {
-  if (typeof window === 'undefined' || !userId) return [];
+  let effectiveId = userId;
+  if (typeof window !== 'undefined' && (!effectiveId || effectiveId.startsWith('usr_'))) {
+    if (window.location.pathname.toLowerCase().includes('amberlyn')) {
+      effectiveId = 'amberlyn';
+    }
+  }
+  if (typeof window === 'undefined' || !effectiveId) return [];
+
+  const normalize = (items: any[]): Collection[] => {
+    return items.map((c) => ({
+      ...c,
+      tabType: c.tabType || (isLinkCollection(c) ? 'links' : 'posts')
+    }));
+  };
+
   try {
-    const raw = window.localStorage.getItem(`${LOCAL_STORAGE_PREFIX}${userId}`);
+    const raw = window.localStorage.getItem(`${LOCAL_STORAGE_PREFIX}${effectiveId}`);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) return normalize(parsed);
+    }
+    // Check key variations (e.g., without usr_ prefix)
+    if (effectiveId.startsWith('usr_')) {
+      const altRaw = window.localStorage.getItem(`${LOCAL_STORAGE_PREFIX}${effectiveId.replace('usr_', '')}`);
+      if (altRaw) {
+        const parsed = JSON.parse(altRaw);
+        if (Array.isArray(parsed) && parsed.length > 0) return normalize(parsed);
+      }
+    } else {
+      const altRaw = window.localStorage.getItem(`${LOCAL_STORAGE_PREFIX}usr_${effectiveId}`);
+      if (altRaw) {
+        const parsed = JSON.parse(altRaw);
+        if (Array.isArray(parsed) && parsed.length > 0) return normalize(parsed);
+      }
+    }
+    // For demo profiles, check known aliases
+    const isAmberlyn = effectiveId === 'usr_1' || effectiveId.toLowerCase().includes('amberlyn') || (typeof window !== 'undefined' && window.location.pathname.toLowerCase().includes('amberlyn'));
+    if (isAmberlyn) {
+      for (const k of ['amberlyn', 'usr_amberlyn', 'usr_1']) {
+        const alt = window.localStorage.getItem(`${LOCAL_STORAGE_PREFIX}${k}`);
+        if (alt) {
+          const parsed = JSON.parse(alt);
+          if (Array.isArray(parsed) && parsed.length > 0) return normalize(parsed);
+        }
+      }
     }
   } catch (err) {
     console.warn('Error reading local collections:', err);
@@ -28,14 +81,45 @@ export function getLocalCollections(userId: string): Collection[] {
 
 /**
  * Persist collections to localStorage for instant hydration and offline persistence.
+ * When tabType is specified, collections from the other tab are carefully preserved.
  */
-export function saveLocalCollections(userId: string, collections: Collection[]): void {
+export function saveLocalCollections(
+  userId: string,
+  collections: Collection[],
+  tabType?: 'posts' | 'links'
+): void {
   if (typeof window === 'undefined' || !userId) return;
   try {
-    window.localStorage.setItem(
-      `${LOCAL_STORAGE_PREFIX}${userId}`,
-      JSON.stringify(collections)
-    );
+    let toSave: Collection[];
+    if (tabType) {
+      const existing = getLocalCollections(userId);
+      const isOtherTab = tabType === 'links' ? isPostCollection : isLinkCollection;
+      const otherTabCols = existing.filter(isOtherTab);
+      const normalizedIncoming = collections.map((c) => ({
+        ...c,
+        tabType: c.tabType || tabType
+      }));
+      toSave = [...otherTabCols, ...normalizedIncoming];
+    } else {
+      toSave = collections.map((c) => ({
+        ...c,
+        tabType: c.tabType || (isLinkCollection(c) ? 'links' : 'posts')
+      }));
+    }
+
+    const payload = JSON.stringify(toSave);
+    window.localStorage.setItem(`${LOCAL_STORAGE_PREFIX}${userId}`, payload);
+    if (userId.startsWith('usr_')) {
+      window.localStorage.setItem(`${LOCAL_STORAGE_PREFIX}${userId.replace('usr_', '')}`, payload);
+    } else {
+      window.localStorage.setItem(`${LOCAL_STORAGE_PREFIX}usr_${userId}`, payload);
+    }
+    const isAmberlyn = userId === 'usr_1' || userId.toLowerCase().includes('amberlyn') || (typeof window !== 'undefined' && window.location.pathname.toLowerCase().includes('amberlyn'));
+    if (isAmberlyn) {
+      window.localStorage.setItem(`${LOCAL_STORAGE_PREFIX}amberlyn`, payload);
+      window.localStorage.setItem(`${LOCAL_STORAGE_PREFIX}usr_1`, payload);
+      window.localStorage.setItem(`${LOCAL_STORAGE_PREFIX}usr_amberlyn`, payload);
+    }
   } catch (err) {
     console.warn('Error saving local collections:', err);
   }
@@ -94,27 +178,46 @@ export async function getProfileCollections(
           }
         }
 
-        dbCollections = colsData.map((c) => ({
-          id: c.id,
-          title: c.title,
-          description: c.description || undefined,
-          icon: c.icon || '📁',
-          isPinned: Boolean(c.is_pinned),
-          isExclusive: Boolean(c.is_exclusive),
-          tabType: c.tab_type as 'posts' | 'links',
-          userId: c.user_id,
-          sortOrder: c.sort_order ?? 0,
-          createdAt: c.created_at,
-          itemIds: itemsMap.get(c.id) || []
-        }));
+        const currentLocal = typeof window !== 'undefined' ? getLocalCollections(userId) : [];
+
+        dbCollections = colsData.map((c) => {
+          const dbItemIds = itemsMap.get(c.id) || [];
+          const localMatch = currentLocal.find(
+            (lc) => lc.id === c.id || (c.slug && lc.slug === c.slug) || (c.is_default && lc.isDefault)
+          );
+
+          let resolvedItemIds: string[];
+          if (dbItemIds.length === 0) {
+            resolvedItemIds = (localMatch?.itemIds && localMatch.itemIds.length > 0) ? localMatch.itemIds : [];
+          } else if (localMatch?.itemIds && localMatch.itemIds.length > 0) {
+            // Preserve the local custom order and append any new db items
+            const localSet = new Set(localMatch.itemIds);
+            const newFromDb = dbItemIds.filter((id) => !localSet.has(id));
+            resolvedItemIds = [...localMatch.itemIds, ...newFromDb];
+          } else {
+            resolvedItemIds = dbItemIds;
+          }
+
+          return {
+            id: c.id,
+            title: c.title,
+            description: c.description || undefined,
+            icon: c.icon || '📁',
+            isPinned: Boolean(c.is_pinned),
+            isExclusive: Boolean(c.is_exclusive),
+            slug: c.slug || undefined,
+            isDefault: Boolean(c.is_default),
+            tabType: c.tab_type as 'posts' | 'links',
+            userId: c.user_id,
+            sortOrder: c.sort_order ?? 0,
+            createdAt: c.created_at,
+            itemIds: resolvedItemIds
+          };
+        });
 
         // Cache live Supabase collections to local storage
         if (typeof window !== 'undefined') {
-          const currentLocal = getLocalCollections(userId);
-          const otherTabCols = tabType 
-            ? currentLocal.filter((c) => c.tabType !== tabType)
-            : [];
-          saveLocalCollections(userId, [...otherTabCols, ...dbCollections]);
+          saveLocalCollections(userId, dbCollections, tabType);
         }
 
         return dbCollections;
@@ -127,18 +230,30 @@ export async function getProfileCollections(
   // Fallback to local storage (for demo accounts, unauthenticated testing, or offline/DB errors)
   const localCols = getLocalCollections(userId);
   if (localCols.length > 0) {
-    return tabType ? localCols.filter((c) => c.tabType === tabType) : localCols;
+    const filtered = tabType ? localCols.filter(tabType === 'links' ? isLinkCollection : isPostCollection) : localCols;
+    if (filtered.length > 0) {
+      return filtered;
+    }
   }
 
   // Default mock fallback strictly for amberlyn demo profile if local storage is uninitialized
-  const isDemo = userId === 'usr_amberlyn' || userId.toLowerCase() === 'amberlyn';
+  const isDemo = userId === 'usr_1' || userId === 'usr_amberlyn' || userId.toLowerCase().includes('amberlyn');
   if (isDemo) {
     const defaultCols = tabType === 'links' ? MOCK_LINK_COLLECTIONS : MOCK_COLLECTIONS;
-    saveLocalCollections(userId, defaultCols);
+    saveLocalCollections(userId, defaultCols, tabType);
     return defaultCols;
   }
 
   return [];
+}
+
+export function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
 /**
@@ -153,9 +268,12 @@ export async function createCollection(params: {
   icon?: string;
   isPinned?: boolean;
   isExclusive?: boolean;
+  slug?: string;
+  isDefault?: boolean;
 }): Promise<Collection | null> {
   const supabase = createClient();
   let createdCollection: Collection | null = null;
+  const computedSlug = params.slug?.trim() || (params.tabType === 'links' ? (slugify(params.title) || `page-${Date.now()}`) : undefined);
 
   if (isValidUuid(params.userId)) {
     try {
@@ -168,7 +286,9 @@ export async function createCollection(params: {
           description: params.description?.trim() || null,
           icon: params.icon || '📁',
           is_pinned: Boolean(params.isPinned),
-          is_exclusive: Boolean(params.isExclusive)
+          is_exclusive: Boolean(params.isExclusive),
+          slug: computedSlug || null,
+          is_default: Boolean(params.isDefault)
         })
         .select('*')
         .single();
@@ -181,6 +301,8 @@ export async function createCollection(params: {
           icon: data.icon || '📁',
           isPinned: Boolean(data.is_pinned),
           isExclusive: Boolean(data.is_exclusive),
+          slug: data.slug || undefined,
+          isDefault: Boolean(data.is_default),
           tabType: data.tab_type as 'posts' | 'links',
           userId: data.user_id,
           sortOrder: data.sort_order ?? 0,
@@ -207,6 +329,8 @@ export async function createCollection(params: {
       icon: params.icon || '📁',
       isPinned: Boolean(params.isPinned),
       isExclusive: Boolean(params.isExclusive),
+      slug: computedSlug,
+      isDefault: Boolean(params.isDefault),
       sortOrder: 0,
       createdAt: new Date().toISOString(),
       itemIds: []
@@ -383,20 +507,38 @@ export async function addItemToCollection(
 
   // Update in local storage
   if (typeof window !== 'undefined') {
-    const keys = userId 
-      ? [`${LOCAL_STORAGE_PREFIX}${userId}`]
-      : Object.keys(window.localStorage).filter((k) => k.startsWith(LOCAL_STORAGE_PREFIX));
+    const keysToUpdate = new Set<string>();
+    if (userId) {
+      keysToUpdate.add(`${LOCAL_STORAGE_PREFIX}${userId}`);
+      if (userId.startsWith('usr_')) {
+        keysToUpdate.add(`${LOCAL_STORAGE_PREFIX}${userId.replace('usr_', '')}`);
+      }
+    }
+    const isAmberlyn = !userId || userId === 'usr_1' || userId.toLowerCase().includes('amberlyn') || (typeof window !== 'undefined' && window.location.pathname.toLowerCase().includes('amberlyn'));
+    if (isAmberlyn) {
+      keysToUpdate.add(`${LOCAL_STORAGE_PREFIX}usr_1`);
+      keysToUpdate.add(`${LOCAL_STORAGE_PREFIX}amberlyn`);
+      keysToUpdate.add(`${LOCAL_STORAGE_PREFIX}usr_amberlyn`);
+    }
+    for (const k of Object.keys(window.localStorage)) {
+      if (k.startsWith(LOCAL_STORAGE_PREFIX)) {
+        keysToUpdate.add(k);
+      }
+    }
 
-    for (const key of keys) {
+    const isMain = collectionId === 'main' || collectionId === 'col_link_main';
+
+    for (const key of keysToUpdate) {
       try {
         const raw = window.localStorage.getItem(key);
         if (!raw) continue;
         const list: Collection[] = JSON.parse(raw);
         let modified = false;
         const updated = list.map((c) => {
-          if (c.id === collectionId && !c.itemIds.includes(itemId)) {
+          const isMatch = c.id === collectionId || (c.slug && c.slug === collectionId) || (isMain && (c.isDefault || c.slug === 'main' || c.id === 'col_link_main' || c.id === 'main'));
+          if (isMatch && !c.itemIds.includes(itemId)) {
             modified = true;
-            return { ...c, itemIds: [...c.itemIds, itemId] };
+            return { ...c, itemIds: [itemId, ...c.itemIds] };
           }
           return c;
         });
@@ -436,18 +578,36 @@ export async function removeItemFromCollection(
 
   // Update in local storage
   if (typeof window !== 'undefined') {
-    const keys = userId 
-      ? [`${LOCAL_STORAGE_PREFIX}${userId}`]
-      : Object.keys(window.localStorage).filter((k) => k.startsWith(LOCAL_STORAGE_PREFIX));
+    const keysToUpdate = new Set<string>();
+    if (userId) {
+      keysToUpdate.add(`${LOCAL_STORAGE_PREFIX}${userId}`);
+      if (userId.startsWith('usr_')) {
+        keysToUpdate.add(`${LOCAL_STORAGE_PREFIX}${userId.replace('usr_', '')}`);
+      }
+    }
+    const isAmberlyn = !userId || userId === 'usr_1' || userId.toLowerCase().includes('amberlyn') || (typeof window !== 'undefined' && window.location.pathname.toLowerCase().includes('amberlyn'));
+    if (isAmberlyn) {
+      keysToUpdate.add(`${LOCAL_STORAGE_PREFIX}usr_1`);
+      keysToUpdate.add(`${LOCAL_STORAGE_PREFIX}amberlyn`);
+      keysToUpdate.add(`${LOCAL_STORAGE_PREFIX}usr_amberlyn`);
+    }
+    for (const k of Object.keys(window.localStorage)) {
+      if (k.startsWith(LOCAL_STORAGE_PREFIX)) {
+        keysToUpdate.add(k);
+      }
+    }
 
-    for (const key of keys) {
+    const isMain = collectionId === 'main' || collectionId === 'col_link_main';
+
+    for (const key of keysToUpdate) {
       try {
         const raw = window.localStorage.getItem(key);
         if (!raw) continue;
         const list: Collection[] = JSON.parse(raw);
         let modified = false;
         const updated = list.map((c) => {
-          if (c.id === collectionId && c.itemIds.includes(itemId)) {
+          const isMatch = c.id === collectionId || (c.slug && c.slug === collectionId) || (isMain && (c.isDefault || c.slug === 'main' || c.id === 'col_link_main' || c.id === 'main'));
+          if (isMatch && c.itemIds.includes(itemId)) {
             modified = true;
             return { ...c, itemIds: c.itemIds.filter((id) => id !== itemId) };
           }
@@ -545,6 +705,144 @@ export async function reorderCollections(
         window.localStorage.setItem(key, JSON.stringify(reordered));
       } catch (err) {
         console.warn('Error reordering collections in localStorage:', err);
+      }
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Persist the custom sequence of items (badges, links, posts) within a collection
+ * in Supabase and local storage.
+ */
+export async function reorderCollectionItems(
+  collectionId: string,
+  orderedItemIds: string[],
+  userId?: string
+): Promise<boolean> {
+  const supabase = createClient();
+
+  // 1. Supabase Persistence
+  if (userId && isValidUuid(userId)) {
+    try {
+      let targetCollectionUuid = isValidUuid(collectionId) ? collectionId : null;
+      const isMain = collectionId === 'main' || collectionId === 'col_link_main';
+
+      if (!targetCollectionUuid) {
+        let q = supabase
+          .from('collections')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('tab_type', 'links');
+
+        if (isMain) {
+          q = q.eq('is_default', true);
+        } else {
+          q = q.eq('slug', collectionId);
+        }
+
+        const { data: existingCol } = await q.maybeSingle();
+        if (existingCol) {
+          targetCollectionUuid = existingCol.id;
+        } else {
+          const { data: newCol } = await supabase
+            .from('collections')
+            .insert({
+              user_id: userId,
+              tab_type: 'links',
+              title: isMain ? 'Main' : collectionId,
+              slug: isMain ? 'main' : collectionId,
+              is_default: isMain,
+              icon: isMain ? '🌐' : '📁'
+            })
+            .select('id')
+            .single();
+          if (newCol) {
+            targetCollectionUuid = newCol.id;
+          }
+        }
+      }
+
+      if (targetCollectionUuid) {
+        const promises = orderedItemIds.map((itemId, index) => {
+          return supabase
+            .from('collection_items')
+            .upsert(
+              { collection_id: targetCollectionUuid, item_id: itemId, position: index },
+              { onConflict: 'collection_id,item_id' }
+            );
+        });
+        await Promise.all(promises);
+      }
+    } catch (err) {
+      console.warn('Error reordering collection items in Supabase:', err);
+    }
+  }
+
+  // 2. Local Storage Persistence across all related user keys
+  if (typeof window !== 'undefined') {
+    const keysToUpdate = new Set<string>();
+    if (userId) {
+      keysToUpdate.add(`${LOCAL_STORAGE_PREFIX}${userId}`);
+      if (userId.startsWith('usr_')) {
+        keysToUpdate.add(`${LOCAL_STORAGE_PREFIX}${userId.replace('usr_', '')}`);
+      } else {
+        keysToUpdate.add(`${LOCAL_STORAGE_PREFIX}usr_${userId}`);
+      }
+    }
+    // Demo profile aliases
+    const isAmberlyn = !userId || userId === 'usr_1' || userId.toLowerCase().includes('amberlyn') || (typeof window !== 'undefined' && window.location.pathname.toLowerCase().includes('amberlyn'));
+    if (isAmberlyn) {
+      keysToUpdate.add(`${LOCAL_STORAGE_PREFIX}usr_1`);
+      keysToUpdate.add(`${LOCAL_STORAGE_PREFIX}amberlyn`);
+      keysToUpdate.add(`${LOCAL_STORAGE_PREFIX}usr_amberlyn`);
+    }
+
+    const isMain = collectionId === 'main' || collectionId === 'col_link_main' || collectionId.includes('main');
+
+    for (const key of keysToUpdate) {
+      try {
+        const raw = window.localStorage.getItem(key);
+        let list: Collection[] = [];
+        if (raw) {
+          try {
+            list = JSON.parse(raw);
+          } catch {}
+        }
+        if (!Array.isArray(list) || list.length === 0) {
+          list = [...MOCK_LINK_COLLECTIONS, ...MOCK_COLLECTIONS];
+        }
+
+        let found = false;
+
+        const updated = list.map((c) => {
+          const isMatch =
+            c.id === collectionId ||
+            (c.slug && c.slug === collectionId) ||
+            ((isMain || c.isDefault || c.slug === 'main') && (c.isDefault || c.slug === 'main' || c.id === 'col_link_main' || c.id === 'main'));
+
+          if (isMatch) {
+            found = true;
+            return { ...c, itemIds: orderedItemIds, tabType: 'links' as const };
+          }
+          return { ...c, tabType: c.tabType || (isLinkCollection(c) ? 'links' : 'posts') };
+        });
+
+        if (!found) {
+          updated.push({
+            id: collectionId,
+            title: isMain ? 'Main' : collectionId,
+            tabType: 'links',
+            slug: isMain ? 'main' : collectionId,
+            isDefault: isMain,
+            itemIds: orderedItemIds
+          });
+        }
+
+        window.localStorage.setItem(key, JSON.stringify(updated));
+      } catch (err) {
+        console.warn('Error reordering collection items in localStorage:', err);
       }
     }
   }

@@ -14,7 +14,9 @@ import {
   Link as LinkIcon,
   Sparkles,
   Lock,
-  FolderPlus
+  FolderPlus,
+  Globe,
+  Users
 } from 'lucide-react';
 import { CURRENT_USER, Post, User, Collection } from '@/lib/mockData';
 import { saveSessionPost } from '@/lib/postStore';
@@ -22,6 +24,7 @@ import { useAuth } from '@/context/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { formatTwitterAvatar } from '@/lib/utils';
 import { addItemToCollection, getProfileCollections } from '@/lib/collections';
+import SelectOomfModal, { SelectableOomf } from './SelectOomfModal';
 
 interface PostComposerProps {
   onAddPost?: (post: Post) => void;
@@ -31,6 +34,7 @@ interface PostComposerProps {
   compact?: boolean;
   collections?: Collection[];
   linkCollections?: Collection[];
+  defaultLinkCollectionId?: string | null;
 }
 
 interface DraftMediaItem {
@@ -228,7 +232,8 @@ export default function PostComposer({
   targetUser,
   compact = false,
   collections,
-  linkCollections
+  linkCollections,
+  defaultLinkCollectionId
 }: PostComposerProps) {
   const { user: authUser, profile: authProfile } = useAuth();
   const supabase = createClient();
@@ -242,9 +247,15 @@ export default function PostComposer({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Curated collection selection while drafting
-  const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(defaultLinkCollectionId || null);
   const [userPostCols, setUserPostCols] = useState<Collection[]>(collections || []);
   const [userLinkCols, setUserLinkCols] = useState<Collection[]>(linkCollections || []);
+
+  useEffect(() => {
+    if (defaultLinkCollectionId !== undefined) {
+      setSelectedCollectionId(defaultLinkCollectionId);
+    }
+  }, [defaultLinkCollectionId]);
 
   useEffect(() => {
     if (collections && collections.length > 0) {
@@ -282,7 +293,7 @@ export default function PostComposer({
   const [linkDescription, setLinkDescription] = useState('');
 
   // Badge state
-  const [badgeMode, setBadgeMode] = useState<'color' | 'image'>('color');
+  const [badgeMode, setBadgeMode] = useState<'color' | 'image' | 'avatar'>('color');
   const [badgeText, setBadgeText] = useState('MUTUAL OOMF');
   const [badgeUrl, setBadgeUrl] = useState('');
   const [badgeBaseColor, setBadgeBaseColor] = useState('#1d9bf0');
@@ -291,6 +302,8 @@ export default function PostComposer({
   const [badgeImageIsLight, setBadgeImageIsLight] = useState(false);
   const [badgeShowText, setBadgeShowText] = useState(true);
   const [badgeOverlayStyle, setBadgeOverlayStyle] = useState<'scrim' | 'plaque' | 'auto'>('scrim');
+  const [isSelectOomfModalOpen, setIsSelectOomfModalOpen] = useState(false);
+  const [selectedOomf, setSelectedOomf] = useState<SelectableOomf | null>(null);
   const badgeTextColor = getOptimalTextColor(badgeBaseColor);
 
   useEffect(() => {
@@ -410,6 +423,10 @@ export default function PostComposer({
     if (postType === 'link_card') return linkTitle.trim().length > 0 && linkUrl.trim().length > 0;
     if (postType === 'badge') {
       const hasUrl = badgeUrl.trim().length > 0;
+      if (badgeMode === 'avatar') {
+        const hasImg = badgeImageUrl.trim().length > 0;
+        return hasUrl && hasImg;
+      }
       if (badgeMode === 'image') {
         const hasImg = badgeImageUrl.trim().length > 0;
         if (!badgeShowText) return hasUrl && hasImg;
@@ -463,18 +480,21 @@ export default function PostComposer({
           title: linkTitle.trim(),
           url: linkUrl.trim().startsWith('http') ? linkUrl.trim() : `https://${linkUrl.trim()}`,
           description: linkDescription.trim() || undefined,
-          buttonText: 'Visit Link ↗'
+          buttonText: 'Visit Link ↗',
+          pageId: selectedCollectionId || 'main'
         }
       } : {}),
       ...(postType === 'badge' ? {
         badgeData: {
-          title: (badgeShowText && badgeText.trim()) || 'Web Badge',
-          url: badgeUrl.trim().startsWith('http') ? badgeUrl.trim() : `https://${badgeUrl.trim()}`,
-          badgeType: badgeMode === 'image' ? 'image' : 'custom',
-          imageUrl: badgeMode === 'image' ? badgeImageUrl : undefined,
+          title: (badgeShowText && badgeText.trim()) || selectedOomf?.name || 'OOMF Badge',
+          url: badgeUrl.trim().startsWith('http') || badgeUrl.trim().startsWith('/') ? badgeUrl.trim() : `https://${badgeUrl.trim()}`,
+          badgeType: badgeMode === 'avatar' ? 'avatar' : badgeMode === 'image' ? 'image' : 'custom',
+          imageUrl: badgeMode !== 'color' ? badgeImageUrl : undefined,
           label: badgeShowText ? badgeText.trim() : undefined,
+          targetUsername: selectedOomf?.username,
           bgColor: badgeMode === 'color' ? computeBadgeBackground(badgeBaseColor, badgeStyle) : undefined,
-          showText: badgeShowText
+          showText: badgeShowText,
+          pageId: selectedCollectionId || 'main'
         }
       } : {})
     };
@@ -529,8 +549,12 @@ export default function PostComposer({
 
     saveSessionPost(newPost);
 
-    if (selectedCollectionId) {
-      addItemToCollection(selectedCollectionId, newPostId);
+    const targetCollection = (postType === 'link_card' || postType === 'badge')
+      ? (selectedCollectionId || 'col_link_main')
+      : selectedCollectionId;
+
+    if (targetCollection) {
+      addItemToCollection(targetCollection, newPostId, authorUser.id);
     }
 
     if (onAddPost) {
@@ -541,7 +565,7 @@ export default function PostComposer({
     if (typeof window !== 'undefined') {
       window.dispatchEvent(
         new CustomEvent('oomfs:post-created', {
-          detail: { post: newPost, collectionId: selectedCollectionId }
+          detail: { post: newPost, collectionId: targetCollection }
         })
       );
     }
@@ -947,7 +971,29 @@ export default function PostComposer({
 
         {/* BIO LINK CARD DRAFTING UI */}
         {postType === 'link_card' && (
-          <div className="bg-[#f7f9f9] border border-[#eff3f4] rounded-2xl p-3.5 flex flex-col gap-2">
+          <div className="bg-[#f7f9f9] border border-[#eff3f4] rounded-2xl p-3.5 flex flex-col gap-2.5">
+            {/* Target Link Page Selector */}
+            <div className="flex items-center justify-between pb-2 border-b border-[#eff3f4]">
+              <div className="flex items-center gap-1.5 text-xs">
+                <Globe className="w-3.5 h-3.5 text-[#1d9bf0]" />
+                <span className="font-bold text-[#0f1419]">Publish to Link Page:</span>
+                <select
+                  value={selectedCollectionId || ''}
+                  onChange={(e) => setSelectedCollectionId(e.target.value || null)}
+                  className="bg-white border border-[#cfd9de] focus:border-[#1d9bf0] rounded-lg px-2.5 py-1 text-xs font-semibold text-[#0f1419] outline-none cursor-pointer"
+                >
+                  <option value="">🌐 Main Page (Default)</option>
+                  {userLinkCols
+                    .filter((c) => !c.isDefault && c.slug !== 'main' && c.id !== 'col_link_main')
+                    .map((col) => (
+                      <option key={col.id} value={col.id}>
+                        {col.icon || '📁'} {col.title} {col.slug ? `(/${col.slug})` : ''}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            </div>
+
             <span className="text-xs font-extrabold text-[#1d9bf0] uppercase tracking-wider">
               Bio Link Details
             </span>
@@ -980,9 +1026,48 @@ export default function PostComposer({
         {/* BADGE (88x31) DRAFTING UI */}
         {postType === 'badge' && (
           <div className="bg-[#f7f9f9] border border-[#eff3f4] rounded-2xl p-3.5 flex flex-col gap-3">
+            {/* Target Link Page Selector */}
+            <div className="flex items-center justify-between pb-2 border-b border-[#eff3f4]">
+              <div className="flex items-center gap-1.5 text-xs">
+                <Globe className="w-3.5 h-3.5 text-[#1d9bf0]" />
+                <span className="font-bold text-[#0f1419]">Publish to Link Page:</span>
+                <select
+                  value={selectedCollectionId || ''}
+                  onChange={(e) => setSelectedCollectionId(e.target.value || null)}
+                  className="bg-white border border-[#cfd9de] focus:border-[#1d9bf0] rounded-lg px-2.5 py-1 text-xs font-semibold text-[#0f1419] outline-none cursor-pointer"
+                >
+                  <option value="">🌐 Main Page (Default)</option>
+                  {userLinkCols
+                    .filter((c) => !c.isDefault && c.slug !== 'main' && c.id !== 'col_link_main')
+                    .map((col) => (
+                      <option key={col.id} value={col.id}>
+                        {col.icon || '📁'} {col.title} {col.slug ? `(/${col.slug})` : ''}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            </div>
             {/* LIVE PREVIEW BOX - Badge With Label Underneath */}
             <div className="bg-white border border-[#eff3f4] rounded-xl p-3.5 flex flex-col items-center justify-center gap-1.5 shadow-2xs">
-              {badgeMode === 'image' ? (
+              {badgeMode === 'avatar' ? (
+                badgeImageUrl ? (
+                  <div className="w-[52px] h-[52px] rounded-full overflow-hidden border border-black/15 shadow-xs block shrink-0 my-0.5">
+                    <img
+                      src={badgeImageUrl}
+                      alt={badgeText || 'OOMF avatar'}
+                      className="w-[52px] h-[52px] rounded-full object-cover block"
+                    />
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsSelectOomfModalOpen(true)}
+                    className="w-[52px] h-[52px] rounded-full border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center text-gray-400 hover:border-[#1d9bf0] hover:text-[#1d9bf0] transition-colors cursor-pointer shrink-0 my-0.5"
+                  >
+                    <Users className="w-5 h-5" />
+                  </button>
+                )
+              ) : badgeMode === 'image' ? (
                 badgeImageUrl ? (
                   <div className="w-[88px] h-[31px] rounded-xs overflow-hidden border border-black/20 shadow-xs block shrink-0">
                     <img
@@ -1016,7 +1101,7 @@ export default function PostComposer({
               )}
             </div>
 
-            {/* Compact Switcher Row: [Color | Image] + Optional Label Underneath Toggle */}
+            {/* Compact Switcher Row: [Color | Image | OOMF] + Optional Label Underneath Toggle */}
             <div className="flex items-center justify-between border-b border-[#eff3f4] pb-2.5">
               <div className="inline-flex items-center bg-[#eff3f4] p-0.5 rounded-lg text-xs font-semibold">
                 <button
@@ -1041,6 +1126,23 @@ export default function PostComposer({
                 >
                   Image
                 </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBadgeMode('avatar');
+                    if (!badgeImageUrl) {
+                      setIsSelectOomfModalOpen(true);
+                    }
+                  }}
+                  className={`px-3 py-1 rounded-md transition-all cursor-pointer flex items-center gap-1 ${
+                    badgeMode === 'avatar'
+                      ? 'bg-white text-[#0f1419] shadow-2xs'
+                      : 'text-[#536471] hover:text-[#0f1419]'
+                  }`}
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  <span>OOMF</span>
+                </button>
               </div>
 
               <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-[#536471] select-none hover:text-[#0f1419]">
@@ -1062,7 +1164,7 @@ export default function PostComposer({
                 </label>
                 <input
                   type="text"
-                  placeholder="https://..."
+                  placeholder="https://... or /username"
                   value={badgeUrl}
                   onChange={(e) => setBadgeUrl(e.target.value)}
                   className="w-full bg-white border border-[#eff3f4] rounded-xl px-3 py-2 text-xs text-[#0f1419] outline-none focus:border-[#1d9bf0]"
@@ -1076,7 +1178,7 @@ export default function PostComposer({
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. My Website or Mutual OOMF"
+                    placeholder="e.g. @username or Name"
                     value={badgeText}
                     onChange={(e) => setBadgeText(e.target.value)}
                     maxLength={28}
@@ -1088,7 +1190,40 @@ export default function PostComposer({
             </div>
 
             {/* MODE SPECIFIC CONTROLS */}
-            {badgeMode === 'color' ? (
+            {badgeMode === 'avatar' ? (
+              <div className="flex flex-col gap-2 pt-0.5">
+                <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-xl flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    {selectedOomf ? (
+                      <img
+                        src={selectedOomf.avatar}
+                        alt={selectedOomf.name}
+                        className="w-9 h-9 rounded-full object-cover border border-black/10 shrink-0"
+                      />
+                    ) : (
+                      <div className="w-9 h-9 rounded-full bg-[#1d9bf0]/10 flex items-center justify-center text-[#1d9bf0] shrink-0">
+                        <Users className="w-4 h-4" />
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <div className="font-bold text-[#0f1419] text-xs truncate">
+                        {selectedOomf ? selectedOomf.name : 'Select a friend to feature'}
+                      </div>
+                      <div className="text-[11px] text-[#536471] truncate">
+                        {selectedOomf ? `@${selectedOomf.username}` : 'Choose from your mutual OOMFs or following list'}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsSelectOomfModalOpen(true)}
+                    className="px-3 py-1.5 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white text-xs font-bold rounded-full transition-colors cursor-pointer shrink-0 shadow-2xs"
+                  >
+                    {selectedOomf ? 'Change' : 'Browse OOMFs'}
+                  </button>
+                </div>
+              </div>
+            ) : badgeMode === 'color' ? (
               <div className="flex flex-col gap-2 pt-0.5">
                 {/* Color Swatches & Rainbow Selector (Single Row) */}
                 <div className="flex items-center gap-1.5 sm:gap-2 flex-nowrap overflow-x-auto no-scrollbar py-1">
@@ -1212,8 +1347,8 @@ export default function PostComposer({
           </p>
         )}
 
-        {/* Optional Collection Assignment Selector */}
-        {availableCollections.length > 0 && (
+        {/* Optional Collection Assignment Selector (for standard/carousel/board posts) */}
+        {!isLinkPost && availableCollections.length > 0 && (
           <div className="flex flex-col gap-1.5 px-3 py-2 bg-[#f7f9f9] border border-[#eff3f4] rounded-xl">
             <div className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">
@@ -1297,10 +1432,31 @@ export default function PostComposer({
               }}
               title="Create Web Badge"
               className={`p-2 rounded-full transition-colors cursor-pointer ${
-                postType === 'badge' ? 'bg-[#1d9bf0]/15 text-[#1d9bf0]' : 'hover:bg-[#1d9bf0]/10'
+                postType === 'badge' && badgeMode !== 'avatar' ? 'bg-[#1d9bf0]/15 text-[#1d9bf0]' : 'hover:bg-[#1d9bf0]/10'
               }`}
             >
               <Sparkles className="w-5 h-5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setErrorMsg(null);
+                if (postType === 'badge' && badgeMode === 'avatar') {
+                  setPostType('standard');
+                } else {
+                  setPostType('badge');
+                  setBadgeMode('avatar');
+                  if (!badgeImageUrl) {
+                    setIsSelectOomfModalOpen(true);
+                  }
+                }
+              }}
+              title="Feature an OOMF Avatar"
+              className={`p-2 rounded-full transition-colors cursor-pointer ${
+                postType === 'badge' && badgeMode === 'avatar' ? 'bg-[#1d9bf0]/15 text-[#1d9bf0]' : 'hover:bg-[#1d9bf0]/10'
+              }`}
+            >
+              <Users className="w-5 h-5" />
             </button>
           </div>
 
@@ -1324,6 +1480,19 @@ export default function PostComposer({
           </div>
         </div>
       </form>
+
+      {/* Modal for selecting an OOMF / Mutual to feature */}
+      <SelectOomfModal
+        isOpen={isSelectOomfModalOpen}
+        onClose={() => setIsSelectOomfModalOpen(false)}
+        currentUserId={authUser?.id}
+        onSelectUser={(user) => {
+          setSelectedOomf(user);
+          setBadgeImageUrl(user.avatar);
+          setBadgeUrl(`/${user.username}`);
+          setBadgeText(`@${user.username}`);
+        }}
+      />
     </div>
   );
 }

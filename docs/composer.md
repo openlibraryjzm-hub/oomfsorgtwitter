@@ -46,7 +46,8 @@ Format switching is controlled via the **bottom icon action bar** mirroring Twit
 | 🎞️ | `Layers` | Carousel | Toggles between `'carousel'` and `'standard'` |
 | 📌 | `LayoutGrid` | Board | Toggles between `'board'` and `'standard'` |
 | 🔗 | `Link2` | Bio Link | Toggles between `'link_card'` and `'standard'` |
-| ✨ | `Sparkles` | Web Badge | Toggles between `'badge'` and `'standard'` |
+| ✨ | `Sparkles` | Web Badge | Toggles between `'badge'` (Color/Image) and `'standard'` |
+| 👥 | `Users` | OOMF Avatar Badge | Opens badge builder directly in `'avatar'` mode and triggers OOMF picker |
 
 ### Toggle-to-Standard Mechanics
 Clicking an active format icon a second time smoothly toggles the composer back to `'standard'` text mode and clears format-specific errors, providing a frictionless reset without needing a separate cancel button.
@@ -76,7 +77,13 @@ For image badges (`badgeType: 'image'`), `compressBadgeImage(file)` performs cli
 2. **$3\times$ HiDPI Master ($264 \times 93\text{px}$)**: For standard photos, logos, and art, graphics are rendered onto a $3\times$ canvas ($264 \times 93\text{px}$) with `imageSmoothingQuality = 'high'` so badges look razor-sharp on modern Retina, mobile, and 4K screens.
 3. **PNG Encoding**: Exports as a clean PNG data URL (~$8\text{–}14\text{ KB}$ payload) stored inside `public.blocks.content`, eliminating JPEG compression block artifacts.
 
-*For detailed visual specifications and gallery layout rules, see [Web Badges Documentation](badges.md).*
+### OOMF Avatar Selection Pipeline (`SelectOomfModal.tsx`)
+For avatar badges (`badgeType: 'avatar'`), clicking the `Users` icon on the toolbar or choosing `Avatar` in the badge builder opens `SelectOomfModal.tsx`:
+1. **Graph Query**: Fetches followed users and mutual OOMFs for the active user via Supabase or fallback mock directory.
+2. **Real-Time Filtering**: Auto-focuses a search bar to filter accounts by name or `@username`.
+3. **Auto-Population**: Selecting an account automatically sets `badgeImageUrl` to the user's avatar, `badgeUrl` to `/${user.username}`, and `badgeText` to `@${user.username}`.
+
+*For detailed visual specifications and gallery layout rules, see [Web Badges Documentation](badges.md) and [Link Pages Documentation](links.md).*
 
 ---
 
@@ -93,7 +100,7 @@ When the user taps **"Post"**:
    - carousel:  mediaItems.length >= 1
    - board:     mediaItems.length >= 3
    - link_card: linkTitle && linkUrl
-   - badge:     badgeUrl && (badgeMode === 'image' ? badgeImageUrl && (!badgeShowText || badgeText) : (!badgeShowText || badgeText))
+   - badge:     hasUrl && (avatar mode: hasImageUrl; image mode: hasImageUrl && textOk; color mode: textOk)
        │
        ▼
 2. Supabase Persistence (`public.blocks`)
@@ -107,17 +114,20 @@ When the user taps **"Post"**:
        │
        ▼
 4. Global Event Broadcast (`oomfs:post-created`)
-   - Emits window event with post payload
+   - Emits window event with payload: `{ post: newPost, collectionId: targetColId }`
    - `ProfileView.tsx` listens and immediately prepends the post to active state
    - Automatically switches active tab ('links' for bio links / badges, 'posts' for media)
        │
        ▼
 5. Collection Assignment (`addItemToCollection`)
-   - If an existing collection preset was chosen from the "Add to collection" dropdown, the new post or link ID is immediately added to that collection in `public.collection_items` and local storage.
+   - If an existing collection or Link Page was chosen from the "Add to collection" dropdown, the new post or link ID is immediately assigned to that collection in `public.collection_items` and local storage.
 ```
 
-### Collection Assignment During Drafting
-Above the composer submit chrome, a collection selector dropdown displays all available presets for the active tab (`userPostCols` for standard/carousel/board posts, `userLinkCols` for link cards and badges). Creators can associate new content with a specific curated lens in a single click without needing a secondary sorting step after publishing.
+### Collection & Link Page Assignment During Drafting
+Above the composer submit chrome, a collection selector dropdown displays all available presets for the active tab:
+- **Posts Tab (`standard`, `carousel`, `board`)**: Shows post collections (`userPostCols`).
+- **Links Tab (`link_card`, `badge`)**: Shows link sub-pages (`userLinkCols`), defaulting to the active link page (or `[ 🌐 Main ]` if none active).
+- Creators can publish directly to a specific sub-page (e.g. `[ 💼 Work ]` or `[ 📝 Writing ]`) in a single click without needing a secondary sorting step after publishing.
 
 ---
 

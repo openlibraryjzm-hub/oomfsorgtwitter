@@ -94,12 +94,22 @@ export default function AllCollectionsModal({
 
   if (!isOpen) return null;
 
-  const filteredCollections = collections.filter((c) => {
+  const isLinksMode = unit === 'links';
+  const mainCol = isLinksMode
+    ? collections.find((c) => c.isDefault || c.slug === 'main' || c.id === 'col_link_main')
+    : null;
+
+  const displayCollections = isLinksMode
+    ? collections.filter((c) => c.id !== mainCol?.id && c.slug !== 'main')
+    : collections;
+
+  const filteredCollections = displayCollections.filter((c) => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return true;
     return (
       c.title.toLowerCase().includes(q) ||
-      (c.description && c.description.toLowerCase().includes(q))
+      (c.description && c.description.toLowerCase().includes(q)) ||
+      (c.slug && c.slug.toLowerCase().includes(q))
     );
   });
 
@@ -118,10 +128,12 @@ export default function AllCollectionsModal({
             <Layers className="w-5 h-5 text-[#1d9bf0]" />
             <div>
               <h3 className="font-extrabold text-[#0f1419] text-base leading-tight">
-                Curated Collections
+                {unit === 'links' ? 'Link Pages' : 'Curated Collections'}
               </h3>
               <p className="text-xs text-[#536471]">
-                {collections.length} available presets · choose a lens
+                {unit === 'links'
+                  ? `${collections.length} distinct pages · select a destination`
+                  : `${collections.length} available presets · choose a lens`}
               </p>
             </div>
           </div>
@@ -136,7 +148,7 @@ export default function AllCollectionsModal({
                 className="px-2.5 py-1 text-xs font-bold text-[#1d9bf0] bg-[#1d9bf0]/10 hover:bg-[#1d9bf0]/20 rounded-full transition-colors flex items-center gap-1 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>New</span>
+                <span>{unit === 'links' ? 'New Page' : 'New'}</span>
               </button>
             )}
             <button
@@ -156,7 +168,7 @@ export default function AllCollectionsModal({
             <input
               ref={searchInputRef}
               type="text"
-              placeholder={`Search ${collections.length} collections...`}
+              placeholder={unit === 'links' ? `Search ${collections.length} link pages...` : `Search ${collections.length} collections...`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-white border border-[#cfd9de] focus:border-[#1d9bf0] rounded-full pl-9 pr-8 py-2 text-xs text-[#0f1419] outline-none shadow-2xs"
@@ -175,37 +187,45 @@ export default function AllCollectionsModal({
 
         {/* Scrollable List */}
         <div className="flex-1 overflow-y-auto divide-y divide-[#eff3f4]">
-          {/* Default Option: Show All Posts */}
+          {/* Default Option: Show All Posts or Main Page for Links */}
           {!searchQuery && (
             <button
               type="button"
               onClick={() => {
-                onSelectCollection(null);
+                const mainCol = unit === 'links' ? collections.find(c => c.isDefault || c.slug === 'main' || c.id === 'col_link_main') : null;
+                onSelectCollection(mainCol ? mainCol.id : null);
                 onClose();
               }}
               className={`w-full p-3.5 flex items-center justify-between text-left transition-colors cursor-pointer ${
-                activeCollectionId === null
+                activeCollectionId === null || (unit === 'links' && (activeCollectionId === 'main' || collections.find(c => c.id === activeCollectionId)?.slug === 'main'))
                   ? 'bg-[#1d9bf0]/10 text-[#0f1419]'
                   : 'hover:bg-[#f7f9f9]'
               }`}
             >
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-sm font-bold text-[#536471] shrink-0 border border-black/5">
-                  ∞
+                  {unit === 'links' ? '🌐' : '∞'}
                 </div>
                 <div className="min-w-0">
                   <div className="font-bold text-xs sm:text-sm text-[#0f1419] flex items-center gap-2">
-                    <span>All {capitalizedUnit}</span>
+                    <span>{unit === 'links' ? 'Main Page' : `All ${capitalizedUnit}`}</span>
                     <span className="text-[11px] font-medium text-[#536471] bg-gray-100 px-1.5 py-0.5 rounded-full">
-                      {count} {unit}
+                      {unit === 'links' 
+                        ? `${collections.find(c => c.isDefault || c.slug === 'main' || c.id === 'col_link_main')?.itemIds?.length ?? count} items` 
+                        : `${count} ${unit}`}
                     </span>
+                    {unit === 'links' && (
+                      <span className="text-[10px] font-mono text-[#1d9bf0] bg-blue-50 px-1.5 py-0.5 rounded-md">
+                        /links
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-[#536471] truncate">
-                    {unit === 'links' ? 'Default curated order' : 'Standard reverse-chronological feed'}
+                    {unit === 'links' ? 'Primary bio links, socials, and featured badges' : 'Standard reverse-chronological feed'}
                   </p>
                 </div>
               </div>
-              {activeCollectionId === null && (
+              {(activeCollectionId === null || (unit === 'links' && (activeCollectionId === 'main' || collections.find(c => c.id === activeCollectionId)?.slug === 'main'))) && (
                 <div className="w-6 h-6 rounded-full bg-[#1d9bf0] text-white flex items-center justify-center shrink-0">
                   <Check className="w-3.5 h-3.5 stroke-[3]" />
                 </div>
@@ -270,6 +290,11 @@ export default function AllCollectionsModal({
                         <span className="text-[11px] font-medium text-[#536471] bg-gray-100 px-1.5 py-0.5 rounded-full shrink-0">
                           {col.itemIds.length} {unit}
                         </span>
+                        {col.slug && (
+                          <span className="text-[10px] font-mono text-[#1d9bf0] bg-blue-50 px-1.5 py-0.5 rounded-md shrink-0">
+                            /{col.slug}
+                          </span>
+                        )}
                         {col.isPinned && (
                           <span 
                             title="Pinned to quick-access bar" 

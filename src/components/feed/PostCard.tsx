@@ -336,12 +336,20 @@ export default function PostCard({ post, onDelete, onManageCollections, isThread
       <div className="mt-2.5 inline-flex flex-col items-start gap-1.5" onClick={(e) => e.stopPropagation()}>
         <a
           href={b.url}
-          target="_blank"
+          target={b.url.startsWith('http') ? '_blank' : undefined}
           rel="noopener noreferrer"
           title={`${b.title} (${b.url})`}
           className="group/badge inline-block shrink-0 transition-transform hover:scale-105"
         >
-          {b.badgeType === 'image' && b.imageUrl ? (
+          {b.badgeType === 'avatar' && b.imageUrl ? (
+            <div className="w-[52px] h-[52px] rounded-full overflow-hidden border border-black/15 shadow-2xs block">
+              <img
+                src={b.imageUrl}
+                alt={b.title}
+                className="w-[52px] h-[52px] rounded-full object-cover block"
+              />
+            </div>
+          ) : b.badgeType === 'image' && b.imageUrl ? (
             <div className="w-[88px] h-[31px] rounded-xs overflow-hidden border border-black/20 shadow-xs block">
               <img
                 src={b.imageUrl}
