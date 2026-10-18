@@ -2,9 +2,11 @@ export interface BioLink {
   id: string;
   title: string;
   url: string;
+  subtitle?: string;
   category?: string;
   clicks?: number;
   icon?: string;
+  image?: string;
 }
 
 export interface User {
@@ -69,9 +71,12 @@ export interface Post {
   linkData?: {
     title: string;
     url: string;
+    subtitle?: string;
     description?: string;
+    icon?: string;
     image?: string;
     buttonText?: string;
+    pageId?: string;
   };
   badgeData?: BadgeData;
   likesCount: number;
@@ -138,43 +143,61 @@ export const MOCK_USERS: Record<string, User> = {
     links: [
       {
         id: 'l1',
-        title: '🎨 My Design Portfolio (2026)',
+        icon: '🎨',
+        title: 'Design Portfolio (2026)',
+        subtitle: 'Product design, design systems & web explorations',
         url: 'https://amberlyn.design',
+        image: 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=600&q=80',
         category: 'Work',
         clicks: 1420
       },
       {
         id: 'l2',
-        title: '📝 Substack: Design Systems & OOMFs',
+        icon: '📝',
+        title: 'Substack: Design Systems',
+        subtitle: 'Weekly deep dives into UI engineering and Twitter culture',
         url: 'https://amberlyn.substack.com',
+        image: 'https://images.unsplash.com/photo-1499750310107-5fef28a66643?auto=format&fit=crop&w=600&q=80',
         category: 'Writing',
         clicks: 890
       },
       {
         id: 'l3',
-        title: '🎧 Spotify Playlist: Late Night Coding',
+        icon: '🎧',
+        title: 'Spotify: Late Night Coding',
+        subtitle: 'Lo-fi beats and ambient synthwave for deep focus',
         url: 'https://spotify.com',
+        image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=600&q=80',
         category: 'Music',
         clicks: 2310
       },
       {
         id: 'l4_figma',
-        title: '📐 Figma Community: OOMFS UI Kit',
+        icon: '📐',
+        title: 'Figma: OOMFS UI Kit',
+        subtitle: 'Complete 1:1 Twitter Light theme tokens and components',
         url: 'https://figma.com/@amberlyn',
+        image: 'https://images.unsplash.com/photo-1581291518857-4e27b48ff24e?auto=format&fit=crop&w=600&q=80',
         category: 'Work',
         clicks: 3410
       },
       {
         id: 'l5_github',
-        title: '🐙 GitHub: open-source design components',
+        icon: '🐙',
+        title: 'GitHub: Open Source UI',
+        subtitle: 'Explore repos, design system scripts & experimental web apps',
         url: 'https://github.com/amberlyn',
+        image: 'https://images.unsplash.com/photo-1618401471353-b98aedd04e11?auto=format&fit=crop&w=600&q=80',
         category: 'Dev',
         clicks: 1120
       },
       {
         id: 'l6_cal',
-        title: '📅 Book 15m Design Advisory / Chat',
+        icon: '📅',
+        title: 'Book 15m Design Advisory',
+        subtitle: 'Quick office hours for design critique and UI feedback',
         url: 'https://cal.com/amberlyn',
+        image: 'https://images.unsplash.com/photo-1506784983877-45594efa4cbe?auto=format&fit=crop&w=600&q=80',
         category: 'Work',
         clicks: 530
       }
@@ -428,9 +451,12 @@ export const MOCK_POSTS: Post[] = [
     type: 'link_card',
     text: 'Just updated my bio link portfolio! Added all recent client case studies and my new interactive UI library.',
     linkData: {
-      title: 'Amber Lyn - 2026 Design Portfolio & Case Studies',
-      url: 'https://amberlyn.design',
+      title: 'Design Portfolio (2026)',
+      subtitle: 'Client case studies, interactive UI experiments & design systems',
       description: 'Explore web apps, design systems, and product UI explorations created by Amber.',
+      icon: '🎨',
+      image: 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=600&q=80',
+      url: 'https://amberlyn.design',
       buttonText: 'Visit Portfolio ↗'
     },
     likesCount: 84,

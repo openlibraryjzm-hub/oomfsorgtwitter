@@ -287,41 +287,65 @@ export default function PostCard({ post, onDelete, onManageCollections, isThread
   // Render Link Card
   const renderLinkCard = () => {
     if (post.type !== 'link_card' || !post.linkData) return null;
+    const l = post.linkData;
+    const subtitle = l.subtitle || l.description || post.text;
 
     return (
       <a
-        href={post.linkData.url}
+        href={l.url}
         target="_blank"
         rel="noopener noreferrer"
         onClick={(e) => e.stopPropagation()}
-        className="mt-2.5 block border border-[#eff3f4] rounded-2xl overflow-hidden hover:border-[#1d9bf0]/60 hover:shadow-xs transition-all bg-[#f7f9f9]/70"
+        className="mt-2.5 w-full h-28 sm:h-32 border border-[#eff3f4] rounded-2xl overflow-hidden hover:border-[#1d9bf0]/60 hover:shadow-xs transition-all bg-white flex flex-row group/link-card select-none"
       >
-        <div className="p-4 flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <span className="inline-flex items-center gap-1 text-xs font-bold text-[#1d9bf0] uppercase tracking-wider">
-              <ExternalLink className="w-3.5 h-3.5" />
-              Featured Bio Link
+        {/* Left Half: Icon, Title, Subtitle, URL */}
+        <div className="w-1/2 p-3 sm:p-4 flex flex-col justify-between min-w-0 pr-3">
+          <div className="flex flex-col min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
+              {l.icon && (
+                <span className="text-lg sm:text-xl shrink-0 select-none leading-none">
+                  {l.icon}
+                </span>
+              )}
+              <h4 className="font-bold text-[#0f1419] text-sm sm:text-base group-hover/link-card:text-[#1d9bf0] transition-colors truncate">
+                {l.title}
+              </h4>
+            </div>
+            {subtitle && (
+              <p className="text-xs text-[#536471] line-clamp-2 leading-relaxed mt-1">
+                {subtitle}
+              </p>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between gap-1.5 min-w-0 pt-1">
+            <span className="text-[11px] text-[#1d9bf0] font-mono truncate flex items-center gap-1">
+              <ExternalLink className="w-3 h-3 shrink-0" />
+              {l.url.replace(/^https?:\/\//, '')}
             </span>
-            <span className="text-xs text-[#536471] font-mono">
-              {post.linkData.url.replace(/^https?:\/\//, '')}
+            <span className="text-xs font-semibold text-[#1d9bf0] shrink-0">
+              {l.buttonText || 'Visit ↗'}
             </span>
           </div>
-          <h4 className="font-extrabold text-[#0f1419] text-base group-hover:text-[#1d9bf0] transition-colors">
-            {post.linkData.title}
-          </h4>
-          {post.linkData.description && (
-            <p className="text-xs text-[#536471] line-clamp-2">
-              {post.linkData.description}
-            </p>
+        </div>
+
+        {/* Right Half: Flush Image or Placeholder */}
+        <div className="w-1/2 h-full overflow-hidden shrink-0 border-l border-[#eff3f4] bg-gray-50 relative">
+          {l.image ? (
+            <img
+              src={l.image}
+              alt={l.title}
+              className="w-full h-full object-cover group-hover/link-card:scale-105 transition-transform duration-300 pointer-events-none"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#f7f9f9] to-[#eff3f4] text-[#cfd9de]">
+              {l.icon ? (
+                <span className="text-3xl opacity-40 select-none">{l.icon}</span>
+              ) : (
+                <ExternalLink className="w-7 h-7 opacity-30" />
+              )}
+            </div>
           )}
-          <div className="mt-1 flex items-center justify-between pt-2 border-t border-[#eff3f4]">
-            <span className="text-xs font-semibold text-[#1d9bf0] flex items-center gap-1">
-              {post.linkData.buttonText || 'Visit Link ↗'}
-            </span>
-            <span className="bg-[#1d9bf0] text-white text-xs font-bold px-3 py-1 rounded-full">
-              Open
-            </span>
-          </div>
         </div>
       </a>
     );

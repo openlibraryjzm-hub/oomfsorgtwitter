@@ -16,7 +16,8 @@ import {
   Lock,
   FolderPlus,
   Globe,
-  Users
+  Users,
+  ExternalLink
 } from 'lucide-react';
 import { CURRENT_USER, Post, User, Collection } from '@/lib/mockData';
 import { saveSessionPost } from '@/lib/postStore';
@@ -239,6 +240,7 @@ export default function PostComposer({
   const supabase = createClient();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const badgeImageInputRef = useRef<HTMLInputElement | null>(null);
+  const linkImageInputRef = useRef<HTMLInputElement | null>(null);
 
   const [postType, setPostType] = useState<'standard' | 'carousel' | 'board' | 'link_card' | 'badge'>(defaultType);
   const [text, setText] = useState('');
@@ -289,6 +291,9 @@ export default function PostComposer({
 
   // Link card state
   const [linkTitle, setLinkTitle] = useState('');
+  const [linkSubtitle, setLinkSubtitle] = useState('');
+  const [linkIcon, setLinkIcon] = useState('🌐');
+  const [linkImageUrl, setLinkImageUrl] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
   const [linkDescription, setLinkDescription] = useState('');
 
@@ -414,6 +419,26 @@ export default function PostComposer({
     }
   };
 
+  const handleLinkImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    setIsProcessingFiles(true);
+    setErrorMsg(null);
+    try {
+      const dataUrl = await compressImageFile(file, 900, 0.85);
+      setLinkImageUrl(dataUrl);
+    } catch (err) {
+      console.error('Error processing link card image:', err);
+      setErrorMsg('Failed to process image.');
+    } finally {
+      setIsProcessingFiles(false);
+      if (linkImageInputRef.current) {
+        linkImageInputRef.current.value = '';
+      }
+    }
+  };
+
   // Validation check
   const canSubmit = () => {
     if (isSubmitting || isProcessingFiles) return false;
@@ -478,8 +503,11 @@ export default function PostComposer({
       ...(postType === 'link_card' ? {
         linkData: {
           title: linkTitle.trim(),
+          subtitle: linkSubtitle.trim() || undefined,
+          description: linkSubtitle.trim() || undefined,
+          icon: linkIcon.trim() || undefined,
+          image: linkImageUrl.trim() || undefined,
           url: linkUrl.trim().startsWith('http') ? linkUrl.trim() : `https://${linkUrl.trim()}`,
-          description: linkDescription.trim() || undefined,
           buttonText: 'Visit Link ↗',
           pageId: selectedCollectionId || 'main'
         }
@@ -576,6 +604,9 @@ export default function PostComposer({
     setCarouselHeader('');
     setMediaItems([]);
     setLinkTitle('');
+    setLinkSubtitle('');
+    setLinkIcon('🌐');
+    setLinkImageUrl('');
     setLinkUrl('');
     setLinkDescription('');
     setBadgeText('MUTUAL OOMF');
@@ -695,6 +726,15 @@ export default function PostComposer({
           type="file"
           accept="image/*"
           onChange={handleBadgeImageChange}
+          className="hidden"
+        />
+
+        {/* Hidden Link Card Image Input */}
+        <input
+          ref={linkImageInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleLinkImageChange}
           className="hidden"
         />
 
@@ -971,7 +1011,7 @@ export default function PostComposer({
 
         {/* BIO LINK CARD DRAFTING UI */}
         {postType === 'link_card' && (
-          <div className="bg-[#f7f9f9] border border-[#eff3f4] rounded-2xl p-3.5 flex flex-col gap-2.5">
+          <div className="bg-[#f7f9f9] border border-[#eff3f4] rounded-2xl p-3.5 flex flex-col gap-3">
             {/* Target Link Page Selector */}
             <div className="flex items-center justify-between pb-2 border-b border-[#eff3f4]">
               <div className="flex items-center gap-1.5 text-xs">
@@ -994,32 +1034,166 @@ export default function PostComposer({
               </div>
             </div>
 
-            <span className="text-xs font-extrabold text-[#1d9bf0] uppercase tracking-wider">
-              Bio Link Details
-            </span>
-            <input
-              type="text"
-              placeholder="Link Title (e.g., My 2026 Design Portfolio)"
-              value={linkTitle}
-              onChange={(e) => setLinkTitle(e.target.value)}
-              className="bg-white border border-[#eff3f4] rounded-xl px-3 py-2 text-xs text-[#0f1419] outline-none focus:border-[#1d9bf0]"
-              required
-            />
-            <input
-              type="text"
-              placeholder="URL (e.g., https://amberlyn.design)"
-              value={linkUrl}
-              onChange={(e) => setLinkUrl(e.target.value)}
-              className="bg-white border border-[#eff3f4] rounded-xl px-3 py-2 text-xs text-[#0f1419] outline-none focus:border-[#1d9bf0]"
-              required
-            />
-            <input
-              type="text"
-              placeholder="Short description (optional)"
-              value={linkDescription}
-              onChange={(e) => setLinkDescription(e.target.value)}
-              className="bg-white border border-[#eff3f4] rounded-xl px-3 py-2 text-xs text-[#0f1419] outline-none focus:border-[#1d9bf0]"
-            />
+            {/* LIVE CARD PREVIEW */}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[11px] font-extrabold text-[#536471] uppercase tracking-wider">
+                Live Card Preview
+              </span>
+              <div className="w-full h-28 sm:h-32 border border-[#eff3f4] rounded-2xl bg-white overflow-hidden flex flex-row shadow-2xs">
+                {/* Left Half: Icon, Title, Subtitle, URL */}
+                <div className="w-1/2 p-3 sm:p-4 flex flex-col justify-between min-w-0 pr-3">
+                  <div className="flex flex-col min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {linkIcon && (
+                        <span className="text-lg sm:text-xl shrink-0 select-none leading-none">
+                          {linkIcon}
+                        </span>
+                      )}
+                      <h4 className="font-bold text-[#0f1419] text-sm sm:text-base truncate">
+                        {linkTitle.trim() || 'Link Title'}
+                      </h4>
+                    </div>
+                    <p className="text-xs text-[#536471] line-clamp-2 leading-relaxed mt-1">
+                      {linkSubtitle.trim() || 'Subtitle or short description will appear here'}
+                    </p>
+                  </div>
+                  <div className="pt-1">
+                    <span className="text-[11px] text-[#1d9bf0] font-mono truncate flex items-center gap-1">
+                      <ExternalLink className="w-3 h-3 shrink-0" />
+                      {linkUrl.trim() ? linkUrl.trim().replace(/^https?:\/\//, '') : 'example.com'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Right Half: Flush Image or Placeholder */}
+                <div className="w-1/2 h-full overflow-hidden shrink-0 border-l border-[#eff3f4] bg-gray-50 relative">
+                  {linkImageUrl ? (
+                    <img
+                      src={linkImageUrl}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#f7f9f9] to-[#eff3f4] text-[#cfd9de] gap-1 p-2 text-center">
+                      {linkIcon ? (
+                        <span className="text-3xl opacity-40">{linkIcon}</span>
+                      ) : (
+                        <ExternalLink className="w-6 h-6 opacity-30" />
+                      )}
+                      <span className="text-[10px] text-gray-400 font-medium">Image optional</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* FORM INPUTS */}
+            <div className="flex flex-col gap-2.5 pt-1">
+              {/* Icon / Emoji Row */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-bold text-[#536471]">
+                  Card Icon / Emoji
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="🌐"
+                    value={linkIcon}
+                    onChange={(e) => setLinkIcon(e.target.value)}
+                    className="w-12 text-center text-lg bg-white border border-[#eff3f4] rounded-xl py-1.5 text-[#0f1419] outline-none focus:border-[#1d9bf0]"
+                    maxLength={4}
+                  />
+                  <div className="flex flex-wrap gap-1 items-center">
+                    {['🌐', '🎨', '💼', '📝', '🎧', '⚡', '☕', '🔗', '🚀', '📸'].map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => setLinkIcon(emoji)}
+                        className={`w-7 h-7 text-sm rounded-lg flex items-center justify-center transition-all cursor-pointer ${
+                          linkIcon === emoji ? 'bg-[#1d9bf0]/15 ring-1 ring-[#1d9bf0]' : 'bg-white hover:bg-gray-100 border border-[#eff3f4]'
+                        }`}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Title & Subtitle */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-bold text-[#536471]">
+                  Title & Subtitle
+                </label>
+                <input
+                  type="text"
+                  placeholder="Link Title (e.g., My 2026 Design Portfolio)"
+                  value={linkTitle}
+                  onChange={(e) => setLinkTitle(e.target.value)}
+                  className="bg-white border border-[#eff3f4] rounded-xl px-3 py-2 text-xs text-[#0f1419] outline-none focus:border-[#1d9bf0]"
+                  required
+                />
+                <input
+                  type="text"
+                  placeholder="Subtitle (e.g., Case studies, design systems & explorations)"
+                  value={linkSubtitle}
+                  onChange={(e) => setLinkSubtitle(e.target.value)}
+                  className="bg-white border border-[#eff3f4] rounded-xl px-3 py-2 text-xs text-[#0f1419] outline-none focus:border-[#1d9bf0]"
+                />
+              </div>
+
+              {/* Destination URL */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-bold text-[#536471]">
+                  Destination URL
+                </label>
+                <input
+                  type="text"
+                  placeholder="https://amberlyn.design"
+                  value={linkUrl}
+                  onChange={(e) => setLinkUrl(e.target.value)}
+                  className="bg-white border border-[#eff3f4] rounded-xl px-3 py-2 text-xs text-[#0f1419] outline-none focus:border-[#1d9bf0]"
+                  required
+                />
+              </div>
+
+              {/* Right Half Image (Optional) */}
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-[#536471]">
+                    Right-Side Cover Image (Optional)
+                  </label>
+                  {linkImageUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setLinkImageUrl('')}
+                      className="text-[10px] text-red-500 hover:text-red-600 font-semibold cursor-pointer"
+                    >
+                      Remove image
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => linkImageInputRef.current?.click()}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#cfd9de] hover:border-[#1d9bf0] hover:text-[#1d9bf0] text-xs font-semibold text-[#0f1419] rounded-xl transition-colors cursor-pointer"
+                  >
+                    <ImageIcon className="w-3.5 h-3.5 text-[#1d9bf0]" />
+                    <span>{linkImageUrl ? 'Change Image' : 'Upload Image'}</span>
+                  </button>
+                  <span className="text-[11px] text-[#536471]">or paste URL:</span>
+                  <input
+                    type="text"
+                    placeholder="https://images.unsplash.com/..."
+                    value={linkImageUrl.startsWith('data:') ? '' : linkImageUrl}
+                    onChange={(e) => setLinkImageUrl(e.target.value)}
+                    className="flex-1 bg-white border border-[#eff3f4] rounded-xl px-3 py-1.5 text-xs text-[#0f1419] outline-none focus:border-[#1d9bf0]"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         )}
 

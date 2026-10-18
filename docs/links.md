@@ -50,13 +50,18 @@ When a visitor or creator switches between link pages using the secondary collec
 Items displayed on a link page are modeled as modular blocks stored in Supabase (`public.blocks`) or profile links, represented by the `Post` and `BadgeData` interfaces:
 
 ### 1. Bio Link Card (`type: 'link_card'`)
-- **Visual Presentation**: Full-width card occupying the entire 600px center timeline column.
+- **Visual Presentation**: Wide short rectangular card (`h-28 sm:h-32`) occupying the entire 600px center timeline column.
+- **Layout Geometry**:
+  - **Left Half (50%)**: Padded content area featuring an icon/emoji to the left of the title, title text, subtitle underneath, and outbound domain link.
+  - **Right Half (50%)**: Dedicated cover image area flush with **no margins above, below, or to the right** (`object-cover`). If no image is provided, a clean subtle neutral gradient with watermark icon is displayed.
+- **Card Removal**: Profile owners can delete any link card directly via a top-corner hover `×` button when `isSelf && !isReordering`.
 - **Fields**:
   - `title`: Primary headline text.
+  - `subtitle`: Contextual note or tagline displayed beneath the title.
+  - `icon`: Leading emoji or icon identifier (e.g. 🎨, 🌐, 🚀).
+  - `image`: Optional cover image URL or compressed data URL.
   - `url`: Destination URL (display strips protocol e.g. `amberlyn.design`).
-  - `description`: Optional contextual note.
   - `clicks`: Outbound click analytics counter.
-  - Action pill: `"Visit ↗"` button linking outbound with `rel="noopener noreferrer"`.
 
 ### 2. Rectangular Web Badge (`type: 'badge'`, `badgeType: 'image' | 'custom'`)
 - **Visual Presentation**: $88\text{px} \times 31\text{px}$ retro button badge inside an $88\text{px}$ wide gallery column.
@@ -99,9 +104,11 @@ Above the composer action buttons, the **"Add to collection"** dropdown adapts d
 - Automatically tags the new block with `pageId` and assigns its ID to the targeted collection's `itemIds`.
 
 ### 2. Bio Link Card Creation (`Link2` Icon)
-1. Toggles composer into `'link_card'` mode.
-2. Input fields: Title, Outbound URL, optional Description.
-3. Live preview card displays real-time formatting.
+1. Toggles composer into `'link_card'` mode with a live 1:1 preview card.
+2. **Icon / Emoji Selector**: Quick-tap suggestion pills (`🌐`, `🎨`, `💼`, `📝`, `🎧`, `⚡`, `☕`, `🔗`, `🚀`, `📸`) or custom typed emoji positioned to the left of the title.
+3. **Title & Subtitle**: Headline title and secondary descriptive tagline.
+4. **Destination URL**: Outbound website link (e.g. `https://amberlyn.design`).
+5. **Right-Side Cover Image**: Local image upload with client-side canvas compression (`compressImageFile`) or direct URL paste (image is optional; defaults to a neutral gradient placeholder).
 
 ### 3. Web Badge Creation (`Sparkles` Icon)
 1. Segmented control toggles between `Color`, `Image`, and `Avatar` modes.
@@ -151,7 +158,10 @@ Because badges ($88\text{px}$ tiles) and link cards ($100\%$ full-width rows) ha
     </div>
   </div>
   ```
-- **Link Cards**: Rendered as individual rounded cards (`border border-[#eff3f4] rounded-2xl bg-white p-4 hover:border-[#1d9bf0]/40 transition-colors`).
+- **Link Cards**: Rendered as wide short rectangles (`w-full h-28 sm:h-32 border border-[#eff3f4] rounded-2xl bg-white overflow-hidden flex flex-row group hover:border-[#1d9bf0]/50 transition-all`):
+  - **Left Half (50%)**: Padded section (`p-3 sm:p-4`) containing icon/emoji, bold title, subtitle below, and destination URL with collection organizer icon.
+  - **Right Half (50%)**: Dedicated cover image flush with **no margins above, below, or to the right** (`object-cover`). If no image is provided, renders a clean neutral gradient placeholder with watermark icon.
+  - **Card Removal**: Profile owners can delete any link card via a top-corner hover `×` button when `isSelf && !isReordering`.
 
 ---
 

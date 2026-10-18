@@ -77,6 +77,13 @@ For image badges (`badgeType: 'image'`), `compressBadgeImage(file)` performs cli
 2. **$3\times$ HiDPI Master ($264 \times 93\text{px}$)**: For standard photos, logos, and art, graphics are rendered onto a $3\times$ canvas ($264 \times 93\text{px}$) with `imageSmoothingQuality = 'high'` so badges look razor-sharp on modern Retina, mobile, and 4K screens.
 3. **PNG Encoding**: Exports as a clean PNG data URL (~$8\text{–}14\text{ KB}$ payload) stored inside `public.blocks.content`, eliminating JPEG compression block artifacts.
 
+### Bio Link Card Image Pipeline (`handleLinkImageChange`)
+For bio link cards (`type: 'link_card'`), creators can upload an optional cover image for the card's flush right half:
+1. **Canvas Compression**: Uses `compressImageFile(file, 900, 0.85)` to scale and compress the graphic client-side into a lightweight base64 JPEG data URL.
+2. **URL Paste Fallback**: Alternatively allows direct pasting of an external image URL.
+3. **Optional Nature**: If omitted, the card renders a graceful neutral gradient with watermark icon, ensuring link cards can be drafted quickly with or without imagery.
+4. **Live Interactive Preview**: An exact 1:1 preview box renders above the inputs, dynamically displaying the left half (icon/emoji, title, subtitle, URL) and right half (flush cover image).
+
 ### OOMF Avatar Selection Pipeline (`SelectOomfModal.tsx`)
 For avatar badges (`badgeType: 'avatar'`), clicking the `Users` icon on the toolbar or choosing `Avatar` in the badge builder opens `SelectOomfModal.tsx`:
 1. **Graph Query**: Fetches followed users and mutual OOMFs for the active user via Supabase or fallback mock directory.

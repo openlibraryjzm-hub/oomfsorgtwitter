@@ -51,8 +51,12 @@ export interface BoardData {
 export interface LinkData {
   title: string;
   url: string;
+  subtitle?: string;
   description?: string;
+  icon?: string;
+  image?: string;
   buttonText?: string;
+  pageId?: string;
 }
 
 export interface BadgeData {
@@ -121,9 +125,11 @@ export interface Post {
 ### 4. Bio Link Card (`type: 'link_card'`)
 - **Purpose**: Curated link showcase for Linktree replacement.
 - **Key Features**:
-  - Highlights title, domain URL (with `https://` stripped for clean display), optional description, and a `"Visit ↗"` pill.
-  - Takes up a full-width (`w-full`) row on the **3. Links** tab and custom link sub-pages (`/[username]/links/[slug]`).
-  - Integrated into Model B unified flow, allowing authors to freely drag and reorder cards among badge clusters.
+  - **Geometry & Layout**: Wide short rectangular card (`h-28 sm:h-32`) taking up a full-width row on the **Links** profile tab, link sub-pages (`/[username]/links/[slug]`), and timeline feeds.
+  - **Left Half (50%)**: Padded content area with an icon/emoji positioned to the left of the title, primary title text, contextual subtitle directly beneath, and a clean domain URL (`https://` stripped).
+  - **Right Half (50%)**: Dedicated cover image area flush with **no margins above, below, or to the right** (`object-cover`). If no image is provided, a subtle neutral gradient with watermark icon is rendered.
+  - **Card Removal**: Profile owners can delete any link card directly via a top-corner hover `×` button when `isSelf && !isReordering`.
+  - **Model B Unified Flow & Drag-and-Drop Reordering**: Integrated into the author's custom sequence (`itemIds`), allowing creators to reorder cards alongside retro badge clusters.
   - Can target specific link pages during drafting via the composer collection selector dropdown.
 
 ### 5. Web Badge & OOMF Avatar Badge (`type: 'badge'`)

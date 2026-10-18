@@ -847,6 +847,9 @@ export default function ProfileView({
     }
   };
 
+  // Deleted link cards state (for optimistic and mock removal)
+  const [deletedLinkCardIds, setDeletedLinkCardIds] = useState<Set<string>>(new Set());
+
   const handleDeletePost = async (id: string) => {
     setPosts(posts.filter(p => p.id !== id));
     if (authUser?.id) {
@@ -854,6 +857,20 @@ export default function ProfileView({
         await supabase.from('blocks').delete().eq('id', id);
       } catch (err) {
         console.error('Error deleting block from Supabase:', err);
+      }
+    }
+  };
+
+  const handleDeleteLinkCard = async (id: string) => {
+    setDeletedLinkCardIds((prev) => new Set([...prev, id]));
+    handleDeletePost(id);
+    if (activeLinkCollection && activeLinkCollection.itemIds?.includes(id)) {
+      const updatedIds = activeLinkCollection.itemIds.filter((itemId) => itemId !== id);
+      setLinkCollections((prev) =>
+        prev.map((c) => (c.id === activeLinkCollection.id ? { ...c, itemIds: updatedIds } : c))
+      );
+      if (activeCreatorUserId) {
+        await reorderCollectionItems(activeLinkCollection.id, updatedIds, activeCreatorUserId);
       }
     }
   };
@@ -942,20 +959,26 @@ export default function ProfileView({
     ...posts.filter(p => p.type === 'link_card' && p.linkData).map(p => ({
       id: p.id,
       title: p.linkData!.title,
-      url: p.linkData!.url,
+      subtitle: p.linkData!.subtitle || p.linkData!.description || p.text,
       description: p.linkData!.description || p.text,
+      icon: p.linkData!.icon,
+      image: p.linkData!.image,
+      url: p.linkData!.url,
       clicks: 120,
       pageId: (p.linkData as any)?.pageId
     })),
     ...userProfile.links.map(l => ({
       id: l.id,
       title: l.title,
-      url: l.url,
+      subtitle: l.subtitle || (l.category ? `Category: ${l.category}` : undefined),
       description: l.category ? `Category: ${l.category}` : undefined,
+      icon: l.icon,
+      image: l.image,
+      url: l.url,
       clicks: l.clicks,
       pageId: 'main'
     }))
-  ], [posts, userProfile.links]);
+  ].filter(l => !deletedLinkCardIds.has(l.id)), [posts, userProfile.links, deletedLinkCardIds]);
 
   // Eligible link cards for this page
   const pageLinkCards = useMemo(() => {
@@ -1829,7 +1852,7 @@ export default function ProfileView({
                   );
                 }
 
-                // Link Card (Full Row)
+                // Link Card (Wide short rectangle: left half icon/title/subtitle, right half flush image)
                 const link = group.link;
                 const isItemDragged = draggedItemId === link.id;
                 const isDropTarget = dragOverItemId === link.id && draggedItemId !== null && draggedItemId !== link.id;
@@ -1842,7 +1865,7 @@ export default function ProfileView({
                     onDragOver={(e) => handleItemDragOver(e, link.id)}
                     onDrop={(e) => handleItemDrop(e, link.id)}
                     onDragEnd={handleItemDragEnd}
-                    className={`relative transition-all select-none ${
+                    className={`relative group/link-card transition-all select-none ${
                       isReordering ? 'cursor-grab active:cursor-grabbing' : ''
                     } ${
                       isItemDragged ? 'opacity-30 scale-[0.99]' : ''
@@ -1850,6 +1873,22 @@ export default function ProfileView({
                       isDropTarget ? 'ring-2 ring-[#1d9bf0] ring-offset-2 rounded-2xl' : ''
                     }`}
                   >
+                    {/* Top Corner Hover Delete Button for profile owner */}
+                    {isSelf && !isReordering && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleDeleteLinkCard(link.id);
+                        }}
+                        title="Delete link card from profile"
+                        className="absolute top-2 right-2 w-6 h-6 bg-red-600/90 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover/link-card:opacity-100 transition-opacity shadow-md hover:scale-110 active:scale-95 cursor-pointer z-20"
+                      >
+                        ×
+                      </button>
+                    )}
+
                     <a
                       href={link.url}
                       target="_blank"
@@ -1859,55 +1898,77 @@ export default function ProfileView({
                           e.preventDefault();
                         }
                       }}
-                      className={`p-4 border rounded-2xl bg-white transition-all flex items-center justify-between group ${
+                      className={`w-full h-28 sm:h-32 border rounded-2xl bg-white transition-all flex flex-row overflow-hidden relative ${
                         isReordering
                           ? 'border-[#1d9bf0]/30 hover:border-[#1d9bf0]'
                           : 'border-[#eff3f4] hover:border-[#1d9bf0] hover:shadow-xs'
                       }`}
                     >
-                      <div className="flex items-center gap-3 min-w-0 pr-4">
-                        {/* Grip handle in reorder mode */}
-                        {isReordering && (
-                          <div className="text-[#536471] hover:text-[#0f1419] shrink-0">
-                            <GripVertical className="w-5 h-5 text-[#536471]/60" />
+                      {/* Left Half: Icon, Title, Subtitle, and URL / Actions */}
+                      <div className="w-1/2 p-3 sm:p-4 flex flex-col justify-between min-w-0 pr-3">
+                        <div className="flex flex-col min-w-0">
+                          <div className="flex items-center gap-2 min-w-0">
+                            {/* Grip handle in reorder mode */}
+                            {isReordering && (
+                              <div className="text-[#536471] shrink-0">
+                                <GripVertical className="w-4 h-4 text-[#536471]/60" />
+                              </div>
+                            )}
+                            {link.icon && (
+                              <span className="text-lg sm:text-xl shrink-0 select-none leading-none">
+                                {link.icon}
+                              </span>
+                            )}
+                            <h4 className="font-bold text-[#0f1419] text-sm sm:text-base group-hover/link-card:text-[#1d9bf0] transition-colors truncate">
+                              {link.title}
+                            </h4>
                           </div>
-                        )}
-                        <div className="flex flex-col gap-0.5 min-w-0">
-                          <span className="font-bold text-[#0f1419] text-base group-hover:text-[#1d9bf0] transition-colors truncate">
-                            {link.title}
-                          </span>
-                          {link.description && (
-                            <p className="text-xs text-[#536471] line-clamp-1">
-                              {link.description}
+                          {link.subtitle && (
+                            <p className="text-xs text-[#536471] line-clamp-2 leading-relaxed mt-1">
+                              {link.subtitle}
                             </p>
                           )}
-                          <span className="text-xs text-[#1d9bf0] font-mono truncate">
+                        </div>
+
+                        <div className="flex items-center justify-between gap-1.5 min-w-0 pt-1">
+                          <span className="text-[11px] text-[#1d9bf0] font-mono truncate flex items-center gap-1">
+                            <ExternalLink className="w-3 h-3 shrink-0" />
                             {link.url.replace(/^https?:\/\//, '')}
                           </span>
+                          {isSelf && !isReordering && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setManageItem({ id: link.id, title: link.title, tabType: 'links' });
+                              }}
+                              title="Organize into link pages"
+                              className="p-1.5 text-[#536471] hover:text-[#1d9bf0] hover:bg-[#1d9bf0]/10 rounded-full transition-colors cursor-pointer shrink-0"
+                            >
+                              <FolderPlus className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {isSelf && !isReordering && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setManageItem({ id: link.id, title: link.title, tabType: 'links' });
-                            }}
-                            title="Organize into link pages"
-                            className="p-2 text-[#536471] hover:text-[#1d9bf0] hover:bg-[#1d9bf0]/10 rounded-full transition-colors cursor-pointer mr-1"
-                          >
-                            <FolderPlus className="w-4 h-4" />
-                          </button>
+                      {/* Right Half: Dedicated to flush image with no margins above, below, to right */}
+                      <div className="w-1/2 h-full overflow-hidden shrink-0 border-l border-[#eff3f4] bg-gray-50 relative">
+                        {link.image ? (
+                          <img
+                            src={link.image}
+                            alt={link.title}
+                            className="w-full h-full object-cover group-hover/link-card:scale-105 transition-transform duration-300 pointer-events-none"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#f7f9f9] to-[#eff3f4] text-[#cfd9de]">
+                            {link.icon ? (
+                              <span className="text-3xl opacity-40 select-none">{link.icon}</span>
+                            ) : (
+                              <ExternalLink className="w-7 h-7 opacity-30" />
+                            )}
+                          </div>
                         )}
-                        <div className={`text-white text-xs font-bold px-4 py-2 rounded-full flex items-center gap-1 shrink-0 ${
-                          isReordering ? 'bg-gray-400' : 'bg-[#1d9bf0] group-hover:bg-[#1a8cd8]'
-                        }`}>
-                          <span>Visit</span>
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </div>
                       </div>
                     </a>
                   </div>
