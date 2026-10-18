@@ -471,19 +471,22 @@ export default function UserNetworkView({ targetUser, initialTab = 'oomfs' }: Us
                 key={p.id}
                 className="hover:bg-[#fcfdfd] transition-colors pb-4"
               >
-                {/* Banner Section */}
+                {/* Banner Section: 1:1 Parity with Profile 3:1 Aspect Ratio (1500x500) */}
                 <Link
                   href={`/${p.username}`}
-                  className="block h-28 sm:h-32 bg-[#eff3f4] relative overflow-hidden group/banner cursor-pointer"
+                  className="block w-full aspect-[3/1] bg-[#cfd9de] relative overflow-hidden group/banner cursor-pointer"
                 >
                   {p.banner ? (
                     <img
                       src={p.banner}
                       alt={`${p.name}'s banner`}
                       className="w-full h-full object-cover group-hover/banner:scale-[1.02] transition-transform duration-300"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).style.display = 'none';
+                      }}
                     />
                   ) : (
-                    <div className="w-full h-full bg-gradient-to-r from-blue-100 via-indigo-50 to-purple-100" />
+                    <div className="w-full h-full bg-gradient-to-r from-[#cfd9de] via-[#d5dde2] to-[#cfd9de]" />
                   )}
                 </Link>
 
@@ -577,15 +580,18 @@ export default function UserNetworkView({ targetUser, initialTab = 'oomfs' }: Us
               href={`/${p.username}`}
               className="block relative overflow-hidden group cursor-pointer"
             >
-              <div className="h-28 sm:h-36 w-full bg-[#eff3f4] relative overflow-hidden">
+              <div className="w-full aspect-[3/1] bg-[#cfd9de] relative overflow-hidden">
                 {p.banner ? (
                   <img
                     src={p.banner}
                     alt=""
                     className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).style.display = 'none';
+                    }}
                   />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-r from-blue-100 via-indigo-50 to-purple-100 group-hover:opacity-90 transition-opacity" />
+                  <div className="w-full h-full bg-gradient-to-r from-[#cfd9de] via-[#d5dde2] to-[#cfd9de] group-hover:opacity-90 transition-opacity" />
                 )}
 
                 {/* Small avatar overlaid on top-left, zero text */}

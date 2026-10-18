@@ -19,7 +19,8 @@ import {
   FolderPlus,
   ArrowUpDown,
   Check,
-  GripVertical
+  GripVertical,
+  Camera
 } from 'lucide-react';
 import { 
   User, 
@@ -40,6 +41,8 @@ import CollectionLensBar from '@/components/collections/CollectionLensBar';
 import AllCollectionsModal from '@/components/collections/AllCollectionsModal';
 import CreateCollectionModal from '@/components/collections/CreateCollectionModal';
 import AddToCollectionModal from '@/components/collections/AddToCollectionModal';
+import BannerCropModal from '@/components/profile/BannerCropModal';
+import { uploadBannerImage } from '@/lib/bannerStorage';
 import { saveSessionPost, getAllSessionPosts } from '@/lib/postStore';
 import { useAuth } from '@/context/AuthContext';
 import { createClient } from '@/lib/supabase/client';
@@ -111,7 +114,7 @@ export default function ProfileView({
   initialTab = 'posts',
   initialLinkPageSlug
 }: ProfileViewProps) {
-  const { user: authUser, profile: authProfile, signInWithTwitter } = useAuth();
+  const { user: authUser, profile: authProfile, signInWithTwitter, refreshProfile } = useAuth();
   const supabase = createClient();
 
   // 4 tabs requested left-to-right: 1. Posts (default), 2. Comments, 3. Links, 4. Likes
@@ -319,7 +322,42 @@ export default function ProfileView({
   const [editBio, setEditBio] = useState(initialUser.bio);
   const [editLocation, setEditLocation] = useState(initialUser.location || '');
   const [editWebsite, setEditWebsite] = useState(initialUser.website || '');
+  const [editBanner, setEditBanner] = useState(initialUser.banner || '');
+  const [editBannerBlob, setEditBannerBlob] = useState<Blob | null>(null);
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [tempCropSrc, setTempCropSrc] = useState<string | null>(null);
+  const bannerFileInputRef = useRef<HTMLInputElement>(null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  // Banner file selection and crop handlers
+  const handleBannerFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Please select a valid image file (JPEG, PNG, WebP).');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (loadEvent) => {
+      const dataUrl = loadEvent.target?.result as string;
+      setTempCropSrc(dataUrl);
+      setCropModalOpen(true);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleCropApply = (croppedDataUrl: string, croppedBlob: Blob) => {
+    setEditBanner(croppedDataUrl);
+    setEditBannerBlob(croppedBlob);
+    setCropModalOpen(false);
+    setTempCropSrc(null);
+  };
+
+  const handleRemoveBanner = () => {
+    setEditBanner('');
+    setEditBannerBlob(null);
+  };
 
   // Listen for posts created via the LeftSidebar modal or inline PostComposer
   useEffect(() => {
@@ -661,29 +699,66 @@ export default function ProfileView({
     e.preventDefault();
     setIsSavingProfile(true);
 
+    let finalBannerUrl = editBanner;
+
+    // If a new banner was cropped (either Blob or dataUrl), upload to storage
+    if (editBanner && (editBannerBlob || editBanner.startsWith('data:'))) {
+      const uploadRes = await uploadBannerImage(
+        authUser?.id || userProfile.id,
+        editBannerBlob || editBanner
+      );
+      finalBannerUrl = uploadRes.bannerUrl;
+    }
+
     setUserProfile(prev => ({
       ...prev,
       name: editName,
       bio: editBio,
       location: editLocation,
       website: editWebsite,
+      banner: finalBannerUrl,
     }));
 
     if (authUser?.id) {
       try {
-        const { error } = await supabase
-          .from('profiles')
-          .update({
-            name: editName,
-            bio: editBio,
-            location: editLocation,
-            website: editWebsite,
-          })
-          .eq('id', authUser.id);
+        const updatePayload: Record<string, any> = {
+          name: editName,
+          bio: editBio,
+          location: editLocation,
+          website: editWebsite,
+          banner_url: finalBannerUrl || null,
+        };
 
-        if (error) {
-          console.error('Error saving profile to Supabase:', error);
-          alert('Could not update profile in Supabase: ' + error.message);
+        let lastError: any = null;
+        let updateSucceeded = false;
+
+        // Try updating; if a column is missing from Supabase schema cache (e.g. location), retry gracefully without that column
+        for (let attempt = 0; attempt < 4; attempt++) {
+          const { error } = await supabase
+            .from('profiles')
+            .update(updatePayload)
+            .eq('id', authUser.id);
+
+          if (!error) {
+            updateSucceeded = true;
+            break;
+          }
+
+          lastError = error;
+          const match = error.message?.match(/Could not find the '(\w+)' column of 'profiles'/i);
+          if (match && match[1] && match[1] in updatePayload) {
+            console.warn(`Column '${match[1]}' not found in profiles schema cache. Retrying update without it.`);
+            delete updatePayload[match[1]];
+            continue;
+          }
+          break;
+        }
+
+        if (updateSucceeded) {
+          refreshProfile();
+        } else if (lastError) {
+          console.error('Error saving profile to Supabase:', lastError);
+          alert('Could not update profile in Supabase: ' + lastError.message);
         }
       } catch (err) {
         console.error('Error saving profile to Supabase:', err);
@@ -1135,16 +1210,19 @@ export default function ProfileView({
         </div>
       </header>
 
-      {/* Banner */}
-      <div className="h-44 sm:h-52 bg-[#eff3f4] relative overflow-hidden">
+      {/* Banner: 1:1 X Standard 3:1 Aspect Ratio (1500x500) */}
+      <div className="w-full aspect-[3/1] bg-[#cfd9de] relative overflow-hidden">
         {userProfile.banner ? (
           <img
             src={userProfile.banner}
             alt={`${userProfile.name}'s banner`}
             className="w-full h-full object-cover"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.display = 'none';
+            }}
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-r from-blue-100 to-indigo-100" />
+          <div className="w-full h-full bg-gradient-to-r from-[#cfd9de] via-[#d5dde2] to-[#cfd9de]" />
         )}
       </div>
 
@@ -1175,7 +1253,15 @@ export default function ProfileView({
 
           {isSelf ? (
             <button 
-              onClick={() => setEditModalOpen(true)}
+              onClick={() => {
+                setEditName(userProfile.name);
+                setEditBio(userProfile.bio);
+                setEditLocation(userProfile.location || '');
+                setEditWebsite(userProfile.website || '');
+                setEditBanner(userProfile.banner || '');
+                setEditBannerBlob(null);
+                setEditModalOpen(true);
+              }}
               className="border border-[#eff3f4] hover:bg-[#f7f9f9] text-[#0f1419] font-bold text-sm px-4 py-2 rounded-full transition-colors cursor-pointer"
             >
               Edit profile
@@ -1888,17 +1974,17 @@ export default function ProfileView({
         )}
       </div>
 
-      {/* EDIT PROFILE MODAL */}
+      {/* EDIT PROFILE MODAL: 1:1 X / Twitter Layout */}
       {editModalOpen && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-[#eff3f4] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-[#eff3f4] overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[92vh]">
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-[#eff3f4]">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[#eff3f4] shrink-0 bg-white z-10">
               <div className="flex items-center gap-6">
                 <button
                   type="button"
                   onClick={() => setEditModalOpen(false)}
-                  className="p-1 text-[#0f1419] hover:bg-[#f7f9f9] rounded-full cursor-pointer"
+                  className="p-1 text-[#0f1419] hover:bg-[#f7f9f9] rounded-full cursor-pointer transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -1914,58 +2000,140 @@ export default function ProfileView({
               </button>
             </div>
 
-            {/* Modal Form */}
-            <form id="edit-profile-form" onSubmit={handleSaveProfile} className="p-4 flex flex-col gap-4">
-              {/* Name */}
-              <div className="border border-[#eff3f4] focus-within:border-[#1d9bf0] focus-within:ring-1 focus-within:ring-[#1d9bf0] rounded-xl px-3 py-2">
-                <label className="text-xs text-[#536471] block font-medium">Name</label>
+            {/* Modal Scrollable Body */}
+            <div className="overflow-y-auto flex-1">
+              {/* 1:1 X Header Banner Upload Area */}
+              <div className="w-full aspect-[3/1] bg-[#cfd9de] relative overflow-hidden flex items-center justify-center group select-none">
+                {editBanner ? (
+                  <img
+                    src={editBanner}
+                    alt="Header preview"
+                    className="w-full h-full object-cover brightness-90"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-r from-[#cfd9de] via-[#d5dde2] to-[#cfd9de]" />
+                )}
+
+                {/* Centered Camera & Remove Action Buttons */}
+                <div className="absolute inset-0 flex items-center justify-center gap-3 bg-black/25">
+                  <button
+                    type="button"
+                    onClick={() => bannerFileInputRef.current?.click()}
+                    title="Add header photo"
+                    aria-label="Add header photo"
+                    className="p-2.5 bg-black/60 hover:bg-black/75 text-white rounded-full transition-all cursor-pointer shadow-md hover:scale-105 active:scale-95"
+                  >
+                    <Camera className="w-5 h-5" />
+                  </button>
+
+                  {editBanner && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveBanner}
+                      title="Remove header photo"
+                      aria-label="Remove header photo"
+                      className="p-2.5 bg-black/60 hover:bg-black/75 text-white rounded-full transition-all cursor-pointer shadow-md hover:scale-105 active:scale-95"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Hidden file input for banner selection */}
                 <input
-                  type="text"
-                  value={editName}
-                  onChange={e => setEditName(e.target.value)}
-                  className="w-full text-sm text-[#0f1419] outline-none pt-0.5 bg-transparent"
-                  required
+                  ref={bannerFileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  onChange={handleBannerFileSelect}
+                  className="hidden"
                 />
               </div>
 
-              {/* Bio */}
-              <div className="border border-[#eff3f4] focus-within:border-[#1d9bf0] focus-within:ring-1 focus-within:ring-[#1d9bf0] rounded-xl px-3 py-2">
-                <label className="text-xs text-[#536471] block font-medium">Bio</label>
-                <textarea
-                  value={editBio}
-                  onChange={e => setEditBio(e.target.value)}
-                  rows={3}
-                  placeholder="Tell your OOMFs about yourself..."
-                  className="w-full text-sm text-[#0f1419] outline-none pt-0.5 bg-transparent resize-none"
-                />
+              {/* 1:1 X Overlapping Avatar Area */}
+              <div className="px-4 -mt-10 sm:-mt-12 mb-3 relative flex justify-between items-end">
+                <div className="relative group/edit-avatar">
+                  <img
+                    src={formatTwitterAvatar(userProfile.avatar)}
+                    alt={userProfile.name}
+                    className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-white object-cover bg-white shadow-sm brightness-95"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/25 pointer-events-none">
+                    <div className="p-2 bg-black/60 text-white rounded-full">
+                      <Camera className="w-4 h-4" />
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              {/* Location */}
-              <div className="border border-[#eff3f4] focus-within:border-[#1d9bf0] focus-within:ring-1 focus-within:ring-[#1d9bf0] rounded-xl px-3 py-2">
-                <label className="text-xs text-[#536471] block font-medium">Location</label>
-                <input
-                  type="text"
-                  value={editLocation}
-                  onChange={e => setEditLocation(e.target.value)}
-                  placeholder="e.g. San Francisco, CA"
-                  className="w-full text-sm text-[#0f1419] outline-none pt-0.5 bg-transparent"
-                />
-              </div>
+              {/* Form Fields */}
+              <form id="edit-profile-form" onSubmit={handleSaveProfile} className="p-4 pt-1 flex flex-col gap-4">
+                {/* Name */}
+                <div className="border border-[#eff3f4] focus-within:border-[#1d9bf0] focus-within:ring-1 focus-within:ring-[#1d9bf0] rounded-xl px-3 py-2 transition-all">
+                  <label className="text-xs text-[#536471] block font-medium">Name</label>
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={e => setEditName(e.target.value)}
+                    className="w-full text-sm text-[#0f1419] outline-none pt-0.5 bg-transparent"
+                    required
+                  />
+                </div>
 
-              {/* Website */}
-              <div className="border border-[#eff3f4] focus-within:border-[#1d9bf0] focus-within:ring-1 focus-within:ring-[#1d9bf0] rounded-xl px-3 py-2">
-                <label className="text-xs text-[#536471] block font-medium">Website</label>
-                <input
-                  type="text"
-                  value={editWebsite}
-                  onChange={e => setEditWebsite(e.target.value)}
-                  placeholder="e.g. oomfs.org/yourname or your personal link"
-                  className="w-full text-sm text-[#0f1419] outline-none pt-0.5 bg-transparent"
-                />
-              </div>
-            </form>
+                {/* Bio */}
+                <div className="border border-[#eff3f4] focus-within:border-[#1d9bf0] focus-within:ring-1 focus-within:ring-[#1d9bf0] rounded-xl px-3 py-2 transition-all">
+                  <label className="text-xs text-[#536471] block font-medium">Bio</label>
+                  <textarea
+                    value={editBio}
+                    onChange={e => setEditBio(e.target.value)}
+                    rows={3}
+                    placeholder="Tell your OOMFs about yourself..."
+                    className="w-full text-sm text-[#0f1419] outline-none pt-0.5 bg-transparent resize-none"
+                  />
+                </div>
+
+                {/* Location */}
+                <div className="border border-[#eff3f4] focus-within:border-[#1d9bf0] focus-within:ring-1 focus-within:ring-[#1d9bf0] rounded-xl px-3 py-2 transition-all">
+                  <label className="text-xs text-[#536471] block font-medium">Location</label>
+                  <input
+                    type="text"
+                    value={editLocation}
+                    onChange={e => setEditLocation(e.target.value)}
+                    placeholder="e.g. San Francisco, CA"
+                    className="w-full text-sm text-[#0f1419] outline-none pt-0.5 bg-transparent"
+                  />
+                </div>
+
+                {/* Website */}
+                <div className="border border-[#eff3f4] focus-within:border-[#1d9bf0] focus-within:ring-1 focus-within:ring-[#1d9bf0] rounded-xl px-3 py-2 transition-all">
+                  <label className="text-xs text-[#536471] block font-medium">Website</label>
+                  <input
+                    type="text"
+                    value={editWebsite}
+                    onChange={e => setEditWebsite(e.target.value)}
+                    placeholder="e.g. oomfs.org/yourname or personal site"
+                    className="w-full text-sm text-[#0f1419] outline-none pt-0.5 bg-transparent"
+                  />
+                </div>
+              </form>
+            </div>
           </div>
         </div>
+      )}
+
+      {/* 1500x500 Twitter Banner Crop Modal */}
+      {cropModalOpen && tempCropSrc && (
+        <BannerCropModal
+          isOpen={cropModalOpen}
+          imageSrc={tempCropSrc}
+          onClose={() => {
+            setCropModalOpen(false);
+            setTempCropSrc(null);
+          }}
+          onApply={handleCropApply}
+        />
       )}
 
       {/* All Collections Searchable Modal (Posts) */}

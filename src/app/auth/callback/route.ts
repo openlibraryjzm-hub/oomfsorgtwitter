@@ -64,6 +64,9 @@ export async function GET(request: Request) {
               if (twitterUser.profile_image_url) {
                 updates.avatar_url = twitterUser.profile_image_url.replace('_normal.', '_400x400.');
               }
+              if (twitterUser.profile_banner_url) {
+                updates.banner_url = twitterUser.profile_banner_url;
+              }
 
               // Update the profiles table with real bio & location!
               await supabase

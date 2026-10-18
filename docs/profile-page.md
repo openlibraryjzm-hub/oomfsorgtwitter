@@ -52,13 +52,13 @@ The profile header sits at the top of `ProfileView.tsx` and adheres strictly to 
      - On own profile (`isSelf`) or when logged out, the action icons persist alongside the X link without swapping.
 
 2. **Banner & Avatar**:
-   - Banner: Height responsive (`h-44 sm:h-52`), object-cover with fallback gradient.
+   - Banner: Height responsive (`h-44 sm:h-52`), 3:1 aspect ratio (`1500×500px`), object-cover with Twitter Light neutral slate fallback (`#cfd9de`).
    - Avatar: Circular avatar overlapping banner (`-mt-16 sm:-mt-20`). Always run through `formatTwitterAvatar()` to ensure 400×400 HD resolution instead of Twitter's pixelated default `_normal.jpg`.
 
-3. **Action Row**:
+3. **Action Row & Native Edit Profile Modal**:
    - **`"Ask!"` Auxiliary Pill** (Viewing others' profiles only): Rendered immediately to the left of the primary action button with a custom monochrome shushing cat face (`CatShushIcon`). Hidden when viewing own profile.
    - **Contextual Action Button**:
-     - Viewing own profile: **`"Edit profile"`** opens the native edit modal.
+     - Viewing own profile: **`"Edit profile"`** opens the native 1:1 X edit modal with header banner upload/remove, overlapping avatar, and interactive 1500×500 zoom & pan crop modal (`BannerCropModal.tsx`).
      - Viewing another profile (logged out): **`"Connect X"`** triggers Twitter OAuth 2.0 PKCE.
      - Viewing another profile (logged in): **`"Follow" / "Following"`** toggle.
 

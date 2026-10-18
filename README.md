@@ -69,14 +69,19 @@
 ├── docs/
 │   ├── backend.md                      # Supabase schema, RLS policies, RPC follow graph, & OAuth
 │   ├── badges.md                       # 88×31 Web Badge system, 3x HiDPI canvas, & Badge Wall gallery
+│   ├── banners.md                      # 1:1 X Profile Banner system, 1500x500 crop engine, & cross-view parity
 │   ├── collections.md                  # Curated collections & preset lenses architecture and data models
 │   ├── composer.md                     # Post composer architecture, flush builders, & media compression
 │   ├── followerlist.md                 # Network directory architecture (OOMFs, Following, Followers) & 4 view modes
+│   ├── links.md                        # Link Pages architecture, custom slugs, and drag-and-drop reordering
 │   ├── navigation.md                   # Global shell geometry, left sidebar registry (7 items), & responsive layout
 │   ├── post-types.md                   # Specification for active post formats & creation guide
+│   └── profile-page.md                 # Profile layout, identity section, 4 tabs, and status routing
 ├── supabase_schema.sql                 # Baseline schema: profiles, blocks, follows tables & RLS policies
 ├── supabase_follows_rpc.sql            # Supabase RPC migration for bidirectional mutual follower queries
 ├── supabase_collections.sql            # Collections & collection_items schema, indexes, and RLS policies
+├── supabase_banners_storage.sql        # Supabase Storage bucket ('banners') creation and RLS policies
+├── supabase_profile_columns.sql        # Missing profile columns migration & PostgREST reload
 ├── .env.local                          # Supabase project URL and API keys
 ├── src/
 │   ├── app/
@@ -104,7 +109,8 @@
 │   │   │   ├── RightSidebar.tsx        # 1:1 Right spacer column (350px) for layout geometry + footer links
 │   │   │   └── MainLayout.tsx          # 1:1 X.com layout shell (max-w-[1265px]) + compose modal
 │   │   ├── profile/
-│   │   │   └── ProfileView.tsx         # Core profile view, 4 tabs, Edit Profile modal, composer, Badge Wall
+│   │   │   ├── ProfileView.tsx         # Core profile view, 4 tabs, Edit Profile modal, composer, Badge Wall
+│   │   │   └── BannerCropModal.tsx     # 1:1 X 1500x500 banner crop viewfinder, zoom slider, & wheel zoom
 │   │   ├── collections/
 │   │   │   ├── CollectionLensBar.tsx   # Quick-access stadium pills + modal trigger
 │   │   │   ├── AllCollectionsModal.tsx # Searchable modal displaying all curated presets + drag-and-drop reordering
@@ -112,7 +118,7 @@
 │   │   │   └── AddToCollectionModal.tsx # Modal to assign existing blocks/posts to curated presets
 │   │   ├── network/
 │   │   │   ├── FollowButton.tsx        # Dynamic optimistic Follow/Unfollow action pill
-│   │   │   └── UserFollowItem.tsx      # 1:1 native follower list row component
+│   │   │   └── UserNetworkView.tsx     # 1:1 network directory (OOMFs, Following, Followers) & 4 display modes
 │   │   └── feed/
 │   │       ├── PostCard.tsx            # 1:1 timeline post rendering (Standard, Carousel, Board, Badge)
 │   │       ├── CommentCard.tsx         # Flat guestbook comment card (non-threaded)
@@ -121,6 +127,7 @@
 │   ├── context/
 │   │   └── AuthContext.tsx             # Supabase auth session, profile state, signInWithTwitter, signOut
 │   ├── lib/
+│   │   ├── bannerStorage.ts            # Supabase Storage bucket uploader with resilient dataUrl fallback
 │   │   ├── collections.ts              # Supabase & localStorage dual-persistence manager for collections
 │   │   ├── follows.ts                  # Client follow toggle & network directory resolver
 │   │   ├── mockData.ts                 # Offline mock accounts & sample content for prototyping
@@ -236,6 +243,7 @@ npm run build
 * [x] Dynamic `/[username]` routing with direct Supabase SSR + Mock fallbacks
 * [x] Twitter / X OAuth 2.0 PKCE authentication via Supabase (`provider: 'x'`)
 * [x] HD Avatar resolution upscaling (`_400x400`)
+* [x] 1:1 X Profile Banners (1500×500 interactive crop engine, Supabase Storage, and Cards view parity)
 * [x] Twitter bio extraction and native "Edit profile" modal persistence
 * [x] 4 Distinct Profile Tabs: Posts, Comments (flat guestbook), Links, Likes
 * [x] Thread route (`/[username]/status/[id]`) with replies composer

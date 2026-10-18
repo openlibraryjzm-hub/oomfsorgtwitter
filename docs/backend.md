@@ -278,6 +278,18 @@ Manages author-curated lenses across the Posts and Links tabs using a dual-persi
    - `reorderCollections(orderedCollectionIds)` batch-updates `sort_order` in Supabase and synchronizes the sequence in `localStorage`.
    - Sequence in the modal determines the leftmost-to-rightmost display order on the quick-access pill bar (`CollectionLensBar.tsx`).
 
+### 4.3 Profile Banners & Storage Engine (`src/lib/bannerStorage.ts`)
+
+Banners adhere strictly to 1:1 X / Twitter standards (1500×500 px, 3:1 aspect ratio):
+1. **Interactive Crop Viewport**:
+   - Users select an image and adjust crop framing, zoom ($1\times$ to $3\times$), and position inside [`BannerCropModal.tsx`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/components/profile/BannerCropModal.tsx).
+   - Offscreen canvas rasterizes the active viewfinder to an exact $1500 \times 500\text{px}$ high-resolution JPEG.
+2. **Resilient Dual Storage Architecture**:
+   - **Primary**: Uploads to Supabase Storage bucket `'banners'` at `${userId}/banner_${timestamp}.jpg` (configured in [`supabase_banners_storage.sql`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/supabase_banners_storage.sql)) and returns the public CDN URL.
+   - **Fallback**: If the Supabase bucket is unconfigured or encounters an RLS/network exception, gracefully falls back to returning the high-resolution data URL so profile editing never breaks.
+3. **Database Persistence**:
+   - Persisted to `public.profiles.banner_url`. Emptying the banner sets `banner_url: null`.
+
 ---
 
 ## 5. Authentication & OAuth 2.0 Lifecycle
