@@ -15,8 +15,8 @@ src/app/[username]/
 ├── following/page.tsx           # Interconnected Following route
 ├── followers/page.tsx           # Interconnected Followers route
 ├── links/
-│   ├── page.tsx                 # Dedicated Links tab route (Main link page)
-│   └── [slug]/page.tsx          # Dedicated Link Page route (custom slug)
+│   ├── page.tsx                 # Dedicated single Links Switchboard route
+│   └── [slug]/page.tsx          # Permanent server redirect back to /[username]/links
 └── status/[id]/
     ├── page.tsx                 # Server component: resolves focal post from Supabase or mock data
     └── ThreadClientView.tsx     # Client component: renders focal post + thread replies + reply composer
@@ -25,16 +25,16 @@ src/components/network/
 └── UserNetworkView.tsx          # 1:1 X/Twitter interconnected tabs (OOMFs, Following, Followers) + live follow actions
 
 src/components/profile/
-└── ProfileView.tsx              # Primary profile component (Header, stats, tabs, composer drawer, modals)
+└── ProfileView.tsx              # Primary profile component (Header, stats, tabs, switchboard console, modals)
 
 src/components/collections/
 ├── CollectionLensBar.tsx        # Horizontal quick-access stadium pills + modal trigger
 └── AllCollectionsModal.tsx      # Searchable modal displaying all curated presets
 
 src/components/feed/
-├── PostCard.tsx                 # Timeline post renderer (Standard, Carousel, Board, Link Card)
+├── PostCard.tsx                 # Timeline post renderer (Standard, Carousel, Board, Link Card, Web Badge)
 ├── CommentCard.tsx              # Flat comment renderer (no threading, no replies, no quotes)
-└── PostComposer.tsx             # Unified post creation component
+└── PostComposer.tsx             # Unified post creation component (Dual-Tab Post/Link)
 ```
 
 ---
@@ -82,8 +82,9 @@ Tabs are ordered left-to-right to optimize content discovery and render with cle
 ```
 
 ### 1. Posts (Leftmost & Default)
-- **Role**: Primary content timeline displaying actual posts created by the user (Standard, Carousel, Board).
+- **Role**: Primary unified content timeline displaying all posts created by the user: Standard text, Carousels, Curated Boards, Bio Link Cards, and Web Badges.
 - **Direct Feed Alignment**: Feed items render directly beneath the tab bar, preserving strict 1:1 parity with Twitter/X web profile timelines.
+- **Embedded Link & Badge Blocks**: Link cards and web badges are embedded directly within standard Twitter post cards (`PostCard.tsx`), complete with full native interaction suites (repost, like, share, reply, and collection assignment).
 - **Curated Collections & Presets**: Clicking the active **`Posts ▾`** tab header toggles the expandable `CollectionLensBar`. Selecting a collection dynamically filters and custom-orders posts according to the author's exact sequence. Creators can organize existing posts into presets via the `FolderPlus` icon on any post card (`AddToCollectionModal.tsx`), create new presets (`CreateCollectionModal.tsx`), and reorder presets via native drag-and-drop in `AllCollectionsModal.tsx` (top presets pin leftmost on the lens bar). An active blue indicator dot appears on the tab when filtered (`Posts •`), accompanied by a clearable active lens banner. *(See [Collections Context Doc](collections.md) for complete architecture).*
 - **Thread Navigation**: Clicking any post card in this feed navigates directly to `/[username]/status/[id]` to open its dedicated thread view.
 
@@ -95,19 +96,15 @@ Tabs are ordered left-to-right to optimize content discovery and render with cle
   - **Flat Structure Constraints**: Comments **cannot** be opened as threads, **cannot** be replied to, and **cannot** be quoted. This preserves a lightweight, high-signal guestbook without nested comment clutter.
   - Deletion: Permitted for the profile owner or the comment author.
 
-### 3. Links (Third from Left)
-- **Role**: Curated bio link showcase, standalone Link Pages, retro 88×31 Web Badge galleries, and circular OOMF avatar plaques.
-- **Standalone Link Pages (vs Posts Playlists)**:
-  - While Posts collections act as filtered lenses ("playlists") over the unified master post feed, Link Pages are **distinct, standalone pages**.
-  - **Leftmost Anchor**: The leftmost pill on the Links bar represents the **Main / Default Page** (`[ 🌐 Main (N) ]`), accessible directly at `/[username]/links`.
-  - **Custom Sub-Pages & URLs**: Creators can create dedicated link pages with custom URL slugs (`/[username]/links/[slug]`, e.g., `/amberlyn/links/work`, `/amberlyn/links/writing`).
-  - **Zero-Flicker Navigation**: In-app switching between link pages uses `window.history.replaceState` for instant, 0ms transitions without re-mounting or page reload, while direct visits render via server components (`src/app/[username]/links/[slug]/page.tsx`).
-  - **Destination Composer**: In `PostComposer`, bio links and badges have a direct top selector: `Publish to Link Page: [ 🌐 Main ▾ ]`.
-  - **Model B Unified Flow & Drag-and-Drop Reordering**:
-    - Rather than hard-separating badges and links into disconnected sections, items render in a unified custom sequence (`itemIds`).
-    - Consecutive badges (both rectangular $88 \times 31$ buttons and circular $52 \times 52\text{px}$ avatars) naturally cluster together in an authentic Badge Wall plaque (`border rounded-2xl bg-white p-3.5`), while link cards expand full-width (`w-full`) to take their own row.
-    - **Reorder Mode**: Profile owners click `[ ⇅ Reorder ]` in the page header to safely drag and swap badges or reorder link cards without triggering accidental link clicks. Reordering automatically synchronizes to Supabase and `localStorage`.
-  - *Complete technical specifications for collections vs link pages are in [Collections Context Doc](collections.md) and [Link Pages Documentation](links.md).*
+### 3. Links (Third from Left) — The Switchboard Console
+- **Role**: Visual directory and launchpad for the user's curated channels and Post Collections.
+- **Single Unified Page**: Rather than fragmenting links into disconnected sub-pages (`/links/[slug]`), all link exploration is centralized on **ONE unified Links page** (`/[username]/links`).
+- **Interactive Switchboard GUI**:
+  - **Master Timeline Launcher**: Prominent launch card for switching instantly back to the uncensored chronological Posts feed.
+  - **Channel Grid**: 2-column interactive button console displaying each of the user's curated Post Collections (e.g., `💼 Work Links`, `🎨 Moodboards`, `📝 Articles`), complete with collection icons, item counts, and descriptions.
+  - **1-Click Collection Launching**: Clicking any channel button switches the profile active tab to **Posts**, automatically engages the selected collection lens, and updates the URL parameter (`?col=[id]`).
+  - **Owner Controls**: When viewing one's own profile, quick-action buttons allow creating new collections (`+ New Collection`) or managing & reordering channels (`Manage`).
+- *Complete technical specifications for collections and the Switchboard are in [Collections Context Doc](collections.md) and [Link Pages Documentation](links.md).*
 
 ### 4. Likes (Fourth / Rightmost)
 - **Role**: Dedicated feed showcasing posts liked by the user.

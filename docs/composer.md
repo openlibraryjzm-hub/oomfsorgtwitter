@@ -36,9 +36,18 @@ Post creation can be initiated from two primary surfaces:
 
 ---
 
-## 3. Format Selection & Bottom Action Bar
+## 3. Dual-Tab Header & Format Selection
 
-Format switching is controlled via the **bottom icon action bar** mirroring Twitter's native compose chrome:
+The composer features a top navigation tab bar:
+```
+[ 📝 Post ]   [ 🔗 Link ]
+```
+- **Post Tab**: Contains the active drafting environment for all post types (`standard`, `carousel`, `board`, `link_card`, `badge`).
+- **Link Tab**: Explains the single-page Links Switchboard architecture and provides quick 1-click launcher actions to instantly draft a Bio Link Card or Retro Web Badge.
+
+### Format Selection & Bottom Action Bar
+
+Within the Post tab, format switching is controlled via the **bottom icon action bar** mirroring Twitter's native compose chrome:
 
 | Icon | Lucide Component | Format | Click Behavior |
 | :--- | :--- | :--- | :--- |
@@ -122,19 +131,18 @@ When the user taps **"Post"**:
        ▼
 4. Global Event Broadcast (`oomfs:post-created`)
    - Emits window event with payload: `{ post: newPost, collectionId: targetColId }`
-   - `ProfileView.tsx` listens and immediately prepends the post to active state
-   - Automatically switches active tab ('links' for bio links / badges, 'posts' for media)
+   - `ProfileView.tsx` listens and immediately prepends the post to active posts state
+   - Automatically switches active tab to 'posts'
        │
        ▼
 5. Collection Assignment (`addItemToCollection`)
-   - If an existing collection or Link Page was chosen from the "Add to collection" dropdown, the new post or link ID is immediately assigned to that collection in `public.collection_items` and local storage.
+   - If an existing post collection was chosen from the "Add to collection" dropdown, the new post or link ID is immediately assigned to that collection in `public.collection_items` and local storage.
 ```
 
-### Collection & Link Page Assignment During Drafting
-Above the composer submit chrome, a collection selector dropdown displays all available presets for the active tab:
-- **Posts Tab (`standard`, `carousel`, `board`)**: Shows post collections (`userPostCols`).
-- **Links Tab (`link_card`, `badge`)**: Shows link sub-pages (`userLinkCols`), defaulting to the active link page (or `[ 🌐 Main ]` if none active).
-- Creators can publish directly to a specific sub-page (e.g. `[ 💼 Work ]` or `[ 📝 Writing ]`) in a single click without needing a secondary sorting step after publishing.
+### Collection Assignment During Drafting
+Above the composer submit chrome, a collection selector dropdown displays all available post collections (`userPostCols`):
+- All post types (`standard`, `carousel`, `board`, `link_card`, `badge`) can be added directly to any Post Collection playlist.
+- Creators can publish directly into a specific collection (e.g. `[ 💼 Work Links ]` or `[ 🎨 Moodboards ]`) in a single click without needing a secondary sorting step after publishing.
 
 ---
 

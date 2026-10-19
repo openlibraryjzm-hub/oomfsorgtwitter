@@ -10,10 +10,10 @@ On traditional social networks and link-in-bio tools, user content is locked int
 * **Posts** are constrained strictly to reverse-chronological order (newest first). Older high-signal work gets buried over time.
 * **Links** are displayed in a static, one-size-fits-all vertical list.
 
-The **Curated Collections & Link Pages System** introduces author-curated organization across the **Posts** and **Links** tabs:
-1. **Posts Collections ("Playlist" model)**: A filterable lens over the author's master timeline. Older high-signal posts can be highlighted in custom order, but all posts remain part of the primary chronological feed.
-2. **Link Pages ("Distinct Pages" model)**: Independent pages for links and web badges (e.g. `[ 🌐 Main ]`, `[ 💼 Work ]`, `[ 📝 Writing ]`, `[ 🎧 Sound ]`). Each page has its own dedicated URL (`/[username]/links/[slug]`), its own header, its own 88×31 Badge Wall, and isolated link cards rather than being a filtered view over one shared link bucket.
-3. **On-Demand Discovery**: Presets remain collapsed by default to preserve a clean, native profile layout, but expand instantly when the visitor or creator clicks the active tab header.
+The **Curated Collections & Switchboard System** introduces author-curated organization across user profiles:
+1. **Posts Collections ("Playlist" model)**: A filterable lens over the author's master timeline. Older high-signal posts, carousels, boards, link cards, and badges can be highlighted in custom order, while all posts remain part of the primary chronological feed.
+2. **The Links Switchboard Hub**: The **Links** tab functions as a unified console and channel directory. It features an "All Posts" master launcher alongside clickable cards for each curated Post Collection, allowing visitors to instantly explore thematic feeds.
+3. **On-Demand Discovery**: Presets remain collapsed by default on the Posts tab to preserve a clean, native profile layout, but expand instantly when the visitor or creator clicks the `Posts ▾` tab header, or when clicking any channel in the Links Switchboard.
 4. **Scalability Beyond 4 Items**: Uses a hybrid pill-and-modal pattern to support dozens of collections per profile without cluttering the horizontal tab strip.
 5. **Drag-and-Drop Reordering**: Creators can drag presets directly within the "All Collections" modal to establish their preferred sequence. Top items in the modal automatically pin leftmost on the quick-access pill bar.
 
@@ -203,24 +203,19 @@ alter table public.collection_items enable row level security;
 
 ---
 
-## 8. Link Pages: Model B Unified Item Drag-and-Drop Reordering
+## 8. The Links Switchboard: Channel Directory for Collections
 
-On the **Links** tab, Link Pages use a **unified flow grid (Model B)** rather than rigid, isolated post-type sections:
+On the **Links** tab, curated Post Collections are presented as an interactive **Switchboard Console**:
 
-1. **Geometry & Flow**:
-   - **88×31 Web Badges**: Fixed `w-[88px]` dimensions; consecutive badges naturally group horizontally inside an authentic Badge Wall plaque (`border rounded-2xl bg-white p-3`).
-   - **Link Cards**: Full-width `w-full` rows taking up the entire 600px center timeline column.
-   - When an author moves items around, consecutive badges cluster together while link cards break full rows.
-2. **Reorder Mode (`[ ⇅ Reorder ]` / `[ ✓ Done ]`)**:
-   - An explicit button in the active Link Page header toggles Reorder Mode for profile owners (`isSelf`).
-   - While in Reorder Mode:
-     - External link navigation (`<a>` tag clicks) is safely suspended to prevent accidental navigation while dragging.
-     - Items display grab cursors (`cursor-grab active:cursor-grabbing`) and visual drop indicators (blue ring around badges, blue border and ring around link cards).
-     - Link cards expose a 6-dot `GripVertical` handle.
-     - Destructive buttons (`×` delete badge, `FolderPlus` organize) are hidden to keep the canvas distraction-free.
-3. **Dual-Layer Persistence (`reorderCollectionItems`)**:
-   - Reordering updates `activeLinkCollection.itemIds`.
-   - Persists to Supabase `public.collection_items` via `position` index and synchronizes to `localStorage` for instant, offline-capable durability.
+1. **Master Timeline Card**:
+   - Anchored at the top, allowing 1-click access to the full, unfiltered chronological feed (`All Posts`).
+2. **Channel Directory Grid**:
+   - Displays all creator-defined Post Collections in a responsive 2-column layout.
+   - Shows emoji icon, title, description, post counter pill, and `⭐ Pinned` status.
+3. **Seamless Activation**:
+   - Clicking any switchboard card immediately transitions to the **Posts** tab and applies that collection's filter lens without a full page reload.
+4. **Creator Channel Controls**:
+   - Profile owners (`isSelf`) can create new collections with the `+ New Collection` button or reorder and manage channels via `AllCollectionsModal.tsx`.
 
-*For complete technical architecture, routing, upload pipelines, and Model B layout rules, see [Link Pages Documentation](links.md).*
+*For complete technical architecture, routing, and upload pipelines, see [Link Pages Documentation](links.md).*
 

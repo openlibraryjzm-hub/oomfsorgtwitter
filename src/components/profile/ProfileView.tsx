@@ -20,7 +20,8 @@ import {
   ArrowUpDown,
   Check,
   GripVertical,
-  Camera
+  Camera,
+  Layers
 } from 'lucide-react';
 import { 
   User, 
@@ -62,7 +63,6 @@ import {
 interface ProfileViewProps {
   user: User;
   initialTab?: 'posts' | 'comments' | 'links' | 'likes';
-  initialLinkPageSlug?: string;
 }
 
 function XLogo({ className = "w-3.5 h-3.5" }: { className?: string }) {
@@ -111,13 +111,12 @@ function CatShushIcon({ className = "w-4 h-4" }: { className?: string }) {
 
 export default function ProfileView({ 
   user: initialUser,
-  initialTab = 'posts',
-  initialLinkPageSlug
+  initialTab = 'posts'
 }: ProfileViewProps) {
   const { user: authUser, profile: authProfile, signInWithTwitter, refreshProfile } = useAuth();
   const supabase = createClient();
 
-  // 4 tabs requested left-to-right: 1. Posts (default), 2. Comments, 3. Links, 4. Likes
+  // 4 tabs requested left-to-right: 1. Posts (default), 2. Comments, 3. Links (Switchboard), 4. Likes
   const [activeTab, setActiveTab] = useState<'posts' | 'comments' | 'links' | 'likes'>(initialTab);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isMutual, setIsMutual] = useState(false);
@@ -144,66 +143,17 @@ export default function ProfileView({
   const [allCollectionsModalOpen, setAllCollectionsModalOpen] = useState(false);
   const [showPostCollections, setShowPostCollections] = useState(false);
 
-  // Curated link collections / presets state
-  const [linkCollections, setLinkCollections] = useState<Collection[]>(() => {
-    if (typeof window !== 'undefined') {
-      const cached = getLocalCollections(initialUser.id);
-      let linkCols = cached.filter(isLinkCollection);
-      if (linkCols.length === 0 && isDemoProfile) {
-        const altCached = getLocalCollections('amberlyn');
-        linkCols = altCached.filter(isLinkCollection);
-      }
-      if (linkCols.length > 0) return linkCols;
-    }
-    return isDemoProfile ? MOCK_LINK_COLLECTIONS : [];
-  });
-  const [activeLinkCollectionId, setActiveLinkCollectionId] = useState<string | null>(() => {
-    if (initialLinkPageSlug) {
-      const isDemo = initialUser.username.toLowerCase() === 'amberlyn';
-      const initialCols = isDemo ? MOCK_LINK_COLLECTIONS : [];
-      const matched = initialCols.find(c => c.slug === initialLinkPageSlug || c.id === initialLinkPageSlug);
-      return matched ? matched.id : initialLinkPageSlug;
-    }
-    return null;
-  });
-  const [allLinkCollectionsModalOpen, setAllLinkCollectionsModalOpen] = useState(false);
-  const [showLinkCollections, setShowLinkCollections] = useState(Boolean(initialLinkPageSlug || initialTab === 'links'));
-
-  // Reorder mode states for Link Pages (Model B unified drag & drop)
-  const [isReordering, setIsReordering] = useState(false);
-  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
-  const [dragOverItemId, setDragOverItemId] = useState<string | null>(null);
-
   // Item assignment & collection creation modals
   const [manageItem, setManageItem] = useState<{
     id: string;
     title?: string;
-    tabType: 'posts' | 'links';
   } | null>(null);
-  const [createCollectionTab, setCreateCollectionTab] = useState<'posts' | 'links' | null>(null);
+  const [createCollectionTab, setCreateCollectionTab] = useState<'posts' | null>(null);
 
   const handleSelectPostCollection = (id: string | null) => {
     setActiveCollectionId(id);
     if (id !== null) {
       setShowPostCollections(true);
-    }
-  };
-
-  const handleSelectLinkCollection = (id: string | null) => {
-    setIsReordering(false);
-    setDraggedItemId(null);
-    setDragOverItemId(null);
-    setActiveLinkCollectionId(id);
-    if (id !== null) {
-      setShowLinkCollections(true);
-    }
-    if (typeof window !== 'undefined') {
-      const col = linkCollections.find((c) => c.id === id);
-      if (!col || col.isDefault || col.slug === 'main' || id === null) {
-        window.history.replaceState(null, '', `/${userProfile.username}/links`);
-      } else if (col.slug) {
-        window.history.replaceState(null, '', `/${userProfile.username}/links/${col.slug}`);
-      }
     }
   };
 
@@ -221,54 +171,32 @@ export default function ProfileView({
       ? userProfile.id
       : userProfile.id || initialUser.id || 'usr_amberlyn';
 
-  const handleTogglePinCollection = async (id: string, tab: 'posts' | 'links') => {
-    const targetCols = tab === 'posts' ? collections : linkCollections;
-    const col = targetCols.find((c) => c.id === id);
+  const handleTogglePinCollection = async (id: string) => {
+    const col = collections.find((c) => c.id === id);
     if (!col) return;
     const nextPinned = !col.isPinned;
 
-    if (tab === 'posts') {
-      setCollections((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, isPinned: nextPinned } : c))
-      );
-    } else {
-      setLinkCollections((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, isPinned: nextPinned } : c))
-      );
-    }
+    setCollections((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, isPinned: nextPinned } : c))
+    );
     await updateCollection(id, { isPinned: nextPinned }, activeCreatorUserId);
   };
 
-  const handleDeleteCollection = async (id: string, tab: 'posts' | 'links') => {
-    if (tab === 'posts') {
-      setCollections((prev) => prev.filter((c) => c.id !== id));
-      if (activeCollectionId === id) setActiveCollectionId(null);
-    } else {
-      setLinkCollections((prev) => prev.filter((c) => c.id !== id));
-      if (activeLinkCollectionId === id) setActiveLinkCollectionId(null);
-    }
+  const handleDeleteCollection = async (id: string) => {
+    setCollections((prev) => prev.filter((c) => c.id !== id));
+    if (activeCollectionId === id) setActiveCollectionId(null);
     await deleteCollection(id, activeCreatorUserId);
   };
 
-  const handleReorderCollections = async (reordered: Collection[], tab: 'posts' | 'links') => {
-    if (tab === 'posts') {
-      setCollections(reordered);
-    } else {
-      setLinkCollections(reordered);
-    }
+  const handleReorderCollections = async (reordered: Collection[]) => {
+    setCollections(reordered);
     await reorderCollections(reordered.map((c) => c.id), activeCreatorUserId);
   };
 
   const handleCreatedCollection = (newCol: Collection) => {
-    if (newCol.tabType === 'links') {
-      setLinkCollections((prev) => [newCol, ...prev]);
-      setActiveLinkCollectionId(newCol.id);
-      setShowLinkCollections(true);
-    } else {
-      setCollections((prev) => [newCol, ...prev]);
-      setActiveCollectionId(newCol.id);
-      setShowPostCollections(true);
-    }
+    setCollections((prev) => [newCol, ...prev]);
+    setActiveCollectionId(newCol.id);
+    setShowPostCollections(true);
   };
 
   // Sticky header scroll detection & action state
@@ -375,34 +303,15 @@ export default function ProfileView({
         return [newPost, ...prev];
       });
 
-      const isMainTarget = !targetColId || targetColId === 'main' || targetColId === 'col_link_main';
-
-      if (targetColId && !isMainTarget) {
+      if (targetColId) {
         setCollections((prev) =>
           prev.map((c) =>
             c.id === targetColId ? { ...c, itemIds: [newPost.id, ...c.itemIds] } : c
           )
         );
-        setLinkCollections((prev) =>
-          prev.map((c) =>
-            c.id === targetColId ? { ...c, itemIds: [newPost.id, ...c.itemIds] } : c
-          )
-        );
-      } else if (newPost.type === 'link_card' || newPost.type === 'badge') {
-        setLinkCollections((prev) =>
-          prev.map((c) =>
-            (c.isDefault || c.slug === 'main' || c.id === 'col_link_main' || c.id === 'main')
-              ? { ...c, itemIds: [newPost.id, ...c.itemIds] }
-              : c
-          )
-        );
       }
 
-      if (newPost.type === 'link_card' || newPost.type === 'badge') {
-        setActiveTab('links');
-      } else {
-        setActiveTab('posts');
-      }
+      setActiveTab('posts');
     };
 
     window.addEventListener('oomfs:post-created', handlePostCreated);
@@ -426,15 +335,10 @@ export default function ProfileView({
       ? authUser!.id 
       : (isValidUuid(userProfile.id) ? userProfile.id : (initialUser.id || `usr_${initialUser.username.toLowerCase()}`));
     let localPosts = getLocalCollections(cachedTargetId).filter(isPostCollection);
-    let localLinks = getLocalCollections(cachedTargetId).filter(isLinkCollection);
-    if (localLinks.length === 0 && initialUser.username.toLowerCase() === 'amberlyn') {
-      localLinks = getLocalCollections('amberlyn').filter(isLinkCollection);
-    }
     if (localPosts.length === 0 && initialUser.username.toLowerCase() === 'amberlyn') {
       localPosts = getLocalCollections('amberlyn').filter(isPostCollection);
     }
     if (localPosts.length > 0) setCollections(localPosts);
-    if (localLinks.length > 0) setLinkCollections(localLinks);
   }, [authUser?.id, isSelf, userProfile.id, initialUser.id, initialUser.username]);
 
   // Fetch real Supabase data if this profile exists in DB (or if signed-in user created blocks)
@@ -475,24 +379,11 @@ export default function ProfileView({
           setEditWebsite(dbUser.website ?? initialUser.website ?? '');
         }
 
-        // Fetch live curated collections (Supabase live DB with localStorage cache & fallback)
+        // Fetch live curated post collections (Supabase live DB with localStorage cache & fallback)
         try {
-          const [dbPostCols, dbLinkCols] = await Promise.all([
-            getProfileCollections(targetUserId, 'posts'),
-            getProfileCollections(targetUserId, 'links')
-          ]);
+          const dbPostCols = await getProfileCollections(targetUserId, 'posts');
           if (dbPostCols && dbPostCols.length > 0) {
             setCollections(dbPostCols);
-          }
-          if (dbLinkCols && dbLinkCols.length > 0) {
-            setLinkCollections(dbLinkCols);
-          }
-          if (initialLinkPageSlug) {
-            const match = dbLinkCols.find((c) => c.slug === initialLinkPageSlug || c.id === initialLinkPageSlug);
-            if (match) {
-              setActiveLinkCollectionId(match.id);
-              setShowLinkCollections(true);
-            }
           }
         } catch (colErr) {
           console.error('Error loading collections:', colErr);
@@ -563,18 +454,8 @@ export default function ProfileView({
 
             if (mappedPosts.length > 0) {
               if (dbUser) {
-                // Real DB profile: show their DB posts (or keep sample if only link_card/badge exists)
-                const hasTimelinePosts = mappedPosts.some(p => p.type !== 'link_card' && p.type !== 'badge');
-                if (hasTimelinePosts) {
-                  setPosts(mappedPosts);
-                } else {
-                  setPosts(prev => {
-                    const existingIds = new Set(mappedPosts.map(p => p.id));
-                    return [...mappedPosts, ...prev.filter(p => !existingIds.has(p.id))];
-                  });
-                }
+                setPosts(mappedPosts);
               } else {
-                // Demo landing profile: prepend user's Supabase posts above the mock showcase posts
                 setPosts(prev => {
                   const existingIds = new Set(mappedPosts.map(p => p.id));
                   return [...mappedPosts, ...prev.filter(p => !existingIds.has(p.id))];
@@ -847,9 +728,6 @@ export default function ProfileView({
     }
   };
 
-  // Deleted link cards state (for optimistic and mock removal)
-  const [deletedLinkCardIds, setDeletedLinkCardIds] = useState<Set<string>>(new Set());
-
   const handleDeletePost = async (id: string) => {
     setPosts(posts.filter(p => p.id !== id));
     if (authUser?.id) {
@@ -861,23 +739,9 @@ export default function ProfileView({
     }
   };
 
-  const handleDeleteLinkCard = async (id: string) => {
-    setDeletedLinkCardIds((prev) => new Set([...prev, id]));
-    handleDeletePost(id);
-    if (activeLinkCollection && activeLinkCollection.itemIds?.includes(id)) {
-      const updatedIds = activeLinkCollection.itemIds.filter((itemId) => itemId !== id);
-      setLinkCollections((prev) =>
-        prev.map((c) => (c.id === activeLinkCollection.id ? { ...c, itemIds: updatedIds } : c))
-      );
-      if (activeCreatorUserId) {
-        await reorderCollectionItems(activeLinkCollection.id, updatedIds, activeCreatorUserId);
-      }
-    }
-  };
-
-  // Raw timeline posts (Standard, Carousel, Board) - excludes link cards and badges
+  // Raw timeline posts (Standard, Carousel, Board, Link Card, Web Badge - all post types included)
   const rawTimelinePosts = useMemo(
-    () => posts.filter((p) => p.type !== 'link_card' && p.type !== 'badge'),
+    () => posts,
     [posts]
   );
 
@@ -910,239 +774,6 @@ export default function ProfileView({
     }
     return [];
   }, [rawTimelinePosts, allTimelinePosts, activeCollectionId, collections]);
-
-  // Identify the main/default link collection
-  const mainLinkCollection = useMemo(() => {
-    return linkCollections.find((c) => c.isDefault || c.slug === 'main' || c.id === 'col_link_main') || {
-      id: 'main',
-      title: 'Main',
-      icon: '🌐',
-      slug: 'main',
-      isDefault: true,
-      description: 'Primary bio links, core socials, and featured badges',
-      itemIds: ['post_badge_1', 'post_badge_oomf_1', 'post_badge_2', 'post_badge_3', 'post_badge_4', 'l1', 'l2', 'l3', 'post_1']
-    };
-  }, [linkCollections]);
-
-  // Current active link collection object
-  const activeLinkCollection = useMemo(() => {
-    if (!activeLinkCollectionId || activeLinkCollectionId === 'main' || activeLinkCollectionId === mainLinkCollection.id) {
-      return mainLinkCollection;
-    }
-    return linkCollections.find((c) => c.id === activeLinkCollectionId) || mainLinkCollection;
-  }, [activeLinkCollectionId, linkCollections, mainLinkCollection]);
-
-  const isMainPageActive = !activeLinkCollection || activeLinkCollection.isDefault || activeLinkCollection.slug === 'main' || activeLinkCollection.id === mainLinkCollection.id;
-
-  // Unified Badge Wall posts
-  const allBadgePosts = useMemo(
-    () => posts.filter(p => p.type === 'badge' && p.badgeData),
-    [posts]
-  );
-
-  // Per-page badge posts (distinct badge wall per page)
-  const pageBadgePosts = useMemo(() => {
-    return allBadgePosts.filter((p) => {
-      if (activeLinkCollection?.itemIds && activeLinkCollection.itemIds.includes(p.id)) {
-        return true;
-      }
-      const pPage = (p.badgeData as any)?.pageId;
-      if (isMainPageActive) {
-        return !pPage || pPage === 'main' || pPage === mainLinkCollection.id;
-      }
-      return pPage === activeLinkCollection?.id || (activeLinkCollection?.slug && pPage === activeLinkCollection.slug);
-    });
-  }, [allBadgePosts, activeLinkCollection, isMainPageActive, mainLinkCollection.id]);
-
-  // Raw combined links (user profile links + link_card posts)
-  const rawLinkCards = useMemo(() => [
-    ...posts.filter(p => p.type === 'link_card' && p.linkData).map(p => ({
-      id: p.id,
-      title: p.linkData!.title,
-      subtitle: p.linkData!.subtitle || p.linkData!.description || p.text,
-      description: p.linkData!.description || p.text,
-      icon: p.linkData!.icon,
-      image: p.linkData!.image,
-      url: p.linkData!.url,
-      clicks: 120,
-      pageId: (p.linkData as any)?.pageId
-    })),
-    ...userProfile.links.map(l => ({
-      id: l.id,
-      title: l.title,
-      subtitle: l.subtitle || (l.category ? `Category: ${l.category}` : undefined),
-      description: l.category ? `Category: ${l.category}` : undefined,
-      icon: l.icon,
-      image: l.image,
-      url: l.url,
-      clicks: l.clicks,
-      pageId: 'main'
-    }))
-  ].filter(l => !deletedLinkCardIds.has(l.id)), [posts, userProfile.links, deletedLinkCardIds]);
-
-  // Eligible link cards for this page
-  const pageLinkCards = useMemo(() => {
-    return rawLinkCards.filter((l) => {
-      if (activeLinkCollection?.itemIds && activeLinkCollection.itemIds.includes(l.id)) {
-        return true;
-      }
-      if (isMainPageActive) {
-        return !l.pageId || l.pageId === 'main' || l.pageId === mainLinkCollection.id;
-      }
-      return l.pageId === activeLinkCollection?.id || (activeLinkCollection?.slug && l.pageId === activeLinkCollection.slug);
-    });
-  }, [rawLinkCards, activeLinkCollection, isMainPageActive, mainLinkCollection.id]);
-
-  // Model B: Unified ordered items for the active link page
-  const unifiedPageItems = useMemo(() => {
-    const badgeMap = new Map(pageBadgePosts.map((p) => [p.id, p]));
-    const linkMap = new Map(pageLinkCards.map((l) => [l.id, l]));
-
-    const items: Array<
-      | { id: string; kind: 'badge'; post: Post }
-      | { id: string; kind: 'link_card'; link: (typeof rawLinkCards)[number] }
-    > = [];
-
-    if (activeLinkCollection?.itemIds && activeLinkCollection.itemIds.length > 0) {
-      for (const id of activeLinkCollection.itemIds) {
-        if (badgeMap.has(id)) {
-          items.push({ id, kind: 'badge', post: badgeMap.get(id)! });
-          badgeMap.delete(id);
-        } else if (linkMap.has(id)) {
-          items.push({ id, kind: 'link_card', link: linkMap.get(id)! });
-          linkMap.delete(id);
-        }
-      }
-    }
-
-    // Append any unassigned badges on this page
-    for (const [id, post] of badgeMap.entries()) {
-      items.push({ id, kind: 'badge', post });
-    }
-
-    // Append any unassigned link cards on this page
-    for (const [id, link] of linkMap.entries()) {
-      items.push({ id, kind: 'link_card', link });
-    }
-
-    return items;
-  }, [pageBadgePosts, pageLinkCards, activeLinkCollection]);
-
-  // Model B: Render groups where consecutive badges group into a cluster, while link cards take full rows
-  const renderGroups = useMemo(() => {
-    type RenderGroup = 
-      | {
-          type: 'badge_cluster';
-          key: string;
-          items: Array<{ id: string; post: Post }>;
-        }
-      | {
-          type: 'link_card';
-          key: string;
-          link: (typeof rawLinkCards)[number];
-        };
-
-    const groups: RenderGroup[] = [];
-    let currentBadgeCluster: Array<{ id: string; post: Post }> = [];
-
-    for (const item of unifiedPageItems) {
-      if (item.kind === 'badge') {
-        currentBadgeCluster.push({ id: item.id, post: item.post });
-      } else {
-        if (currentBadgeCluster.length > 0) {
-          groups.push({
-            type: 'badge_cluster',
-            key: `cluster-${currentBadgeCluster.map((b) => b.id).join('-')}`,
-            items: currentBadgeCluster
-          });
-          currentBadgeCluster = [];
-        }
-        groups.push({
-          type: 'link_card',
-          key: `link-${item.id}`,
-          link: item.link
-        });
-      }
-    }
-
-    if (currentBadgeCluster.length > 0) {
-      groups.push({
-        type: 'badge_cluster',
-        key: `cluster-${currentBadgeCluster.map((b) => b.id).join('-')}`,
-        items: currentBadgeCluster
-      });
-    }
-
-    return groups;
-  }, [unifiedPageItems, rawLinkCards]);
-
-  // Drag-and-drop handlers for unified Link Page items
-  const handleItemDragStart = (e: React.DragEvent, id: string) => {
-    if (!isReordering) return;
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', id);
-    setDraggedItemId(id);
-  };
-
-  const handleItemDragOver = (e: React.DragEvent, id: string) => {
-    if (!isReordering || !draggedItemId) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    if (dragOverItemId !== id) {
-      setDragOverItemId(id);
-    }
-  };
-
-  const handleItemDrop = async (e: React.DragEvent, targetId: string) => {
-    e.preventDefault();
-    if (!isReordering || !draggedItemId || draggedItemId === targetId) {
-      setDraggedItemId(null);
-      setDragOverItemId(null);
-      return;
-    }
-
-    const currentIds = unifiedPageItems.map((item) => item.id);
-    const sourceIndex = currentIds.indexOf(draggedItemId);
-    const targetIndex = currentIds.indexOf(targetId);
-
-    if (sourceIndex === -1 || targetIndex === -1) {
-      setDraggedItemId(null);
-      setDragOverItemId(null);
-      return;
-    }
-
-    const updatedIds = [...currentIds];
-    const [moved] = updatedIds.splice(sourceIndex, 1);
-    updatedIds.splice(targetIndex, 0, moved);
-
-    const targetColId = activeLinkCollection?.id || mainLinkCollection.id || 'col_link_main';
-
-    const isMain = targetColId === 'col_link_main' || targetColId === 'main' || Boolean(activeLinkCollection?.isDefault || activeLinkCollection?.slug === 'main');
-
-    // Optimistically update React state
-    setLinkCollections((prev) => {
-      const exists = prev.some((c) => c.id === targetColId || (isMain && (c.isDefault || c.slug === 'main' || c.id === 'col_link_main' || c.id === 'main')));
-      if (exists) {
-        return prev.map((c) => {
-          const isMatch = c.id === targetColId || (isMain && (c.isDefault || c.slug === 'main' || c.id === 'col_link_main' || c.id === 'main'));
-          return isMatch ? { ...c, itemIds: updatedIds, tabType: 'links' as const } : c;
-        });
-      }
-      return [...prev, { ...mainLinkCollection, id: targetColId, itemIds: updatedIds, tabType: 'links' as const }];
-    });
-
-    setDraggedItemId(null);
-    setDragOverItemId(null);
-
-    // Persist to Supabase and LocalStorage
-    const effectiveUserId = (isSelf && authUser?.id) || userProfile.id || initialUser.id || `usr_${initialUser.username.toLowerCase()}`;
-    await reorderCollectionItems(targetColId, updatedIds, effectiveUserId);
-  };
-
-  const handleItemDragEnd = () => {
-    setDraggedItemId(null);
-    setDragOverItemId(null);
-  };
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
@@ -1403,13 +1034,12 @@ export default function ProfileView({
             defaultType={blockType}
             compact={true}
             collections={collections}
-            linkCollections={linkCollections}
             onClose={() => setComposerOpen(false)}
           />
         </div>
       )}
 
-      {/* 4 TABS BAR: Posts (1st), Comments (2nd), Links (3rd), Likes (4th) */}
+      {/* 4 TABS BAR: Posts (1st), Comments (2nd), Links (3rd - Switchboard), Likes (4th) */}
       <div className="flex border-b border-[#eff3f4] mt-4 font-medium text-sm text-[#536471]">
         {/* 1. Posts */}
         <button
@@ -1460,23 +1090,12 @@ export default function ProfileView({
           )}
         </button>
 
-        {/* 3. Links */}
+        {/* 3. Links (Switchboard) */}
         <button
           onClick={() => {
-            if (activeTab === 'links') {
-              if (linkCollections.length > 0 || isSelf) {
-                setShowLinkCollections(prev => !prev);
-              }
-            } else {
-              setActiveTab('links');
-              if (typeof window !== 'undefined') {
-                const col = linkCollections.find((c) => c.id === activeLinkCollectionId);
-                if (col && !col.isDefault && col.slug && col.slug !== 'main') {
-                  window.history.replaceState(null, '', `/${userProfile.username}/links/${col.slug}`);
-                } else {
-                  window.history.replaceState(null, '', `/${userProfile.username}/links`);
-                }
-              }
+            setActiveTab('links');
+            if (typeof window !== 'undefined') {
+              window.history.replaceState(null, '', `/${userProfile.username}/links`);
             }
           }}
           className={`flex-1 py-3.5 text-center relative hover:bg-[#f7f9f9] transition-colors font-bold cursor-pointer ${
@@ -1485,16 +1104,6 @@ export default function ProfileView({
         >
           <div className="flex items-center justify-center gap-1.5">
             <span>Links</span>
-            {activeTab === 'links' && (linkCollections.length > 0 || isSelf) && (
-              <ChevronDown 
-                className={`w-3.5 h-3.5 text-[#536471] transition-transform duration-200 ${
-                  showLinkCollections ? 'rotate-180 text-[#1d9bf0]' : ''
-                }`}
-              />
-            )}
-            {activeLinkCollectionId && (
-              <span className="w-1.5 h-1.5 rounded-full bg-[#1d9bf0] shrink-0" title="Preset collection active" />
-            )}
           </div>
           {activeTab === 'links' && (
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-1 bg-[#1d9bf0] rounded-full" />
@@ -1572,7 +1181,7 @@ export default function ProfileView({
                   key={post.id} 
                   post={post} 
                   onDelete={handleDeletePost}
-                  onManageCollections={isSelf ? (p) => setManageItem({ id: p.id, title: p.text?.slice(0, 40) || 'Post', tabType: 'posts' }) : undefined}
+                  onManageCollections={isSelf ? (p) => setManageItem({ id: p.id, title: p.text?.slice(0, 40) || 'Post' }) : undefined}
                 />
               ))
             ) : (
@@ -1643,375 +1252,175 @@ export default function ProfileView({
           </div>
         )}
 
-        {/* 3. LINKS TAB */}
+        {/* 3. LINKS TAB: THE SWITCHBOARD */}
         {activeTab === 'links' && (
-          <div>
-            {/* Secondary Row: Curated Link Pages Bar (Shown by default or toggled) */}
-            {showLinkCollections && (
-              <CollectionLensBar
-                mode="links"
-                collections={linkCollections}
-                activeCollectionId={activeLinkCollectionId}
-                onSelectCollection={handleSelectLinkCollection}
-                onOpenAllModal={() => setAllLinkCollectionsModalOpen(true)}
-                totalCount={unifiedPageItems.length}
-                isSelf={isSelf}
-                onCreateCollection={() => setCreateCollectionTab('links')}
-              />
-            )}
-
-            {/* Active Link Page Header */}
-            <div className="flex items-center justify-between px-4 py-3 bg-[#f7f9f9]/80 border-b border-[#eff3f4]">
+          <div className="flex flex-col">
+            {/* Switchboard Header */}
+            <div className="px-4 py-3.5 bg-[#f7f9f9]/80 border-b border-[#eff3f4] flex items-center justify-between">
               <div className="flex items-center gap-2.5 min-w-0">
-                <span className="text-xl shrink-0">{activeLinkCollection?.icon || '🌐'}</span>
+                <div className="w-8 h-8 rounded-full bg-[#1d9bf0]/10 text-[#1d9bf0] flex items-center justify-center shrink-0">
+                  <Sparkles className="w-4 h-4" />
+                </div>
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-extrabold text-[#0f1419] text-sm leading-tight truncate">
-                      {activeLinkCollection?.title || 'Main Page'}
-                    </h3>
-                    {activeLinkCollection?.slug && activeLinkCollection.slug !== 'main' && (
-                      <span className="text-[10px] font-mono text-[#1d9bf0] bg-blue-50 px-1.5 py-0.5 rounded-md shrink-0">
-                        /{activeLinkCollection.slug}
-                      </span>
-                    )}
-                  </div>
-                  {activeLinkCollection?.description && (
-                    <p className="text-xs text-[#536471] truncate mt-0.5">
-                      {activeLinkCollection.description}
-                    </p>
-                  )}
+                  <h3 className="font-extrabold text-[#0f1419] text-sm sm:text-base leading-tight truncate">
+                    Switchboard
+                  </h3>
+                  <p className="text-xs text-[#536471] truncate">
+                    Curated channels and post collections by @{userProfile.username}
+                  </p>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                {isSelf && unifiedPageItems.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsReordering(!isReordering);
-                      setDraggedItemId(null);
-                      setDragOverItemId(null);
-                    }}
-                    className={`text-xs font-bold px-3 py-1 rounded-full transition-all cursor-pointer flex items-center gap-1.5 ${
-                      isReordering
-                        ? 'bg-[#0f1419] text-white hover:bg-black shadow-xs'
-                        : 'text-[#536471] hover:text-[#0f1419] hover:bg-[#0f1419]/5'
-                    }`}
-                  >
-                    {isReordering ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                        <span>Done</span>
-                      </>
-                    ) : (
-                      <>
-                        <ArrowUpDown className="w-3.5 h-3.5" />
-                        <span>Reorder</span>
-                      </>
+
+              <div className="flex items-center gap-2 shrink-0">
+                {isSelf && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setCreateCollectionTab('posts')}
+                      className="text-xs font-bold text-white bg-[#1d9bf0] hover:bg-[#1a8cd8] px-3 py-1.5 rounded-full transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>New Collection</span>
+                    </button>
+                    {collections.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setAllCollectionsModalOpen(true)}
+                        className="text-xs font-bold text-[#536471] hover:text-[#0f1419] hover:bg-[#0f1419]/5 px-2.5 py-1.5 rounded-full transition-colors cursor-pointer"
+                        title="Manage & reorder collections"
+                      >
+                        Manage
+                      </button>
                     )}
-                  </button>
-                )}
-                {isSelf && !isReordering && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setBlockType('link_card');
-                      setComposerOpen(true);
-                    }}
-                    className="text-xs font-bold text-[#1d9bf0] hover:bg-[#1d9bf0]/10 px-2.5 py-1 rounded-full transition-colors cursor-pointer"
-                  >
-                    + Add Link
-                  </button>
+                  </>
                 )}
               </div>
             </div>
 
-            {/* Reorder Mode Notification Banner */}
-            {isReordering && (
-              <div className="bg-[#1d9bf0]/10 border-b border-[#1d9bf0]/20 px-4 py-2 flex items-center justify-between text-xs text-[#0f1419]">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="w-2 h-2 rounded-full bg-[#1d9bf0] animate-pulse shrink-0" />
-                  <span className="truncate">
-                    <strong>Reorder Mode</strong>: Drag badges and link cards to rearrange. Links are paused while reordering.
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsReordering(false);
-                    setDraggedItemId(null);
-                    setDragOverItemId(null);
-                  }}
-                  className="font-bold text-[#1d9bf0] hover:underline cursor-pointer ml-3 shrink-0"
-                >
-                  Done
-                </button>
-              </div>
-            )}
-
             <div className="p-4 flex flex-col gap-4">
-              {/* MODEL B UNIFIED ITEMS FLOW */}
-              {renderGroups.map((group) => {
-                if (group.type === 'badge_cluster') {
-                  return (
-                    <div
-                      key={group.key}
-                      className={`border rounded-2xl bg-white p-3 sm:p-3.5 shadow-2xs transition-colors ${
-                        isReordering ? 'border-[#1d9bf0]/30 bg-[#f7f9f9]/50' : 'border-[#eff3f4]'
-                      }`}
-                    >
-                      <div className="flex flex-wrap gap-3 items-start justify-start">
-                        {group.items.map(({ id, post }) => {
-                          const b = post.badgeData!;
-                          const isItemDragged = draggedItemId === id;
-                          const isDropTarget = dragOverItemId === id && draggedItemId !== null && draggedItemId !== id;
+              {/* Master Feed Launcher Card */}
+              <button
+                type="button"
+                onClick={() => {
+                  handleSelectPostCollection(null);
+                  setActiveTab('posts');
+                  if (typeof window !== 'undefined') {
+                    window.history.replaceState(null, '', `/${userProfile.username}`);
+                  }
+                }}
+                className="w-full text-left bg-gradient-to-r from-blue-50/70 via-white to-blue-50/30 border border-blue-100 hover:border-[#1d9bf0] hover:shadow-xs rounded-2xl p-4 transition-all cursor-pointer group flex items-center justify-between"
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-11 h-11 rounded-2xl bg-[#1d9bf0] text-white flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                    <Layers className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-extrabold text-[#0f1419] text-sm sm:text-base group-hover:text-[#1d9bf0] transition-colors truncate">
+                        All Posts (Master Timeline)
+                      </h4>
+                      <span className="text-[11px] font-bold text-[#1d9bf0] bg-blue-100/60 px-2 py-0.5 rounded-full shrink-0">
+                        {allTimelinePosts.length} posts
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#536471] mt-0.5 line-clamp-1">
+                      View the complete chronological timeline featuring all posts, photo carousels, boards, and link cards.
+                    </p>
+                  </div>
+                </div>
+                <div className="text-[#1d9bf0] font-bold text-xs flex items-center gap-1 shrink-0 ml-3 group-hover:translate-x-1 transition-transform">
+                  <span className="hidden sm:inline">Open Feed</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </div>
+              </button>
 
-                          return (
-                            <div
-                              key={id}
-                              draggable={isReordering}
-                              onDragStart={(e) => handleItemDragStart(e, id)}
-                              onDragOver={(e) => handleItemDragOver(e, id)}
-                              onDrop={(e) => handleItemDrop(e, id)}
-                              onDragEnd={handleItemDragEnd}
-                              className={`relative group/badge-item flex flex-col items-center w-[88px] gap-1 shrink-0 transition-all select-none ${
-                                isReordering ? 'cursor-grab active:cursor-grabbing' : ''
-                              } ${
-                                isItemDragged ? 'opacity-30 scale-95' : ''
-                              } ${
-                                isDropTarget ? (b.badgeType === 'avatar' ? 'ring-2 ring-[#1d9bf0] ring-offset-2 scale-105 rounded-full' : 'ring-2 ring-[#1d9bf0] ring-offset-2 scale-105 rounded-xs') : ''
-                              }`}
-                            >
-                              {b.badgeType === 'avatar' ? (
-                                <a
-                                  href={b.url}
-                                  target={b.url.startsWith('http') ? '_blank' : undefined}
-                                  rel="noopener noreferrer"
-                                  onClick={(e) => {
-                                    if (isReordering) {
-                                      e.preventDefault();
-                                    }
-                                  }}
-                                  title={`${b.title} • ${b.url}`}
-                                  className="block w-[52px] h-[52px] rounded-full overflow-hidden border border-black/15 shadow-2xs hover:shadow-md hover:scale-105 active:scale-95 transition-all select-none cursor-pointer my-0.5"
-                                >
-                                  <img
-                                    src={b.imageUrl}
-                                    alt={b.title}
-                                    className="w-[52px] h-[52px] rounded-full object-cover block pointer-events-none"
-                                  />
-                                </a>
-                              ) : (
-                                <a
-                                  href={b.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  onClick={(e) => {
-                                    if (isReordering) {
-                                      e.preventDefault();
-                                    }
-                                  }}
-                                  title={`${b.title} • ${b.url.replace(/^https?:\/\//, '')}`}
-                                  className="block w-[88px] h-[31px] shrink-0 rounded-xs overflow-hidden border border-black/25 shadow-xs hover:shadow-md hover:scale-105 active:scale-95 transition-all select-none cursor-pointer"
-                                  style={b.badgeType !== 'image' ? { background: b.bgColor || '#0f1419' } : undefined}
-                                >
-                                  {b.badgeType === 'image' && b.imageUrl ? (
-                                    <img
-                                      src={b.imageUrl}
-                                      alt={b.title}
-                                      className="w-[88px] h-[31px] object-cover block pointer-events-none"
-                                    />
-                                  ) : null}
-                                </a>
-                              )}
+              {/* Collections Switchboard Grid */}
+              {collections.length > 0 ? (
+                <div>
+                  <div className="flex items-center justify-between mb-2.5 px-0.5">
+                    <span className="text-xs font-extrabold text-[#536471] uppercase tracking-wider">
+                      Curated Channels ({collections.length})
+                    </span>
+                    <span className="text-[11px] text-[#536471]">
+                      Click any channel to open on Posts
+                    </span>
+                  </div>
 
-                              {b.showText !== false && (b.label || b.title) && (
-                                <span className="text-[10px] font-semibold text-[#536471] group-hover/badge-item:text-[#0f1419] text-center truncate w-full leading-tight transition-colors">
-                                  {b.label || b.title}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {collections.map((col) => (
+                      <button
+                        key={col.id}
+                        type="button"
+                        onClick={() => {
+                          handleSelectPostCollection(col.id);
+                          setActiveTab('posts');
+                          if (typeof window !== 'undefined') {
+                            window.history.replaceState(null, '', `/${userProfile.username}`);
+                          }
+                        }}
+                        className="text-left bg-white border border-[#eff3f4] hover:border-[#1d9bf0]/60 hover:shadow-xs rounded-2xl p-4 transition-all cursor-pointer flex flex-col justify-between group"
+                      >
+                        <div>
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-2xl shrink-0 group-hover:scale-110 transition-transform">
+                                {col.icon || '📁'}
+                              </span>
+                              <h4 className="font-extrabold text-[#0f1419] text-sm sm:text-base group-hover:text-[#1d9bf0] transition-colors truncate">
+                                {col.title}
+                              </h4>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {col.isPinned && (
+                                <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
+                                  ⭐ Pinned
                                 </span>
                               )}
-
-                              {/* Delete button for profile owner (hidden while reordering) */}
-                              {isSelf && !isReordering && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeletePost(post.id);
-                                  }}
-                                  title="Delete badge from this page"
-                                  className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-600 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover/badge-item:opacity-100 transition-opacity shadow-xs hover:bg-red-700 cursor-pointer z-10"
-                                >
-                                  ×
-                                </button>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                }
-
-                // Link Card (Wide short rectangle: left half icon/title/subtitle, right half flush image)
-                const link = group.link;
-                const isItemDragged = draggedItemId === link.id;
-                const isDropTarget = dragOverItemId === link.id && draggedItemId !== null && draggedItemId !== link.id;
-
-                return (
-                  <div
-                    key={group.key}
-                    draggable={isReordering}
-                    onDragStart={(e) => handleItemDragStart(e, link.id)}
-                    onDragOver={(e) => handleItemDragOver(e, link.id)}
-                    onDrop={(e) => handleItemDrop(e, link.id)}
-                    onDragEnd={handleItemDragEnd}
-                    className={`relative group/link-card transition-all select-none ${
-                      isReordering ? 'cursor-grab active:cursor-grabbing' : ''
-                    } ${
-                      isItemDragged ? 'opacity-30 scale-[0.99]' : ''
-                    } ${
-                      isDropTarget ? 'ring-2 ring-[#1d9bf0] ring-offset-2 rounded-2xl' : ''
-                    }`}
-                  >
-                    {/* Top Corner Hover Delete Button for profile owner */}
-                    {isSelf && !isReordering && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleDeleteLinkCard(link.id);
-                        }}
-                        title="Delete link card from profile"
-                        className="absolute top-2 right-2 w-6 h-6 bg-red-600/90 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover/link-card:opacity-100 transition-opacity shadow-md hover:scale-110 active:scale-95 cursor-pointer z-20"
-                      >
-                        ×
-                      </button>
-                    )}
-
-                    <a
-                      href={link.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => {
-                        if (isReordering) {
-                          e.preventDefault();
-                        }
-                      }}
-                      className={`w-full h-28 sm:h-32 border rounded-2xl bg-white transition-all flex flex-row overflow-hidden relative ${
-                        isReordering
-                          ? 'border-[#1d9bf0]/30 hover:border-[#1d9bf0]'
-                          : 'border-[#eff3f4] hover:border-[#1d9bf0] hover:shadow-xs'
-                      }`}
-                    >
-                      {/* Left Half: Icon, Title, Subtitle, and URL / Actions */}
-                      <div className="w-1/2 p-3 sm:p-4 flex flex-col justify-between min-w-0 pr-3">
-                        <div className="flex flex-col min-w-0">
-                          <div className="flex items-center gap-2 min-w-0">
-                            {/* Grip handle in reorder mode */}
-                            {isReordering && (
-                              <div className="text-[#536471] shrink-0">
-                                <GripVertical className="w-4 h-4 text-[#536471]/60" />
-                              </div>
-                            )}
-                            {link.icon && (
-                              <span className="text-lg sm:text-xl shrink-0 select-none leading-none">
-                                {link.icon}
+                              <span className="text-xs font-semibold text-[#536471] bg-[#f7f9f9] px-2 py-0.5 rounded-full">
+                                {col.itemIds?.length || 0}
                               </span>
-                            )}
-                            <h4 className="font-bold text-[#0f1419] text-sm sm:text-base group-hover/link-card:text-[#1d9bf0] transition-colors truncate">
-                              {link.title}
-                            </h4>
+                            </div>
                           </div>
-                          {link.subtitle && (
-                            <p className="text-xs text-[#536471] line-clamp-2 leading-relaxed mt-1">
-                              {link.subtitle}
+
+                          {col.description && (
+                            <p className="text-xs text-[#536471] line-clamp-2 leading-relaxed">
+                              {col.description}
                             </p>
                           )}
                         </div>
 
-                        <div className="flex items-center justify-between gap-1.5 min-w-0 pt-1">
-                          <span className="text-[11px] text-[#1d9bf0] font-mono truncate flex items-center gap-1">
-                            <ExternalLink className="w-3 h-3 shrink-0" />
-                            {link.url.replace(/^https?:\/\//, '')}
+                        <div className="flex items-center justify-between pt-3 mt-3 border-t border-[#f7f9f9] text-xs">
+                          <span className="text-[11px] text-[#536471] font-medium">
+                            Channel Lens
                           </span>
-                          {isSelf && !isReordering && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setManageItem({ id: link.id, title: link.title, tabType: 'links' });
-                              }}
-                              title="Organize into link pages"
-                              className="p-1.5 text-[#536471] hover:text-[#1d9bf0] hover:bg-[#1d9bf0]/10 rounded-full transition-colors cursor-pointer shrink-0"
-                            >
-                              <FolderPlus className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                          <span className="text-[#1d9bf0] font-bold flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                            <span>Explore</span>
+                            <span>→</span>
+                          </span>
                         </div>
-                      </div>
-
-                      {/* Right Half: Dedicated to flush image with no margins above, below, to right */}
-                      <div className="w-1/2 h-full overflow-hidden shrink-0 border-l border-[#eff3f4] bg-gray-50 relative">
-                        {link.image ? (
-                          <img
-                            src={link.image}
-                            alt={link.title}
-                            className="w-full h-full object-cover group-hover/link-card:scale-105 transition-transform duration-300 pointer-events-none"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#f7f9f9] to-[#eff3f4] text-[#cfd9de]">
-                            {link.icon ? (
-                              <span className="text-3xl opacity-40 select-none">{link.icon}</span>
-                            ) : (
-                              <ExternalLink className="w-7 h-7 opacity-30" />
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </a>
+                      </button>
+                    ))}
                   </div>
-                );
-              })}
-
-              {/* 3. Empty State for this page */}
-              {unifiedPageItems.length === 0 && (
-                <div className="text-center py-12 px-4 flex flex-col items-center justify-center gap-2">
-                  <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center text-2xl mb-1">
-                    {activeLinkCollection?.icon || '🌐'}
+                </div>
+              ) : (
+                <div className="text-center py-12 px-4 border border-dashed border-gray-200 rounded-2xl">
+                  <div className="w-12 h-12 rounded-full bg-gray-100 text-[#536471] flex items-center justify-center mx-auto mb-3">
+                    <Layers className="w-6 h-6" />
                   </div>
-                  <h4 className="font-bold text-[#0f1419] text-sm">
-                    No links or badges on this page yet
+                  <h4 className="font-extrabold text-[#0f1419] text-sm mb-1">
+                    No Curated Channels Yet
                   </h4>
-                  <p className="text-xs text-[#536471] max-w-sm">
-                    {isSelf
-                      ? `Publish links or 88×31 web badges directly to "${activeLinkCollection?.title || 'this page'}".`
-                      : `@${userProfile.username} has not added any items to this page yet.`}
+                  <p className="text-xs text-[#536471] max-w-sm mx-auto mb-4">
+                    Collections allow you to group your posts, carousels, boards, and links into curated playlists.
                   </p>
                   {isSelf && (
-                    <div className="flex items-center gap-2 mt-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setBlockType('link_card');
-                          setComposerOpen(true);
-                        }}
-                        className="bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-bold text-xs px-4 py-2 rounded-full transition-colors cursor-pointer"
-                      >
-                        + Add Bio Link
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setBlockType('badge');
-                          setComposerOpen(true);
-                        }}
-                        className="bg-white border border-[#cfd9de] hover:bg-gray-50 text-[#0f1419] font-bold text-xs px-4 py-2 rounded-full transition-colors cursor-pointer"
-                      >
-                        + Add Badge
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setCreateCollectionTab('posts')}
+                      className="bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-bold text-xs px-4 py-2 rounded-full transition-colors cursor-pointer"
+                    >
+                      Create Your First Collection
+                    </button>
                   )}
                 </div>
               )}
@@ -2208,25 +1617,9 @@ export default function ProfileView({
         itemTypeLabel="posts"
         isSelf={isSelf}
         onCreateCollection={() => setCreateCollectionTab('posts')}
-        onTogglePin={(id) => handleTogglePinCollection(id, 'posts')}
-        onDeleteCollection={(id) => handleDeleteCollection(id, 'posts')}
-        onReorderCollections={(reordered) => handleReorderCollections(reordered, 'posts')}
-      />
-
-      {/* All Collections Searchable Modal (Links) */}
-      <AllCollectionsModal
-        isOpen={allLinkCollectionsModalOpen}
-        onClose={() => setAllLinkCollectionsModalOpen(false)}
-        collections={linkCollections}
-        activeCollectionId={activeLinkCollectionId}
-        onSelectCollection={handleSelectLinkCollection}
-        totalCount={rawLinkCards.length + allBadgePosts.length}
-        itemTypeLabel="links"
-        isSelf={isSelf}
-        onCreateCollection={() => setCreateCollectionTab('links')}
-        onTogglePin={(id) => handleTogglePinCollection(id, 'links')}
-        onDeleteCollection={(id) => handleDeleteCollection(id, 'links')}
-        onReorderCollections={(reordered) => handleReorderCollections(reordered, 'links')}
+        onTogglePin={(id) => handleTogglePinCollection(id)}
+        onDeleteCollection={(id) => handleDeleteCollection(id)}
+        onReorderCollections={(reordered) => handleReorderCollections(reordered)}
       />
 
       {/* Add To Collection Modal (for organizing existing posts & links) */}
@@ -2236,17 +1629,11 @@ export default function ProfileView({
           onClose={() => setManageItem(null)}
           itemId={manageItem.id}
           itemTitle={manageItem.title}
-          itemTypeLabel={manageItem.tabType === 'posts' ? 'post' : 'link'}
-          collections={manageItem.tabType === 'posts' ? collections : linkCollections}
+          itemTypeLabel="post"
+          collections={collections}
           userId={activeCreatorUserId}
-          tabType={manageItem.tabType}
-          onUpdateCollections={(updated) => {
-            if (manageItem.tabType === 'posts') {
-              setCollections(updated);
-            } else {
-              setLinkCollections(updated);
-            }
-          }}
+          tabType="posts"
+          onUpdateCollections={(updated) => setCollections(updated)}
         />
       )}
 
@@ -2256,7 +1643,7 @@ export default function ProfileView({
           isOpen={Boolean(createCollectionTab)}
           onClose={() => setCreateCollectionTab(null)}
           userId={activeCreatorUserId}
-          tabType={createCollectionTab}
+          tabType="posts"
           onCreated={handleCreatedCollection}
           username={userProfile.username}
         />

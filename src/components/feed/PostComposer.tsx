@@ -242,6 +242,7 @@ export default function PostComposer({
   const badgeImageInputRef = useRef<HTMLInputElement | null>(null);
   const linkImageInputRef = useRef<HTMLInputElement | null>(null);
 
+  const [composerTab, setComposerTab] = useState<'post' | 'link'>('post');
   const [postType, setPostType] = useState<'standard' | 'carousel' | 'board' | 'link_card' | 'badge'>(defaultType);
   const [text, setText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -251,7 +252,6 @@ export default function PostComposer({
   // Curated collection selection while drafting
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(defaultLinkCollectionId || null);
   const [userPostCols, setUserPostCols] = useState<Collection[]>(collections || []);
-  const [userLinkCols, setUserLinkCols] = useState<Collection[]>(linkCollections || []);
 
   useEffect(() => {
     if (defaultLinkCollectionId !== undefined) {
@@ -269,18 +269,7 @@ export default function PostComposer({
     }
   }, [collections, authUser?.id]);
 
-  useEffect(() => {
-    if (linkCollections && linkCollections.length > 0) {
-      setUserLinkCols(linkCollections);
-    } else if (authUser?.id) {
-      getProfileCollections(authUser.id, 'links').then((cols) => {
-        if (cols.length > 0) setUserLinkCols(cols);
-      });
-    }
-  }, [linkCollections, authUser?.id]);
-
-  const isLinkPost = postType === 'link_card' || postType === 'badge';
-  const availableCollections = isLinkPost ? userLinkCols : userPostCols;
+  const availableCollections = userPostCols;
   const activeSelectedCollection = availableCollections.find((c) => c.id === selectedCollectionId);
 
   // Carousel state
@@ -577,9 +566,7 @@ export default function PostComposer({
 
     saveSessionPost(newPost);
 
-    const targetCollection = (postType === 'link_card' || postType === 'badge')
-      ? (selectedCollectionId || 'col_link_main')
-      : selectedCollectionId;
+    const targetCollection = selectedCollectionId;
 
     if (targetCollection) {
       addItemToCollection(targetCollection, newPostId, authorUser.id);
@@ -691,14 +678,80 @@ export default function PostComposer({
   };
 
   return (
-    <div className={`bg-white p-4 flex gap-3 ${compact ? '' : 'border-b border-[#eff3f4]'}`}>
-      <img
-        src={formatTwitterAvatar(authorUser.avatar)}
-        alt={authorUser.name}
-        className="w-10 h-10 rounded-full object-cover shrink-0 border border-gray-200"
-      />
+    <div className={`bg-white flex flex-col ${compact ? '' : 'border-b border-[#eff3f4]'}`}>
+      {/* Top Dual Tab Switcher: [ Post ] vs [ Link ] */}
+      <div className="flex border-b border-[#eff3f4] bg-[#f7f9f9]/40 px-4 pt-1.5">
+        <button
+          type="button"
+          onClick={() => setComposerTab('post')}
+          className={`pb-2 px-3.5 font-bold text-xs sm:text-sm transition-colors relative cursor-pointer ${
+            composerTab === 'post' ? 'text-[#0f1419]' : 'text-[#536471] hover:text-[#0f1419]'
+          }`}
+        >
+          Post
+          {composerTab === 'post' && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1d9bf0] rounded-full" />
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => setComposerTab('link')}
+          className={`pb-2 px-3.5 font-bold text-xs sm:text-sm transition-colors relative cursor-pointer ${
+            composerTab === 'link' ? 'text-[#0f1419]' : 'text-[#536471] hover:text-[#0f1419]'
+          }`}
+        >
+          Link
+          {composerTab === 'link' && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1d9bf0] rounded-full" />
+          )}
+        </button>
+      </div>
 
-      <form onSubmit={handleSubmit} className="flex-1 min-w-0 flex flex-col gap-3">
+      {composerTab === 'link' ? (
+        <div className="p-6 sm:p-8 flex flex-col items-center text-center max-w-md mx-auto">
+          <div className="w-12 h-12 rounded-full bg-blue-50 text-[#1d9bf0] flex items-center justify-center mb-3">
+            <Link2 className="w-6 h-6" />
+          </div>
+          <h3 className="font-extrabold text-[#0f1419] text-base mb-1">
+            Links & Badges Are Now Posts
+          </h3>
+          <p className="text-xs text-[#536471] leading-relaxed mb-4">
+            Bio link cards and 88×31 retro web badges are now created directly as timeline posts. They appear in your master feed, thread views, and can be organized into any Curated Post Collection on your Switchboard.
+          </p>
+          <div className="flex flex-wrap gap-2.5 justify-center">
+            <button
+              type="button"
+              onClick={() => {
+                setPostType('link_card');
+                setComposerTab('post');
+              }}
+              className="bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-bold text-xs px-4 py-2 rounded-full transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
+            >
+              <Link2 className="w-3.5 h-3.5" />
+              <span>Draft Bio Link Post</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setPostType('badge');
+                setComposerTab('post');
+              }}
+              className="border border-[#cfd9de] hover:bg-[#f7f9f9] text-[#0f1419] font-bold text-xs px-4 py-2 rounded-full transition-colors cursor-pointer flex items-center gap-1.5"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-[#1d9bf0]" />
+              <span>Draft Web Badge Post</span>
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="p-4 flex gap-3">
+          <img
+            src={formatTwitterAvatar(authorUser.avatar)}
+            alt={authorUser.name}
+            className="w-10 h-10 rounded-full object-cover shrink-0 border border-gray-200"
+          />
+
+          <form onSubmit={handleSubmit} className="flex-1 min-w-0 flex flex-col gap-3">
         {/* Main Post Textarea (only for standard posts; carousel, board, link, badge sit flush) */}
         {postType === 'standard' && (
           <textarea
@@ -1012,28 +1065,6 @@ export default function PostComposer({
         {/* BIO LINK CARD DRAFTING UI */}
         {postType === 'link_card' && (
           <div className="bg-[#f7f9f9] border border-[#eff3f4] rounded-2xl p-3.5 flex flex-col gap-3">
-            {/* Target Link Page Selector */}
-            <div className="flex items-center justify-between pb-2 border-b border-[#eff3f4]">
-              <div className="flex items-center gap-1.5 text-xs">
-                <Globe className="w-3.5 h-3.5 text-[#1d9bf0]" />
-                <span className="font-bold text-[#0f1419]">Publish to Link Page:</span>
-                <select
-                  value={selectedCollectionId || ''}
-                  onChange={(e) => setSelectedCollectionId(e.target.value || null)}
-                  className="bg-white border border-[#cfd9de] focus:border-[#1d9bf0] rounded-lg px-2.5 py-1 text-xs font-semibold text-[#0f1419] outline-none cursor-pointer"
-                >
-                  <option value="">🌐 Main Page (Default)</option>
-                  {userLinkCols
-                    .filter((c) => !c.isDefault && c.slug !== 'main' && c.id !== 'col_link_main')
-                    .map((col) => (
-                      <option key={col.id} value={col.id}>
-                        {col.icon || '📁'} {col.title} {col.slug ? `(/${col.slug})` : ''}
-                      </option>
-                    ))}
-                </select>
-              </div>
-            </div>
-
             {/* LIVE CARD PREVIEW */}
             <div className="flex flex-col gap-1.5">
               <span className="text-[11px] font-extrabold text-[#536471] uppercase tracking-wider">
@@ -1200,27 +1231,6 @@ export default function PostComposer({
         {/* BADGE (88x31) DRAFTING UI */}
         {postType === 'badge' && (
           <div className="bg-[#f7f9f9] border border-[#eff3f4] rounded-2xl p-3.5 flex flex-col gap-3">
-            {/* Target Link Page Selector */}
-            <div className="flex items-center justify-between pb-2 border-b border-[#eff3f4]">
-              <div className="flex items-center gap-1.5 text-xs">
-                <Globe className="w-3.5 h-3.5 text-[#1d9bf0]" />
-                <span className="font-bold text-[#0f1419]">Publish to Link Page:</span>
-                <select
-                  value={selectedCollectionId || ''}
-                  onChange={(e) => setSelectedCollectionId(e.target.value || null)}
-                  className="bg-white border border-[#cfd9de] focus:border-[#1d9bf0] rounded-lg px-2.5 py-1 text-xs font-semibold text-[#0f1419] outline-none cursor-pointer"
-                >
-                  <option value="">🌐 Main Page (Default)</option>
-                  {userLinkCols
-                    .filter((c) => !c.isDefault && c.slug !== 'main' && c.id !== 'col_link_main')
-                    .map((col) => (
-                      <option key={col.id} value={col.id}>
-                        {col.icon || '📁'} {col.title} {col.slug ? `(/${col.slug})` : ''}
-                      </option>
-                    ))}
-                </select>
-              </div>
-            </div>
             {/* LIVE PREVIEW BOX - Badge With Label Underneath */}
             <div className="bg-white border border-[#eff3f4] rounded-xl p-3.5 flex flex-col items-center justify-center gap-1.5 shadow-2xs">
               {badgeMode === 'avatar' ? (
@@ -1521,8 +1531,8 @@ export default function PostComposer({
           </p>
         )}
 
-        {/* Optional Collection Assignment Selector (for standard/carousel/board posts) */}
-        {!isLinkPost && availableCollections.length > 0 && (
+        {/* Optional Collection Assignment Selector (for all post types) */}
+        {availableCollections.length > 0 && (
           <div className="flex flex-col gap-1.5 px-3 py-2 bg-[#f7f9f9] border border-[#eff3f4] rounded-xl">
             <div className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">
@@ -1654,6 +1664,8 @@ export default function PostComposer({
           </div>
         </div>
       </form>
+    </div>
+  )}
 
       {/* Modal for selecting an OOMF / Mutual to feature */}
       <SelectOomfModal
