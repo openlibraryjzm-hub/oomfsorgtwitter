@@ -70,13 +70,16 @@ export default function ThreadClientView({ initialPost, username }: ThreadClient
               createdAt: new Date(dbBlock.created_at).toLocaleDateString(),
               type: dbBlock.type,
               text: dbBlock.content?.text || '',
+              images: dbBlock.content?.images || [],
+              targetUsername: dbBlock.content?.targetUsername || null,
+              targetUserId: dbBlock.target_user_id || null,
               carouselData: dbBlock.content?.carouselData,
               boardData: dbBlock.content?.boardData,
               linkData: dbBlock.content?.linkData,
               badgeData: dbBlock.content?.badgeData,
               likesCount: dbBlock.content?.likesCount || 0,
               repostsCount: dbBlock.content?.repostsCount || 0,
-              repliesCount: 0,
+              repliesCount: dbBlock.content?.repliesCount || 0,
               viewsCount: '1'
             });
           }
@@ -128,12 +131,21 @@ export default function ThreadClientView({ initialPost, username }: ThreadClient
     <div className="flex flex-col min-h-screen bg-white">
       {/* Sticky Header */}
       <header className="sticky top-0 bg-white/90 backdrop-blur-md z-20 flex items-center gap-6 px-4 py-3 border-b border-[#eff3f4]">
-        <Link 
-          href={`/${username}`}
-          className="p-2 hover:bg-[#f7f9f9] rounded-full transition-colors"
+        <button 
+          type="button"
+          onClick={() => {
+            if (typeof window !== 'undefined' && window.history.length > 1) {
+              window.history.back();
+            } else if (post.targetUsername) {
+              window.location.href = `/${post.targetUsername}`;
+            } else {
+              window.location.href = `/${username}`;
+            }
+          }}
+          className="p-2 hover:bg-[#f7f9f9] rounded-full transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-5 h-5 text-[#0f1419]" />
-        </Link>
+        </button>
         <h1 className="font-extrabold text-xl text-[#0f1419]">
           Post
         </h1>

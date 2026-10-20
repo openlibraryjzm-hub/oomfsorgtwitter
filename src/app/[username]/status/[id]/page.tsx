@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
 import ThreadClientView from './ThreadClientView';
-import { MOCK_POSTS, MOCK_USERS, Post } from '@/lib/mockData';
+import { MOCK_POSTS, MOCK_USERS, MOCK_COMMENTS, Post } from '@/lib/mockData';
 import { createClient } from '@/lib/supabase/client';
 
 interface ThreadPageProps {
@@ -57,13 +57,16 @@ async function ThreadContent({ params }: { params: Promise<{ username: string; i
         createdAt: new Date(dbBlock.created_at).toLocaleDateString(),
         type: dbBlock.type,
         text: dbBlock.content?.text || '',
+        images: dbBlock.content?.images || [],
+        targetUsername: dbBlock.content?.targetUsername || null,
+        targetUserId: dbBlock.target_user_id || null,
         carouselData: dbBlock.content?.carouselData,
         boardData: dbBlock.content?.boardData,
         linkData: dbBlock.content?.linkData,
         badgeData: dbBlock.content?.badgeData,
         likesCount: dbBlock.content?.likesCount || 0,
         repostsCount: dbBlock.content?.repostsCount || 0,
-        repliesCount: 0,
+        repliesCount: dbBlock.content?.repliesCount || 0,
         viewsCount: '1'
       };
     }
@@ -71,38 +74,62 @@ async function ThreadContent({ params }: { params: Promise<{ username: string; i
     // Supabase query error, fallback to mock
   }
 
-  // Fallback to mock posts
+  // Fallback to mock posts or mock comments
   if (!post) {
     const mockFound = MOCK_POSTS.find((p) => p.id === postId);
     if (mockFound) {
       post = mockFound;
     } else {
-      // Create a fallback post matching the author
-      const author = MOCK_USERS[username] || {
-        id: `usr_${username}`,
-        username,
-        name: username,
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
-        banner: '',
-        bio: '',
-        joined: 'October 2026',
-        followingCount: 0,
-        followersCount: 0,
-        oomfsCount: 0,
-        links: []
-      };
+      // Check mock comments across accounts
+      for (const [targetUser, commentsList] of Object.entries(MOCK_COMMENTS)) {
+        const foundComment = commentsList.find((c) => c.id === postId);
+        if (foundComment) {
+          post = {
+            id: foundComment.id,
+            author: foundComment.author,
+            createdAt: foundComment.createdAt,
+            type: 'comment',
+            text: foundComment.text,
+            images: foundComment.images || [],
+            targetUsername: foundComment.targetUsername || targetUser,
+            targetUserId: foundComment.targetUserId,
+            likesCount: foundComment.likesCount,
+            repostsCount: foundComment.repostsCount || 0,
+            repliesCount: foundComment.repliesCount || 0,
+            viewsCount: '1'
+          };
+          break;
+        }
+      }
 
-      post = {
-        id: postId,
-        author,
-        createdAt: '1h',
-        type: 'standard',
-        text: `Post #${postId} on oomfs.org`,
-        likesCount: 5,
-        repostsCount: 1,
-        repliesCount: 0,
-        viewsCount: '120'
-      };
+      if (!post) {
+        // Create a fallback post matching the author
+        const author = MOCK_USERS[username] || {
+          id: `usr_${username}`,
+          username,
+          name: username,
+          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
+          banner: '',
+          bio: '',
+          joined: 'October 2026',
+          followingCount: 0,
+          followersCount: 0,
+          oomfsCount: 0,
+          links: []
+        };
+
+        post = {
+          id: postId,
+          author,
+          createdAt: '1h',
+          type: 'standard',
+          text: `Post #${postId} on oomfs.org`,
+          likesCount: 5,
+          repostsCount: 1,
+          repliesCount: 0,
+          viewsCount: '120'
+        };
+      }
     }
   }
 

@@ -19,6 +19,7 @@ import {
   FolderPlus
 } from 'lucide-react';
 import { Post } from '@/lib/mockData';
+import TwitterMediaGrid from './TwitterMediaGrid';
 
 interface PostCardProps {
   post: Post;
@@ -474,6 +475,19 @@ export default function PostCard({ post, onDelete, onManageCollections, isThread
           </div>
         </div>
 
+        {post.targetUsername && (
+          <div className="text-sm text-[#536471] mb-2 flex items-center gap-1">
+            <span>Replying to</span>
+            <Link 
+              href={`/${post.targetUsername}`}
+              className="text-[#1d9bf0] hover:underline"
+              onClick={(e) => e.stopPropagation()}
+            >
+              @{post.targetUsername}
+            </Link>
+          </div>
+        )}
+
         {/* Big Tweet Body */}
         {post.text && (
           <div className="text-[#0f1419] text-xl leading-relaxed whitespace-pre-line py-2">
@@ -486,6 +500,9 @@ export default function PostCard({ post, onDelete, onManageCollections, isThread
         {renderBoard()}
         {renderLinkCard()}
         {renderBadge()}
+        {post.images && post.images.length > 0 && (
+          <TwitterMediaGrid images={post.images} />
+        )}
 
         {/* Timestamp & Views */}
         <div className="py-3 text-sm text-[#536471] border-b border-[#eff3f4] flex items-center gap-2 mt-1">
@@ -634,6 +651,20 @@ export default function PostCard({ post, onDelete, onManageCollections, isThread
           </div>
         </div>
 
+        {/* Replying context */}
+        {post.targetUsername && (
+          <div className="text-xs text-[#536471] -mt-0.5 mb-1 flex items-center gap-1">
+            <span>Replying to</span>
+            <Link 
+              href={`/${post.targetUsername}`}
+              className="text-[#1d9bf0] hover:underline"
+              onClick={(e) => e.stopPropagation()}
+            >
+              @{post.targetUsername}
+            </Link>
+          </div>
+        )}
+
         {/* Text Body */}
         {post.text && (
           <p className="text-[#0f1419] text-[15px] leading-relaxed whitespace-pre-line">
@@ -646,6 +677,9 @@ export default function PostCard({ post, onDelete, onManageCollections, isThread
         {renderBoard()}
         {renderLinkCard()}
         {renderBadge()}
+        {post.images && post.images.length > 0 && (
+          <TwitterMediaGrid images={post.images} />
+        )}
 
         {/* X Action Bar */}
         <div className="flex items-center justify-between mt-2 pt-1 text-[#536471] text-xs max-w-md">

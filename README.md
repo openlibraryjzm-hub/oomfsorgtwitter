@@ -23,14 +23,14 @@
    * 📌 **Board (`board`)**: Pinterest-style visual curation boards (`3+` images). Renders as a 3-image preview on the profile timeline (`50%` left half, two `25%` stacked right images with a `+N` badge) and expands into a full **2-column Pinterest masonry grid** in the dedicated thread view (`/[username]/status/[id]`).
    * 🔗 **Bio Link Card (`link_card`)**: High-visibility link showcase button with title, domain badge, description, and direct visit action. Showcased on the profile **Links** tab.
    * 🏷️ **Web Badge (`badge`)**: Early-web 88×31 retro button badges. Features a dual-mode creation engine (Color gradient presets or 3x HiDPI PNG image uploads) with universal underneath micro-labels. Aggregates into the **Badge Wall** at the top of the **Links** tab.
-   * 💬 **Flat Comments (`comment`)**: Direct profile guestbook comments (non-threaded, no replies or quotes).
+   * 💬 **Profile Comments (`comment`)**: 1:1 X/Twitter-native guestbook comments supporting attached images (up to 4 photos), rich interaction suite (Reply, Repost, Like, Share), and full thread navigation (`/[author]/status/[id]`).
 
    *Detailed post format specifications and extension guides are available in [Post Types Context Doc](docs/post-types.md) and [Web Badges Context Doc](docs/badges.md).*
 
 4. **The 4 Distinct Profile Tabs & Curated Collections:**  
    User profiles organize content across 4 clean tabs ordered left-to-right:
    1. **Posts** (default): Actual posts (Standard, Carousel, Board). Supports full thread navigation (`/[username]/status/[id]`) and custom author-curated collection lenses (`Posts ▾`).
-   2. **Comments**: Direct guestbook comments underneath an inline comment composer (flat, non-threaded).
+   2. **Comments**: Cross-profile guestbook and conversational threads with up to 4 image attachments, "Replying to @username" context, and interactive Twitter cards.
    3. **Links**: Linktree-style showcase of permanent bio links, link cards, Badge Wall, and curated link presets (`Links ▾`).
    4. **Likes**: Posts liked by the user.
 
@@ -82,6 +82,7 @@
 ├── supabase_collections.sql            # Collections & collection_items schema, indexes, and RLS policies
 ├── supabase_banners_storage.sql        # Supabase Storage bucket ('banners') creation and RLS policies
 ├── supabase_profile_columns.sql        # Missing profile columns migration & PostgREST reload
+├── supabase_comments_target.sql        # Cross-profile comments target_user_id & RLS delete policy migration
 ├── .env.local                          # Supabase project URL and API keys
 ├── src/
 │   ├── app/

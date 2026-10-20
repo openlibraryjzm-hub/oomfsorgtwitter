@@ -89,12 +89,14 @@ Tabs are ordered left-to-right to optimize content discovery and render with cle
 - **Thread Navigation**: Clicking any post card in this feed navigates directly to `/[username]/status/[id]` to open its dedicated thread view.
 
 ### 2. Comments (Second from Left)
-- **Role**: Direct, flat profile guestbook.
+- **Role**: 1:1 X/Twitter-native profile guestbook and conversation hub.
 - **Design & Behavior**:
-  - Direct comment composer at the top: *"Leave a comment for @username..."*.
-  - Comments appear in the feed styled like native tweets (`CommentCard.tsx`).
-  - **Flat Structure Constraints**: Comments **cannot** be opened as threads, **cannot** be replied to, and **cannot** be quoted. This preserves a lightweight, high-signal guestbook without nested comment clutter.
-  - Deletion: Permitted for the profile owner or the comment author.
+  - **Composer with Media**: Inline comment composer featuring *"Replying to @username"* context, text area, and client-compressed image attachments supporting up to 4 photos (`TwitterMediaGrid`).
+  - **1:1 Twitter Card Layout**: Rendered via `CommentCard.tsx` with verified badge, *"Replying to @[username]"* header, text, attached media grid (1–4 images), and full interactive action suite (Reply, Repost, Like, Share).
+  - **Thread Navigation**: Clicking any comment card seamlessly navigates to `/[commentAuthor]/status/[commentId]`, opening it as a full conversational thread with back-navigation to the guestbook and inline reply composition.
+  - **Cross-Profile Scoping**: Comments store `user_id` (the commenter) and `target_user_id` (the recipient profile). Comments display exclusively on the target profile's Comments tab while remaining indexed under the author for cross-site search and activity.
+  - **Deletion & Moderation**: Deletion is permitted for both the comment author (`auth.uid() = user_id`) and the profile owner (`auth.uid() = target_user_id`).
+  - *Complete technical specifications for comments, the 1–4 photo grid, and cross-profile RLS are in [Comments Context Doc](comments.md).*
 
 ### 3. Links (Third from Left) — The Switchboard Console
 - **Role**: Visual directory and launchpad for the user's curated channels and Post Collections.

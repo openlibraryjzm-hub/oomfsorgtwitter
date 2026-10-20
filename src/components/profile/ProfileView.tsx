@@ -21,7 +21,8 @@ import {
   Check,
   GripVertical,
   Camera,
-  Layers
+  Layers,
+  Image as ImageIcon
 } from 'lucide-react';
 import { 
   User, 
@@ -47,7 +48,7 @@ import { uploadBannerImage } from '@/lib/bannerStorage';
 import { saveSessionPost, getAllSessionPosts } from '@/lib/postStore';
 import { useAuth } from '@/context/AuthContext';
 import { createClient } from '@/lib/supabase/client';
-import { formatTwitterAvatar } from '@/lib/utils';
+import { formatTwitterAvatar, compressImageFile } from '@/lib/utils';
 import { getProfileFollowStats, toggleFollow, isValidUuid } from '@/lib/follows';
 import { 
   getProfileCollections, 
@@ -233,7 +234,39 @@ export default function ProfileView({
     return MOCK_COMMENTS[initialUser.username] || [];
   });
   const [commentText, setCommentText] = useState('');
+  const [commentImages, setCommentImages] = useState<string[]>([]);
+  const [isUploadingCommentImage, setIsUploadingCommentImage] = useState(false);
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const commentFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleCommentImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const availableSlots = 4 - commentImages.length;
+    if (availableSlots <= 0) return;
+
+    const filesToProcess = Array.from(files).slice(0, availableSlots);
+    setIsUploadingCommentImage(true);
+
+    try {
+      const compressedUrls = await Promise.all(
+        filesToProcess.map((f) => compressImageFile(f, 1200, 0.85))
+      );
+      setCommentImages((prev) => [...prev, ...compressedUrls].slice(0, 4));
+    } catch (err) {
+      console.error('Error compressing comment image:', err);
+    } finally {
+      setIsUploadingCommentImage(false);
+      if (commentFileInputRef.current) {
+        commentFileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemoveCommentImage = (index: number) => {
+    setCommentImages((prev) => prev.filter((_, idx) => idx !== index));
+  };
 
   // Likes state (only liked posts)
   const [likedPosts] = useState<Post[]>(() => {
@@ -390,37 +423,18 @@ export default function ProfileView({
         }
 
         if (isValidUuid(targetUserId)) {
-          const { data: dbBlocks, error } = await supabase
+          // 1. Fetch authored posts for the Posts tab (excluding comments)
+          const { data: dbBlocks, error: postsError } = await supabase
             .from('blocks')
             .select('*')
             .eq('user_id', targetUserId)
+            .neq('type', 'comment')
             .order('created_at', { ascending: false });
 
-          if (!error && dbBlocks && dbBlocks.length > 0) {
+          if (!postsError && dbBlocks && dbBlocks.length > 0) {
             const mappedPosts: Post[] = [];
-            const mappedComments: Comment[] = [];
-
             for (const b of dbBlocks) {
-              if (b.type === 'comment') {
-                mappedComments.push({
-                  id: b.id,
-                  author: b.content?.author || {
-                    id: 'guest',
-                    username: 'guest',
-                    name: 'Guest User',
-                    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=guest',
-                    joined: '2026',
-                    followingCount: 0,
-                    followersCount: 0,
-                    oomfsCount: 0,
-                    links: []
-                  },
-                  createdAt: new Date(b.created_at).toLocaleDateString(),
-                  text: b.content?.text || '',
-                  likesCount: b.content?.likesCount || 0,
-                  isLiked: false
-                });
-              } else if (
+              if (
                 b.type === 'standard' ||
                 b.type === 'carousel' ||
                 b.type === 'board' ||
@@ -438,6 +452,7 @@ export default function ProfileView({
                   createdAt: new Date(b.created_at).toLocaleDateString(),
                   type: b.type,
                   text: b.content?.text || '',
+                  images: b.content?.images || [],
                   carouselData: b.content?.carouselData,
                   boardData: b.content?.boardData,
                   linkData: b.content?.linkData,
@@ -462,9 +477,102 @@ export default function ProfileView({
                 });
               }
             }
-            if (mappedComments.length > 0) {
-              setComments(mappedComments);
+          }
+
+          // 2. Fetch comments targeted to this profile for the Comments tab
+          try {
+            const { data: dbComments, error: commentsErr } = await supabase
+              .from('blocks')
+              .select('*, profiles:user_id(*)')
+              .eq('type', 'comment')
+              .or(`target_user_id.eq.${targetUserId},and(user_id.eq.${targetUserId},target_user_id.is.null),content->>targetUsername.eq.${initialUser.username}`)
+              .order('created_at', { ascending: false });
+
+            let finalComments = dbComments;
+
+            // Graceful fallback if target_user_id column is not yet present
+            if (commentsErr) {
+              const { data: fallbackBlocks } = await supabase
+                .from('blocks')
+                .select('*, profiles:user_id(*)')
+                .eq('type', 'comment')
+                .order('created_at', { ascending: false });
+
+              if (fallbackBlocks) {
+                finalComments = fallbackBlocks.filter(b => 
+                  b.content?.targetUsername?.toLowerCase() === initialUser.username.toLowerCase() ||
+                  (!b.content?.targetUsername && b.user_id === targetUserId)
+                );
+              }
             }
+
+            if (finalComments && finalComments.length > 0) {
+              const mappedComments: Comment[] = [];
+              for (const b of finalComments) {
+                const commentAuthorProfile = b.profiles;
+                const authorData = commentAuthorProfile ? {
+                  id: b.user_id,
+                  username: commentAuthorProfile.username,
+                  name: commentAuthorProfile.name || commentAuthorProfile.username,
+                  avatar: formatTwitterAvatar(commentAuthorProfile.avatar_url) || `https://api.dicebear.com/7.x/avataaars/svg?seed=${commentAuthorProfile.username}`,
+                  banner: commentAuthorProfile.banner_url || '',
+                  bio: commentAuthorProfile.bio || '',
+                  joined: '2026',
+                  followingCount: 0,
+                  followersCount: 0,
+                  oomfsCount: 0,
+                  links: []
+                } : (b.content?.author || {
+                  id: b.user_id || 'guest',
+                  username: b.content?.author?.username || 'guest',
+                  name: b.content?.author?.name || 'Guest User',
+                  avatar: formatTwitterAvatar(b.content?.author?.avatar) || 'https://api.dicebear.com/7.x/avataaars/svg?seed=guest',
+                  joined: '2026',
+                  followingCount: 0,
+                  followersCount: 0,
+                  oomfsCount: 0,
+                  links: []
+                });
+
+                const commentItem: Comment = {
+                  id: b.id,
+                  author: authorData,
+                  createdAt: new Date(b.created_at).toLocaleDateString(),
+                  text: b.content?.text || '',
+                  images: b.content?.images || [],
+                  targetUsername: b.content?.targetUsername || initialUser.username,
+                  targetUserId: b.target_user_id || targetUserId,
+                  likesCount: b.content?.likesCount || 0,
+                  repliesCount: b.content?.repliesCount || 0,
+                  repostsCount: b.content?.repostsCount || 0,
+                  isLiked: false
+                };
+
+                // Save to session post store so clicking immediately opens thread view
+                saveSessionPost({
+                  id: b.id,
+                  author: authorData,
+                  createdAt: commentItem.createdAt,
+                  type: 'comment',
+                  text: commentItem.text,
+                  images: commentItem.images,
+                  targetUsername: commentItem.targetUsername,
+                  targetUserId: commentItem.targetUserId,
+                  likesCount: commentItem.likesCount,
+                  repostsCount: commentItem.repostsCount || 0,
+                  repliesCount: commentItem.repliesCount || 0,
+                  viewsCount: '1'
+                });
+
+                mappedComments.push(commentItem);
+              }
+
+              if (mappedComments.length > 0) {
+                setComments(mappedComments);
+              }
+            }
+          } catch (commFetchErr) {
+            console.error('Error loading comments:', commFetchErr);
           }
         }
       } catch (err) {
@@ -653,7 +761,7 @@ export default function ProfileView({
   // Add Comment handler
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!commentText.trim()) return;
+    if (!commentText.trim() && commentImages.length === 0) return;
     setIsSubmittingComment(true);
 
     const authorData = authProfile ? {
@@ -673,29 +781,51 @@ export default function ProfileView({
 
     let newCommentId = `comment_${Date.now()}`;
 
-    // Persist to Supabase if signed in
-    const targetOwnerId = userProfile.id && !userProfile.id.startsWith('usr_')
+    // Target profile owner ID (must be a valid database UUID if persisting to Supabase)
+    const targetOwnerId = (userProfile.id && isValidUuid(userProfile.id))
       ? userProfile.id
-      : authUser?.id;
+      : (initialUser.id && isValidUuid(initialUser.id))
+        ? initialUser.id
+        : null;
 
-    if (targetOwnerId && authUser?.id) {
+    if (authUser?.id) {
       try {
-        const { data, error } = await supabase
+        const payload: any = {
+          user_id: authUser.id,
+          type: 'comment',
+          content: {
+            text: commentText.trim(),
+            images: commentImages,
+            targetUsername: userProfile.username,
+            author: authorData,
+            likesCount: 0,
+            repliesCount: 0,
+            repostsCount: 0
+          }
+        };
+
+        if (targetOwnerId) {
+          payload.target_user_id = targetOwnerId;
+        }
+
+        let { data, error } = await supabase
           .from('blocks')
-          .insert({
-            user_id: authUser.id,
-            type: 'comment',
-            content: {
-              text: commentText.trim(),
-              targetUsername: userProfile.username,
-              author: authorData,
-              likesCount: 0
-            }
-          })
+          .insert(payload)
           .select('id')
           .single();
 
-        if (!error && data?.id) {
+        // If target_user_id column doesn't exist yet, retry without it
+        if (error && error.message?.includes('target_user_id')) {
+          delete payload.target_user_id;
+          const retry = await supabase
+            .from('blocks')
+            .insert(payload)
+            .select('id')
+            .single();
+          data = retry.data;
+        }
+
+        if (data?.id) {
           newCommentId = data.id;
         }
       } catch (err) {
@@ -708,12 +838,34 @@ export default function ProfileView({
       author: authorData,
       createdAt: 'Just now',
       text: commentText.trim(),
+      images: commentImages,
+      targetUsername: userProfile.username,
+      targetUserId: targetOwnerId || undefined,
       likesCount: 0,
+      repliesCount: 0,
+      repostsCount: 0,
       isLiked: false
     };
 
+    // Cache in session store as a post so clicking on it immediately opens status thread
+    saveSessionPost({
+      id: newCommentId,
+      author: authorData,
+      createdAt: 'Just now',
+      type: 'comment',
+      text: commentText.trim(),
+      images: commentImages,
+      targetUsername: userProfile.username,
+      targetUserId: targetOwnerId || undefined,
+      likesCount: 0,
+      repostsCount: 0,
+      repliesCount: 0,
+      viewsCount: '1'
+    });
+
     setComments([newComment, ...comments]);
     setCommentText('');
+    setCommentImages([]);
     setIsSubmittingComment(false);
   };
 
@@ -1209,21 +1361,79 @@ export default function ProfileView({
                 alt="Your avatar"
                 className="w-10 h-10 rounded-full object-cover border border-gray-200 shrink-0"
               />
-              <form onSubmit={handleAddComment} className="flex-1 flex flex-col gap-2">
+              <form onSubmit={handleAddComment} className="flex-1 flex flex-col gap-2 min-w-0">
+                {/* Replying context indicator */}
+                <div className="text-xs text-[#536471] flex items-center gap-1">
+                  <span>Replying to</span>
+                  <span className="text-[#1d9bf0] font-medium">@{userProfile.username}</span>
+                </div>
+
                 <textarea
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
                   placeholder={`Leave a comment for @${userProfile.username}...`}
-                  rows={2}
-                  className="w-full text-sm text-[#0f1419] placeholder-[#536471] outline-none resize-none bg-transparent"
+                  rows={commentImages.length > 0 ? 2 : 3}
+                  className="w-full text-[15px] text-[#0f1419] placeholder-[#536471] outline-none resize-none bg-transparent"
                 />
-                <div className="flex items-center justify-between pt-1">
-                  <span className="text-[11px] text-[#536471]">
-                    Direct comments cannot be threaded or quoted.
-                  </span>
+
+                {/* Previews of attached images */}
+                {commentImages.length > 0 && (
+                  <div className={`grid gap-2 mb-1 ${
+                    commentImages.length === 1 ? 'grid-cols-1 max-w-sm' : 'grid-cols-2 sm:grid-cols-4'
+                  }`}>
+                    {commentImages.map((img, idx) => (
+                      <div key={idx} className="relative group/preview rounded-xl overflow-hidden border border-[#eff3f4] bg-[#f7f9f9] aspect-square">
+                        <img src={img} alt={`Attached ${idx + 1}`} className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveCommentImage(idx)}
+                          className="absolute top-1.5 right-1.5 p-1 bg-black/70 hover:bg-black text-white rounded-full transition-colors cursor-pointer"
+                          title="Remove image"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Hidden File Input */}
+                <input
+                  type="file"
+                  ref={commentFileInputRef}
+                  onChange={handleCommentImageSelect}
+                  multiple
+                  accept="image/*"
+                  className="hidden"
+                />
+
+                {/* Composer Actions Toolbar */}
+                <div className="flex items-center justify-between pt-2 border-t border-[#eff3f4]">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={commentImages.length >= 4 || isUploadingCommentImage}
+                      onClick={() => commentFileInputRef.current?.click()}
+                      title={commentImages.length >= 4 ? "Maximum 4 images allowed" : "Add photos (up to 4)"}
+                      className="p-2 text-[#1d9bf0] hover:bg-[#1d9bf0]/10 disabled:opacity-40 disabled:hover:bg-transparent rounded-full transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <ImageIcon className="w-4 h-4" />
+                      {commentImages.length > 0 && (
+                        <span className="text-[11px] font-bold text-[#1d9bf0]">
+                          {commentImages.length}/4
+                        </span>
+                      )}
+                    </button>
+                    {isUploadingCommentImage && (
+                      <span className="text-xs text-[#536471] animate-pulse">
+                        Compressing photo...
+                      </span>
+                    )}
+                  </div>
+
                   <button
                     type="submit"
-                    disabled={!commentText.trim() || isSubmittingComment}
+                    disabled={(!commentText.trim() && commentImages.length === 0) || isSubmittingComment || isUploadingCommentImage}
                     className="bg-[#1d9bf0] hover:bg-[#1a8cd8] disabled:opacity-50 text-white font-bold text-xs px-4 py-1.5 rounded-full transition-colors cursor-pointer"
                   >
                     {isSubmittingComment ? 'Posting...' : 'Comment'}

@@ -37,6 +37,7 @@ create policy "Users can update their own profile."
 create table if not exists public.blocks (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references public.profiles(id) on delete cascade not null,
+  target_user_id uuid references public.profiles(id) on delete cascade,
   type text not null check (type in ('standard', 'carousel', 'board', 'link_card', 'comment')),
   content jsonb not null default '{}'::jsonb,
   created_at timestamptz default timezone('utc'::text, now()) not null
@@ -58,9 +59,14 @@ create policy "Users can update their own blocks."
   on public.blocks for update 
   using (auth.uid() = user_id);
 
-create policy "Users can delete their own blocks." 
+create policy "Users can delete their own blocks or comments on their profile." 
   on public.blocks for delete 
-  using (auth.uid() = user_id);
+  using (
+    auth.uid() = user_id 
+    or (type = 'comment' and auth.uid() = target_user_id)
+  );
+
+create index if not exists idx_blocks_target_user_id_type on public.blocks (target_user_id, type);
 
 -- 3. FOLLOWS TABLE (Mutuals / OOMFs)
 create table if not exists public.follows (

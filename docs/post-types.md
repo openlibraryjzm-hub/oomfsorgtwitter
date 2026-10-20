@@ -19,6 +19,7 @@ Unlike generic social platforms with rigid 4-image grid constraints, `oomfs.org`
 | **Board** | `'board'` | Pinterest-style 3-image preview (`50%` left, `25%`+`25%` right, `+N` badge) | Expanded 2-column Pinterest-style masonry grid |
 | **Bio Link Card** | `'link_card'` | Full-width outbound link card on the **Links** profile tab & sub-pages | Link showcase with direct outbound destination |
 | **Web Badge & Avatar Badge** | `'badge'` | 88×31 buttons & circular avatars in the **Links** tab (Model B dynamic plaques) | Compact button badge with outbound destination |
+| **Profile Comment** | `'comment'` | 1:1 X guestbook card on the **Comments** tab (1–4 photo grid, action bar) | Expanded focal view with *"Replying to @username"* and replies feed |
 
 ---
 

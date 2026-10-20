@@ -59,7 +59,10 @@ export interface Post {
   id: string;
   author: User;
   createdAt: string;
-  type: 'standard' | 'carousel' | 'board' | 'link_card' | 'badge';
+  type: 'standard' | 'carousel' | 'board' | 'link_card' | 'badge' | 'comment';
+  images?: string[];
+  targetUsername?: string;
+  targetUserId?: string;
   text: string;
   carouselData?: {
     header: string;
@@ -92,8 +95,14 @@ export interface Comment {
   author: User;
   createdAt: string;
   text: string;
+  images?: string[];
+  targetUsername?: string;
+  targetUserId?: string;
   likesCount: number;
+  repliesCount?: number;
+  repostsCount?: number;
   isLiked?: boolean;
+  isReposted?: boolean;
 }
 
 export interface ThreadReply {

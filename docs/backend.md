@@ -61,7 +61,8 @@ Stores modular profile content formats (Standard posts, Carousels, Pinterest-sty
 | Column | Type | Constraints | Description |
 | :--- | :--- | :--- | :--- |
 | `id` | `uuid` | Primary Key, Default `gen_random_uuid()` | Unique block identifier |
-| `user_id` | `uuid` | Not Null, `references public.profiles(id) on delete cascade` | Creator's user profile ID |
+| `user_id` | `uuid` | Not Null, `references public.profiles(id) on delete cascade` | Creator / author user profile ID |
+| `target_user_id` | `uuid` | Nullable, `references public.profiles(id) on delete cascade` | Recipient profile ID (for comments) |
 | `type` | `text` | Not Null, Check `in ('standard', 'carousel', 'board', 'link_card', 'comment', 'badge')` | Post format identifier |
 | `content` | `jsonb` | Not Null, Default `'{}'::jsonb` | Format-specific structured JSON payload |
 | `created_at` | `timestamptz` | Not Null, Default `timezone('utc', now())` | Publication timestamp |
@@ -70,7 +71,7 @@ Stores modular profile content formats (Standard posts, Carousels, Pinterest-sty
 * `SELECT`: Viewable by everyone (`using (true)`).
 * `INSERT`: Authenticated users where `auth.uid() = user_id`.
 * `UPDATE`: Authenticated users where `auth.uid() = user_id`.
-* `DELETE`: Authenticated users where `auth.uid() = user_id`.
+* `DELETE`: Authenticated users where `auth.uid() = user_id` OR (`type = 'comment'` and `auth.uid() = target_user_id`).
 
 ---
 
