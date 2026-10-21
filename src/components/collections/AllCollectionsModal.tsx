@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, X, Check, Star, Layers, Plus, Trash2, GripVertical } from 'lucide-react';
+import { Search, X, Check, Pin, Layers, Plus, Trash2 } from 'lucide-react';
 import { Collection } from '@/lib/mockData';
+
+const MAX_COLLECTIONS_LIMIT = 50;
 
 interface AllCollectionsModalProps {
   isOpen: boolean;
@@ -13,6 +15,7 @@ interface AllCollectionsModalProps {
   totalPostsCount?: number;
   totalCount?: number;
   itemTypeLabel?: string;
+  userId?: string;
   isSelf?: boolean;
   onCreateCollection?: () => void;
   onTogglePin?: (collectionId: string) => void;
@@ -32,69 +35,24 @@ export default function AllCollectionsModal({
   isSelf,
   onCreateCollection,
   onTogglePin,
-  onDeleteCollection,
-  onReorderCollections
+  onDeleteCollection
 }: AllCollectionsModalProps) {
   const count = totalCount ?? totalPostsCount ?? 0;
   const unit = itemTypeLabel;
-  const capitalizedUnit = unit.charAt(0).toUpperCase() + unit.slice(1);
+  const isLinksMode = unit === 'links';
+
   const [searchQuery, setSearchQuery] = useState('');
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       setSearchQuery('');
-      setDraggedIndex(null);
-      setDragOverIndex(null);
       setTimeout(() => searchInputRef.current?.focus(), 50);
     }
   }, [isOpen]);
 
-  const isDraggable = Boolean(isSelf && onReorderCollections && !searchQuery.trim());
-
-  const handleDragStart = (e: React.DragEvent, index: number) => {
-    if (!isDraggable) return;
-    setDraggedIndex(index);
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', `${index}`);
-  };
-
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    if (!isDraggable || draggedIndex === null) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    if (dragOverIndex !== index) {
-      setDragOverIndex(index);
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
-    e.preventDefault();
-    if (!isDraggable || draggedIndex === null || draggedIndex === targetIndex) {
-      setDraggedIndex(null);
-      setDragOverIndex(null);
-      return;
-    }
-
-    const updated = [...collections];
-    const [moved] = updated.splice(draggedIndex, 1);
-    updated.splice(targetIndex, 0, moved);
-
-    onReorderCollections?.(updated);
-    setDraggedIndex(null);
-    setDragOverIndex(null);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedIndex(null);
-    setDragOverIndex(null);
-  };
-
   if (!isOpen) return null;
 
-  const isLinksMode = unit === 'links';
   const mainCol = isLinksMode
     ? collections.find((c) => c.isDefault || c.slug === 'main' || c.id === 'col_link_main')
     : null;
@@ -102,6 +60,14 @@ export default function AllCollectionsModal({
   const displayCollections = isLinksMode
     ? collections.filter((c) => c.id !== mainCol?.id && c.slug !== 'main')
     : collections;
+
+  const isAtMaxLimit = displayCollections.length >= MAX_COLLECTIONS_LIMIT;
+
+  // Filter 5 pinned slots in fixed slot order (Slot 1 to Slot 5)
+  const pinnedList = displayCollections
+    .filter((c) => c.isPinned)
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+    .slice(0, 5);
 
   const filteredCollections = displayCollections.filter((c) => {
     const q = searchQuery.toLowerCase().trim();
@@ -115,40 +81,64 @@ export default function AllCollectionsModal({
 
   return (
     <div 
-      className="fixed inset-0 bg-black/45 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in duration-150"
+      className="fixed inset-0 bg-black/45 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150"
       onClick={onClose}
     >
       <div 
-        className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-[#eff3f4] overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-150"
+        className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-[#eff3f4] overflow-hidden flex flex-col max-h-[88vh] animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-4 py-3.5 border-b border-[#eff3f4] bg-white sticky top-0 z-10">
-          <div className="flex items-center gap-2">
-            <Layers className="w-5 h-5 text-[#1d9bf0]" />
+        <div className="flex items-center justify-between border-b border-[#eff3f4] bg-white sticky top-0 z-20 px-4 py-3.5">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-blue-50 text-[#1d9bf0] flex items-center justify-center shrink-0">
+              <Layers className="w-4 h-4" />
+            </div>
             <div>
-              <h3 className="font-extrabold text-[#0f1419] text-base leading-tight">
-                {unit === 'links' ? 'Link Pages' : 'Curated Collections'}
-              </h3>
+              <div className="flex items-center gap-2">
+                <h3 className="font-extrabold text-[#0f1419] text-base leading-tight">
+                  {isLinksMode ? 'Featured Link Pages' : 'Featured Collections'}
+                </h3>
+                <span
+                  className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                    isAtMaxLimit
+                      ? 'bg-red-100 text-red-700 border border-red-200'
+                      : 'bg-gray-100 text-[#536471]'
+                  }`}
+                >
+                  {displayCollections.length} / {MAX_COLLECTIONS_LIMIT} max
+                </span>
+              </div>
               <p className="text-xs text-[#536471]">
-                {unit === 'links'
-                  ? `${collections.length} distinct pages · select a destination`
-                  : `${collections.length} available presets · choose a lens`}
+                {isLinksMode
+                  ? `Select a link page to launch or adjust your top 5 quick bar pins`
+                  : `Curate up to 50 playlists for your posts, carousels, and visual boards`}
               </p>
             </div>
           </div>
+
           <div className="flex items-center gap-1.5">
             {isSelf && onCreateCollection && (
               <button
                 type="button"
                 onClick={() => {
+                  if (isAtMaxLimit) {
+                    alert(`Maximum limit of ${MAX_COLLECTIONS_LIMIT} featured collections reached. Please delete an existing collection before adding a new one.`);
+                    return;
+                  }
                   onClose();
                   onCreateCollection();
                 }}
-                className="px-2.5 py-1 text-xs font-bold text-[#1d9bf0] bg-[#1d9bf0]/10 hover:bg-[#1d9bf0]/20 rounded-full transition-colors flex items-center gap-1 cursor-pointer"
+                disabled={isAtMaxLimit}
+                className={`px-3 py-1.5 text-xs font-bold rounded-full transition-colors flex items-center gap-1 cursor-pointer ${
+                  isAtMaxLimit
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+                    : 'text-[#1d9bf0] bg-[#1d9bf0]/10 hover:bg-[#1d9bf0]/20'
+                }`}
+                title={isAtMaxLimit ? 'Limit reached (50/50 max)' : 'Create new collection'}
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>{unit === 'links' ? 'New Page' : 'New'}</span>
+                <span>{isLinksMode ? 'New Page' : 'New'}</span>
               </button>
             )}
             <button
@@ -161,17 +151,99 @@ export default function AllCollectionsModal({
           </div>
         </div>
 
-        {/* Search Bar */}
-        <div className="p-3 border-b border-[#eff3f4] bg-[#f7f9f9]">
-          <div className="relative flex items-center">
+        {/* Top Pinned Dock (Fixed Slots 1 to 5) */}
+        <div className="p-3 sm:p-3.5 bg-[#f7f9f9] border-b border-[#eff3f4]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2.5">
+            <div className="flex items-center gap-2">
+              <Pin className="w-3.5 h-3.5 text-[#1d9bf0]" />
+              <span className="text-xs font-extrabold text-[#0f1419] uppercase tracking-wide">
+                Quick Bar Slots
+              </span>
+              <span
+                className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                  pinnedList.length === 5
+                    ? 'bg-amber-100 text-amber-800'
+                    : 'bg-blue-100 text-blue-800'
+                }`}
+              >
+                {pinnedList.length} / 5 Pinned
+              </span>
+            </div>
+            <span className="text-[11px] text-[#536471]">
+              Fixed order: Slot 1 (leftmost) → Slot 5 (rightmost)
+            </span>
+          </div>
+
+          {/* 5 Slots Grid */}
+          <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-5 gap-2">
+            {[0, 1, 2, 3, 4].map((slotIndex) => {
+              const item = pinnedList[slotIndex];
+              return (
+                <div
+                  key={slotIndex}
+                  className={`relative rounded-xl border p-2 flex flex-col justify-between transition-all min-h-[66px] ${
+                    item
+                      ? 'bg-white border-[#cfd9de] shadow-2xs hover:border-[#1d9bf0]'
+                      : 'border-dashed border-gray-300 bg-white/60 text-gray-400'
+                  }`}
+                >
+                  {/* Slot Header badge & Unpin button */}
+                  <div className="flex items-center justify-between">
+                    <span
+                      className={`text-[10px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${
+                        item
+                          ? 'bg-[#0f1419] text-white'
+                          : 'bg-gray-100 text-gray-400'
+                      }`}
+                    >
+                      {slotIndex + 1}
+                    </span>
+                    {item && isSelf && onTogglePin && (
+                      <button
+                        type="button"
+                        onClick={() => onTogglePin(item.id)}
+                        title={`Remove from Slot ${slotIndex + 1}`}
+                        className="p-0.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors cursor-pointer"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Slot Content */}
+                  {item ? (
+                    <div className="mt-1 min-w-0">
+                      <div className="text-xs font-bold text-[#0f1419] truncate flex items-center gap-1">
+                        <span className="text-sm shrink-0">{item.icon || '📁'}</span>
+                        <span className="truncate">{item.title}</span>
+                      </div>
+                      <div className="text-[10px] text-[#536471] truncate">
+                        {item.itemIds.length} {unit}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-1 flex flex-col items-center justify-center text-[10px] text-gray-400 font-medium py-0.5">
+                      <span>Empty</span>
+                      <span className="text-[9px]">Slot {slotIndex + 1}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Search Bar & Quick Reset */}
+        <div className="p-3 border-b border-[#eff3f4] bg-white sticky top-[69px] z-10 flex items-center justify-between gap-2.5">
+          <div className="relative flex-1 flex items-center">
             <Search className="w-4 h-4 text-[#536471] absolute left-3 pointer-events-none" />
             <input
               ref={searchInputRef}
               type="text"
-              placeholder={unit === 'links' ? `Search ${collections.length} link pages...` : `Search ${collections.length} collections...`}
+              placeholder={`Search ${displayCollections.length} featured collections...`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white border border-[#cfd9de] focus:border-[#1d9bf0] rounded-full pl-9 pr-8 py-2 text-xs text-[#0f1419] outline-none shadow-2xs"
+              className="w-full bg-[#f7f9f9] border border-[#cfd9de] focus:border-[#1d9bf0] focus:bg-white rounded-full pl-9 pr-8 py-2 text-xs text-[#0f1419] outline-none shadow-2xs transition-all"
             />
             {searchQuery && (
               <button
@@ -183,204 +255,196 @@ export default function AllCollectionsModal({
               </button>
             )}
           </div>
+
+          {/* Master Full-Feed Reset Pill */}
+          <button
+            type="button"
+            onClick={() => {
+              const m = isLinksMode ? collections.find((c) => c.isDefault || c.slug === 'main' || c.id === 'col_link_main') : null;
+              onSelectCollection(m ? m.id : null);
+              onClose();
+            }}
+            className={`px-3 py-2 rounded-full text-xs font-bold whitespace-nowrap shrink-0 transition-colors flex items-center gap-1.5 cursor-pointer border ${
+              activeCollectionId === null
+                ? 'bg-[#0f1419] text-white border-transparent shadow-xs'
+                : 'bg-white border-[#cfd9de] text-[#536471] hover:bg-[#f7f9f9]'
+            }`}
+            title={isLinksMode ? 'Return to Main Links' : 'Show full reverse-chronological feed'}
+          >
+            <span>{isLinksMode ? '🌐 Main' : '∞ All'}</span>
+            <span className="text-[10px] opacity-80">({count})</span>
+          </button>
         </div>
 
-        {/* Scrollable List */}
-        <div className="flex-1 overflow-y-auto divide-y divide-[#eff3f4]">
-          {/* Default Option: Show All Posts or Main Page for Links */}
-          {!searchQuery && (
-            <button
-              type="button"
-              onClick={() => {
-                const mainCol = unit === 'links' ? collections.find(c => c.isDefault || c.slug === 'main' || c.id === 'col_link_main') : null;
-                onSelectCollection(mainCol ? mainCol.id : null);
-                onClose();
-              }}
-              className={`w-full p-3.5 flex items-center justify-between text-left transition-colors cursor-pointer ${
-                activeCollectionId === null || (unit === 'links' && (activeCollectionId === 'main' || collections.find(c => c.id === activeCollectionId)?.slug === 'main'))
-                  ? 'bg-[#1d9bf0]/10 text-[#0f1419]'
-                  : 'hover:bg-[#f7f9f9]'
-              }`}
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-sm font-bold text-[#536471] shrink-0 border border-black/5">
-                  {unit === 'links' ? '🌐' : '∞'}
-                </div>
-                <div className="min-w-0">
-                  <div className="font-bold text-xs sm:text-sm text-[#0f1419] flex items-center gap-2">
-                    <span>{unit === 'links' ? 'Main Page' : `All ${capitalizedUnit}`}</span>
-                    <span className="text-[11px] font-medium text-[#536471] bg-gray-100 px-1.5 py-0.5 rounded-full">
-                      {unit === 'links' 
-                        ? `${collections.find(c => c.isDefault || c.slug === 'main' || c.id === 'col_link_main')?.itemIds?.length ?? count} items` 
-                        : `${count} ${unit}`}
-                    </span>
-                    {unit === 'links' && (
-                      <span className="text-[10px] font-mono text-[#1d9bf0] bg-blue-50 px-1.5 py-0.5 rounded-md">
-                        /links
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-[#536471] truncate">
-                    {unit === 'links' ? 'Primary bio links, socials, and featured badges' : 'Standard reverse-chronological feed'}
-                  </p>
-                </div>
-              </div>
-              {(activeCollectionId === null || (unit === 'links' && (activeCollectionId === 'main' || collections.find(c => c.id === activeCollectionId)?.slug === 'main'))) && (
-                <div className="w-6 h-6 rounded-full bg-[#1d9bf0] text-white flex items-center justify-center shrink-0">
-                  <Check className="w-3.5 h-3.5 stroke-[3]" />
-                </div>
-              )}
-            </button>
-          )}
-
-          {/* Collection Rows */}
+        {/* Scrollable 2-Column Collection Grid */}
+        <div className="flex-1 overflow-y-auto">
           {filteredCollections.length > 0 ? (
-            filteredCollections.map((col, idx) => {
-              const isActive = activeCollectionId === col.id;
-              const isItemDragged = draggedIndex === idx;
-              const isDropTarget = dragOverIndex === idx && draggedIndex !== null && draggedIndex !== idx;
-              const isTargetAbove = draggedIndex !== null && idx < draggedIndex;
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-3.5">
+              {filteredCollections.map((col) => {
+                const isActive = activeCollectionId === col.id;
+                const pinnedSlotIndex = pinnedList.findIndex((p) => p.id === col.id);
+                const isPinned = pinnedSlotIndex !== -1;
+                const isSlotsFull = pinnedList.length >= 5 && !isPinned;
 
-              return (
-                <div
-                  key={col.id}
-                  draggable={isDraggable}
-                  onDragStart={(e) => handleDragStart(e, idx)}
-                  onDragOver={(e) => handleDragOver(e, idx)}
-                  onDrop={(e) => handleDrop(e, idx)}
-                  onDragEnd={handleDragEnd}
-                  onClick={() => {
-                    onSelectCollection(col.id);
-                    onClose();
-                  }}
-                  className={`w-full p-3.5 flex items-center justify-between text-left transition-all group select-none relative ${
-                    isDraggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
-                  } ${
-                    isActive
-                      ? 'bg-[#1d9bf0]/10 text-[#0f1419]'
-                      : 'hover:bg-[#f7f9f9]'
-                  } ${
-                    isItemDragged ? 'opacity-35 bg-[#1d9bf0]/5' : ''
-                  } ${
-                    isDropTarget
-                      ? isTargetAbove
-                        ? 'border-t-2 border-[#1d9bf0] bg-[#1d9bf0]/5'
-                        : 'border-b-2 border-[#1d9bf0] bg-[#1d9bf0]/5'
-                      : ''
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-2">
-                    {/* Dotted Drag Handle Indicator */}
-                    {isDraggable && (
-                      <div
-                        className="text-gray-300 group-hover:text-gray-500 hover:text-[#0f1419] transition-colors p-1 -ml-1.5 shrink-0 flex items-center justify-center rounded cursor-grab active:cursor-grabbing"
-                        title="Drag to reorder presets (top presets show leftmost)"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <GripVertical className="w-4 h-4" />
+                return (
+                  <div
+                    key={col.id}
+                    className={`rounded-2xl border p-3 flex flex-col justify-between transition-all bg-white shadow-2xs ${
+                      isActive
+                        ? 'border-[#1d9bf0] ring-2 ring-[#1d9bf0]/20 bg-blue-50/15'
+                        : isPinned
+                          ? 'border-[#0f1419]/30 hover:border-[#0f1419]/60'
+                          : 'border-[#eff3f4] hover:border-[#cfd9de] hover:bg-[#f7f9f9]/50'
+                    }`}
+                  >
+                    {/* Card Top: Icon, Title, Badges */}
+                    <div>
+                      <div className="flex items-start gap-2.5">
+                        <div className="w-9 h-9 rounded-xl bg-[#f7f9f9] border border-black/5 flex items-center justify-center text-lg shrink-0 shadow-2xs">
+                          {col.icon || '📁'}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-extrabold text-xs sm:text-sm text-[#0f1419] truncate">
+                              {col.title}
+                            </span>
+                            {isPinned && (
+                              <span className="shrink-0 text-[10px] font-extrabold bg-[#0f1419] text-white px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
+                                <Pin className="w-2.5 h-2.5" />
+                                Slot {pinnedSlotIndex + 1}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-[11px] font-medium text-[#536471] bg-gray-100 px-1.5 py-0.2 rounded-full">
+                              {col.itemIds.length} {unit}
+                            </span>
+                            {col.slug && (
+                              <span className="text-[10px] font-mono text-[#1d9bf0] bg-blue-50 px-1.5 py-0.2 rounded-md truncate">
+                                /{col.slug}
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    )}
 
-                    <div className="w-9 h-9 rounded-xl bg-[#f7f9f9] group-hover:bg-white flex items-center justify-center text-lg shrink-0 border border-black/5 shadow-2xs transition-colors">
-                      {col.icon || '📁'}
-                    </div>
-                    <div className="min-w-0 pr-2">
-                      <div className="font-bold text-xs sm:text-sm text-[#0f1419] flex items-center gap-1.5 truncate">
-                        <span className="truncate">{col.title}</span>
-                        <span className="text-[11px] font-medium text-[#536471] bg-gray-100 px-1.5 py-0.5 rounded-full shrink-0">
-                          {col.itemIds.length} {unit}
-                        </span>
-                        {col.slug && (
-                          <span className="text-[10px] font-mono text-[#1d9bf0] bg-blue-50 px-1.5 py-0.5 rounded-md shrink-0">
-                            /{col.slug}
-                          </span>
-                        )}
-                        {col.isPinned && (
-                          <span 
-                            title="Pinned to quick-access bar" 
-                            className="text-amber-500 shrink-0 flex items-center"
-                          >
-                            <Star className="w-3 h-3 fill-amber-500" />
-                          </span>
-                        )}
-                      </div>
+                      {/* Card Description */}
                       {col.description && (
-                        <p className="text-xs text-[#536471] truncate mt-0.5">
+                        <p className="text-xs text-[#536471] line-clamp-2 mt-2 leading-relaxed">
                           {col.description}
                         </p>
                       )}
                     </div>
-                  </div>
 
-                  {/* Actions / Select Status */}
-                  <div className="flex items-center gap-2 shrink-0">
-                    {/* Owner pin/delete actions */}
-                    {isSelf && onTogglePin && (
+                    {/* Card Bottom Actions Row */}
+                    <div className="flex items-center justify-between gap-2 mt-3 pt-2.5 border-t border-[#eff3f4]">
                       <button
                         type="button"
-                        draggable={false}
-                        onMouseDown={(e) => e.stopPropagation()}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onTogglePin(col.id);
+                        onClick={() => {
+                          onSelectCollection(col.id);
+                          onClose();
                         }}
-                        title={col.isPinned ? "Unpin from top row" : "Pin to top row"}
-                        className={`p-1.5 rounded-full hover:bg-gray-200 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer ${
-                          col.isPinned ? 'text-amber-500' : 'text-gray-400'
+                        className={`px-3 py-1 text-xs font-bold rounded-full transition-colors cursor-pointer flex items-center gap-1 ${
+                          isActive
+                            ? 'bg-[#1d9bf0] text-white shadow-2xs'
+                            : 'bg-[#f7f9f9] hover:bg-[#eff3f4] text-[#0f1419]'
                         }`}
                       >
-                        <Star className={`w-3.5 h-3.5 ${col.isPinned ? 'fill-amber-500' : ''}`} />
+                        {isActive ? (
+                          <>
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Active</span>
+                          </>
+                        ) : (
+                          <span>View lens →</span>
+                        )}
                       </button>
-                    )}
 
-                    {isSelf && onDeleteCollection && (
-                      <button
-                        type="button"
-                        draggable={false}
-                        onMouseDown={(e) => e.stopPropagation()}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (confirm(`Delete collection "${col.title}"? Your posts will remain intact.`)) {
-                            onDeleteCollection(col.id);
-                          }
-                        }}
-                        title="Delete collection"
-                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+                      <div className="flex items-center gap-1">
+                        {isSelf && onTogglePin && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (isSlotsFull) {
+                                alert('All 5 pinned slots are full. Remove an item from the top dock to pin this collection.');
+                                return;
+                              }
+                              onTogglePin(col.id);
+                            }}
+                            title={
+                              isPinned
+                                ? `Pinned in Slot ${pinnedSlotIndex + 1}. Click to unpin.`
+                                : isSlotsFull
+                                  ? 'All 5 slots filled'
+                                  : 'Pin to next available quick bar slot'
+                            }
+                            className={`px-2.5 py-1 text-xs font-bold rounded-full transition-all flex items-center gap-1 cursor-pointer ${
+                              isPinned
+                                ? 'bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 border border-amber-300'
+                                : isSlotsFull
+                                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+                                  : 'bg-white hover:bg-gray-100 text-[#536471] border border-[#cfd9de]'
+                            }`}
+                          >
+                            <Pin className={`w-3 h-3 ${isPinned ? 'fill-amber-600 text-amber-600' : ''}`} />
+                            <span>{isPinned ? `Slot ${pinnedSlotIndex + 1}` : '+ Pin'}</span>
+                          </button>
+                        )}
 
-                    {isActive ? (
-                      <div className="w-6 h-6 rounded-full bg-[#1d9bf0] text-white flex items-center justify-center shrink-0">
-                        <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        {isSelf && onDeleteCollection && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (confirm(`Delete collection "${col.title}"? Your posts will remain intact.`)) {
+                                onDeleteCollection(col.id);
+                              }
+                            }}
+                            title="Delete collection"
+                            className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
-                    ) : (
-                      <div className="text-xs font-semibold text-[#536471] opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                        View →
-                      </div>
-                    )}
+                    </div>
                   </div>
-                </div>
-              );
-            })
+                );
+              })}
+            </div>
           ) : (
-            <div className="py-12 text-center text-[#536471] text-xs">
-              No collections match &quot;{searchQuery}&quot;
+            <div className="py-16 text-center text-[#536471] text-xs px-4">
+              <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-3 text-xl">
+                📁
+              </div>
+              <p className="font-bold text-[#0f1419] text-sm">
+                {searchQuery ? `No collections match "${searchQuery}"` : `No featured collections yet`}
+              </p>
+              <p className="text-xs text-[#536471] max-w-xs mx-auto mt-1 mb-4">
+                {searchQuery
+                  ? 'Try another search term'
+                  : `Curate up to ${MAX_COLLECTIONS_LIMIT} custom collections to feature on your profile.`}
+              </p>
+              {isSelf && onCreateCollection && !searchQuery && !isAtMaxLimit && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onCreateCollection();
+                  }}
+                  className="px-4 py-2 bg-[#0f1419] hover:bg-black text-white text-xs font-bold rounded-full transition-colors cursor-pointer"
+                >
+                  + Create First Collection
+                </button>
+              )}
             </div>
           )}
         </div>
 
         {/* Modal Footer */}
         <div className="px-4 py-2.5 bg-[#f7f9f9] border-t border-[#eff3f4] flex items-center justify-between text-[11px] text-[#536471]">
-          {isDraggable ? (
-            <span className="flex items-center gap-1.5 font-medium text-gray-500">
-              <GripVertical className="w-3.5 h-3.5 text-gray-400" />
-              <span>Drag presets to reorder · top presets pin leftmost</span>
-            </span>
-          ) : (
-            <span>Showing {filteredCollections.length} of {collections.length} presets</span>
-          )}
+          <span>
+            {displayCollections.length} of {MAX_COLLECTIONS_LIMIT} featured collections · 5 quick bar slots max
+          </span>
           <button
             type="button"
             onClick={onClose}

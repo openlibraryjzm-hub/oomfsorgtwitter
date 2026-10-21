@@ -177,10 +177,49 @@ export default function ProfileView({
     if (!col) return;
     const nextPinned = !col.isPinned;
 
-    setCollections((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, isPinned: nextPinned } : c))
-    );
+    const currentPinned = collections
+      .filter((c) => c.isPinned && c.id !== id)
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+
+    if (nextPinned && currentPinned.length >= 5) {
+      alert('You can only pin up to 5 collections to the quick bar.');
+      return;
+    }
+
+    let updatedCollections: Collection[];
+    if (nextPinned) {
+      const nextSortOrder = currentPinned.length;
+      updatedCollections = collections.map((c) =>
+        c.id === id ? { ...c, isPinned: true, sortOrder: nextSortOrder } : c
+      );
+    } else {
+      let pinIdx = 0;
+      updatedCollections = collections.map((c) => {
+        if (c.id === id) {
+          return { ...c, isPinned: false };
+        }
+        if (c.isPinned) {
+          const updated = { ...c, sortOrder: pinIdx };
+          pinIdx++;
+          return updated;
+        }
+        return c;
+      });
+    }
+
+    setCollections(updatedCollections);
     await updateCollection(id, { isPinned: nextPinned }, activeCreatorUserId);
+    await reorderCollections(
+      updatedCollections
+        .slice()
+        .sort((a, b) => {
+          if (a.isPinned && !b.isPinned) return -1;
+          if (!a.isPinned && b.isPinned) return 1;
+          return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+        })
+        .map((c) => c.id),
+      activeCreatorUserId
+    );
   };
 
   const handleDeleteCollection = async (id: string) => {
@@ -1825,6 +1864,7 @@ export default function ProfileView({
         onSelectCollection={handleSelectPostCollection}
         totalCount={allTimelinePosts.length}
         itemTypeLabel="posts"
+        userId={activeCreatorUserId}
         isSelf={isSelf}
         onCreateCollection={() => setCreateCollectionTab('posts')}
         onTogglePin={(id) => handleTogglePinCollection(id)}

@@ -36,18 +36,20 @@ src/components/profile/
 
 1. **`CollectionLensBar.tsx`**:
    - **`[ All (N) ]` Pill**: Clears any active preset and restores the default chronological feed or standard link list. Strictly locked at the leftmost position and immovable.
-   - **Top Pinned Stadium Pills (`isPinned: true`)**: Surfaces up to 4 quick-access presets (e.g. `[ ⭐ Highlights ]`, `[ 💼 Work ]`) with emoji icons and item count badges. Sequence reflects the creator's custom sort order.
+   - **Top Pinned Stadium Pills (Up to 5 Fixed Slots)**: Surfaces up to 5 quick-access presets (Slot 1 leftmost through Slot 5 rightmost) with emoji icons and item count badges. Sequence reflects the creator's assigned slot order.
    - **Dynamic Active Pill**: If an unpinned preset is selected from the modal, it automatically surfaces into this bar with an inline `(×)` dismiss button.
    - **`[ ⊞ All (N) ▾ ]` Modal Trigger**: Scalability anchor. Displays the total number of presets and triggers `AllCollectionsModal`.
    - **`[ + New ]` Button**: Visible to profile owners (`isSelf`) to trigger `CreateCollectionModal`.
 
 2. **`AllCollectionsModal.tsx`**:
-   - Centered backdrop-blur modal.
-   - **Immovable "All" Option**: Hardcoded at the top of the scrollable list outside draggable items; resets filter back to the full feed.
-   - **Native HTML5 Drag-and-Drop**: Profile owners can grab the dotted drag handle (`GripVertical`) to reorder presets. Top items in the modal automatically pin leftmost on `CollectionLensBar`.
-   - **Real-Time Search Input**: Auto-focuses on open; filters presets by title or description text (dragging is disabled during active searches to prevent index misalignment).
-   - **Owner Actions**: Quick hover actions to pin/unpin presets (`⭐`) and delete collections (`Trash2`).
-   - **Dynamic Labels**: Accepts `itemTypeLabel="posts"` or `itemTypeLabel="links"` to format counters (`N posts` vs `N links`).
+   - Centered backdrop-blur modal designed for fast curation and filtering.
+   - **Enshrined 50-Item Hard Limit**: Profiles feature up to a maximum of 50 curated collections. The modal header and creation actions visually track capacity (e.g. `X / 50 max`). Creating beyond 50 collections is strictly blocked across both client UI and persistence layer.
+   - **Top Pinned Dock (Slots 1 to 5)**: Surfaces the 5 fixed quick bar slots at the top. Creators can inspect current slot assignments and tap `(×)` to clear any slot. Slot 1 is fixed leftmost, Slot 5 is fixed rightmost. Enforces a strict 5-item cap on pinned presets.
+   - **2-Column Responsive Card Grid**: Displays up to 50 curated collections comfortably in a responsive grid (`grid-cols-1 sm:grid-cols-2`) with icon, title, slot indicator badge (`Slot N 📌`), item count, and description snippet.
+   - **Direct Slot Pinning Action**: Replaces legacy drag-and-drop with direct `[+ Pin]` / `[📌 Slot N]` toggling.
+   - **Real-Time Search Input**: Auto-focuses on open; filters collections in real time by title, description, or custom slug.
+   - **Quick Full-Feed Reset**: Dedicated `[∞ All]` / `[🌐 Main]` button beside the search bar.
+   - **Owner Actions**: Pin/unpin slot assignments and delete collections (`Trash2`).
 
 3. **`CreateCollectionModal.tsx`**:
    - Modal form for creating new collections with title, optional description, quick emoji picker, and a `Pin to quick-access bar` toggle.

@@ -75,21 +75,7 @@ export default function CreateCollectionModal({
       setIcon(isLinkPage ? '🌐' : '📁');
       setIsPinned(false);
     } else {
-      // Mock fallback if user is in offline/demo mode or DB not connected
-      const fallbackCol: Collection = {
-        id: `col_${Date.now()}`,
-        userId,
-        tabType,
-        title: title.trim(),
-        description: description.trim() || undefined,
-        icon,
-        isPinned,
-        isExclusive: false,
-        slug: computedSlug,
-        itemIds: []
-      };
-      onCreated(fallbackCol);
-      onClose();
+      setError('Limit reached: A profile can feature a maximum of 50 collections.');
     }
     setIsSubmitting(false);
   };

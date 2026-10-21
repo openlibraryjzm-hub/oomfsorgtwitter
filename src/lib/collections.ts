@@ -275,6 +275,17 @@ export async function createCollection(params: {
   let createdCollection: Collection | null = null;
   const computedSlug = params.slug?.trim() || (params.tabType === 'links' ? (slugify(params.title) || `page-${Date.now()}`) : undefined);
 
+  // Enshrine hard limit of 50 collections
+  if (typeof window !== 'undefined' && params.userId) {
+    const existing = getLocalCollections(params.userId).filter(
+      params.tabType === 'links' ? isLinkCollection : isPostCollection
+    );
+    if (existing.length >= 50) {
+      console.warn('Cannot create collection: Enshrined limit of 50 collections reached.');
+      return null;
+    }
+  }
+
   if (isValidUuid(params.userId)) {
     try {
       const { data, error } = await supabase

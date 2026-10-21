@@ -38,13 +38,16 @@ export default function CollectionLensBar({
     ? (activeCollectionId === null || activeCollectionId === 'main' || activeCollectionId === mainCollection?.id)
     : (activeCollectionId === null);
 
-  const pinnedCollections = collections.filter((c) => {
-    if (!c.isPinned) return false;
-    if (isLinksMode && (c.isDefault || c.id === mainCollection?.id || c.slug === 'main')) {
-      return false;
-    }
-    return true;
-  });
+  const pinnedCollections = collections
+    .filter((c) => {
+      if (!c.isPinned) return false;
+      if (isLinksMode && (c.isDefault || c.id === mainCollection?.id || c.slug === 'main')) {
+        return false;
+      }
+      return true;
+    })
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+    .slice(0, 5);
 
   const activeCollection = collections.find((c) => c.id === activeCollectionId);
   const isUnpinnedActive = activeCollection && !activeCollection.isPinned && (
