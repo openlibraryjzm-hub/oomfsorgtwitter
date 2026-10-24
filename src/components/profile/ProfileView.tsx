@@ -41,6 +41,7 @@ import CommentCard from '@/components/feed/CommentCard';
 import PostComposer from '@/components/feed/PostComposer';
 import CollectionLensBar from '@/components/collections/CollectionLensBar';
 import AllCollectionsModal from '@/components/collections/AllCollectionsModal';
+import ReorderCollectionModal from '@/components/collections/ReorderCollectionModal';
 import CreateCollectionModal from '@/components/collections/CreateCollectionModal';
 import AddToCollectionModal from '@/components/collections/AddToCollectionModal';
 import BannerCropModal from '@/components/profile/BannerCropModal';
@@ -56,6 +57,7 @@ import {
   deleteCollection, 
   reorderCollections, 
   reorderCollectionItems,
+  removeItemFromCollection,
   getLocalCollections,
   isLinkCollection,
   isPostCollection
@@ -142,6 +144,7 @@ export default function ProfileView({
   });
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
   const [allCollectionsModalOpen, setAllCollectionsModalOpen] = useState(false);
+  const [reorderTargetCollection, setReorderTargetCollection] = useState<Collection | null>(null);
   const [showPostCollections, setShowPostCollections] = useState(false);
 
   // Item assignment & collection creation modals
@@ -231,6 +234,22 @@ export default function ProfileView({
   const handleReorderCollections = async (reordered: Collection[]) => {
     setCollections(reordered);
     await reorderCollections(reordered.map((c) => c.id), activeCreatorUserId);
+  };
+
+  const handleReorderCollectionItems = async (collectionId: string, orderedItemIds: string[]) => {
+    setCollections((prev) =>
+      prev.map((c) => (c.id === collectionId ? { ...c, itemIds: orderedItemIds } : c))
+    );
+    await reorderCollectionItems(collectionId, orderedItemIds, activeCreatorUserId);
+  };
+
+  const handleRemoveCollectionItem = async (collectionId: string, itemId: string) => {
+    setCollections((prev) =>
+      prev.map((c) =>
+        c.id === collectionId ? { ...c, itemIds: c.itemIds.filter((id) => id !== itemId) } : c
+      )
+    );
+    await removeItemFromCollection(collectionId, itemId, activeCreatorUserId);
   };
 
   const handleCreatedCollection = (newCol: Collection) => {
@@ -1345,6 +1364,17 @@ export default function ProfileView({
                     <span className="text-gray-500 font-medium">({timelinePosts.length} posts in custom order)</span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 ml-2">
+                    {isSelf && (
+                      <button
+                        type="button"
+                        onClick={() => setReorderTargetCollection(activeCol)}
+                        className="px-2.5 py-1 bg-white hover:bg-blue-50 text-[#1d9bf0] border border-blue-200 rounded-full font-bold flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
+                        title="Reorder posts in this collection"
+                      >
+                        <ArrowUpDown className="w-3 h-3" />
+                        <span>Reorder</span>
+                      </button>
+                    )}
                     {!showPostCollections && (
                       <button
                         type="button"
@@ -1869,8 +1899,20 @@ export default function ProfileView({
         onCreateCollection={() => setCreateCollectionTab('posts')}
         onTogglePin={(id) => handleTogglePinCollection(id)}
         onDeleteCollection={(id) => handleDeleteCollection(id)}
-        onReorderCollections={(reordered) => handleReorderCollections(reordered)}
+        onOpenReorder={(col) => setReorderTargetCollection(col)}
       />
+
+      {/* Owner Post Reordering Modal (up to 100 posts per collection) */}
+      {reorderTargetCollection && (
+        <ReorderCollectionModal
+          isOpen={Boolean(reorderTargetCollection)}
+          onClose={() => setReorderTargetCollection(null)}
+          collection={reorderTargetCollection}
+          allPosts={allTimelinePosts}
+          onReorderCollectionItems={handleReorderCollectionItems}
+          onRemoveCollectionItem={handleRemoveCollectionItem}
+        />
+      )}
 
       {/* Add To Collection Modal (for organizing existing posts & links) */}
       {manageItem && (

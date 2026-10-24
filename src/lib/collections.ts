@@ -13,14 +13,21 @@ export function isValidUuid(id: string | null | undefined): boolean {
  * Determine if a collection belongs to the Links tab.
  */
 export function isLinkCollection(c: Collection): boolean {
-  return c.tabType === 'links' || (!c.tabType && (c.id.startsWith('col_link_') || Boolean(c.slug) || Boolean(c.isDefault)));
+  if (c.slug || c.isDefault || (c.id && c.id.startsWith('col_link_')) || c.id === 'main') {
+    return true;
+  }
+  return c.tabType === 'links';
 }
 
 /**
  * Determine if a collection belongs to the Posts timeline tab.
  */
 export function isPostCollection(c: Collection): boolean {
-  return c.tabType === 'posts' || (!c.tabType && !c.id.startsWith('col_link_') && !c.slug && !c.isDefault);
+  if (c.tabType === 'posts') return true;
+  if (c.id && !c.id.startsWith('col_link_') && !c.slug && !c.isDefault && c.id !== 'main') {
+    return true;
+  }
+  return c.tabType !== 'links';
 }
 
 /**
@@ -36,10 +43,14 @@ export function getLocalCollections(userId: string): Collection[] {
   if (typeof window === 'undefined' || !effectiveId) return [];
 
   const normalize = (items: any[]): Collection[] => {
-    return items.map((c) => ({
-      ...c,
-      tabType: c.tabType || (isLinkCollection(c) ? 'links' : 'posts')
-    }));
+    return items.map((c) => {
+      const isActuallyLink = Boolean(c.slug) || Boolean(c.isDefault) || (c.id && c.id.startsWith('col_link_')) || c.id === 'main';
+      const resolvedTabType = isActuallyLink ? 'links' : (c.tabType === 'links' && !c.slug ? 'posts' : (c.tabType || 'posts'));
+      return {
+        ...c,
+        tabType: resolvedTabType
+      };
+    });
   };
 
   try {
@@ -482,6 +493,8 @@ export async function deleteCollection(
   return dbSuccess || true;
 }
 
+export const MAX_POSTS_PER_COLLECTION = 100;
+
 /**
  * Add an item (post or link) into a collection.
  */
@@ -494,6 +507,17 @@ export async function addItemToCollection(
 
   if (isValidUuid(collectionId)) {
     try {
+      // Enforce 100-post limit on collections
+      const { count } = await supabase
+        .from('collection_items')
+        .select('*', { count: 'exact', head: true })
+        .eq('collection_id', collectionId);
+
+      if (count !== null && count >= MAX_POSTS_PER_COLLECTION) {
+        console.warn(`Cannot add item: Collection reached hard limit of ${MAX_POSTS_PER_COLLECTION} items.`);
+        return false;
+      }
+
       // Get highest position
       const { data: existing } = await supabase
         .from('collection_items')
@@ -548,6 +572,11 @@ export async function addItemToCollection(
         const updated = list.map((c) => {
           const isMatch = c.id === collectionId || (c.slug && c.slug === collectionId) || (isMain && (c.isDefault || c.slug === 'main' || c.id === 'col_link_main' || c.id === 'main'));
           if (isMatch && !c.itemIds.includes(itemId)) {
+            // Enforce max 100 items per collection
+            if (c.itemIds.length >= MAX_POSTS_PER_COLLECTION) {
+              console.warn(`Collection limit reached (${MAX_POSTS_PER_COLLECTION} items max).`);
+              return c;
+            }
             modified = true;
             return { ...c, itemIds: [itemId, ...c.itemIds] };
           }
@@ -743,35 +772,18 @@ export async function reorderCollectionItems(
       if (!targetCollectionUuid) {
         let q = supabase
           .from('collections')
-          .select('id')
-          .eq('user_id', userId)
-          .eq('tab_type', 'links');
+          .select('id, tab_type')
+          .eq('user_id', userId);
 
         if (isMain) {
-          q = q.eq('is_default', true);
+          q = q.eq('tab_type', 'links').eq('is_default', true);
         } else {
-          q = q.eq('slug', collectionId);
+          q = q.or(`id.eq.${collectionId},slug.eq.${collectionId}`);
         }
 
         const { data: existingCol } = await q.maybeSingle();
         if (existingCol) {
           targetCollectionUuid = existingCol.id;
-        } else {
-          const { data: newCol } = await supabase
-            .from('collections')
-            .insert({
-              user_id: userId,
-              tab_type: 'links',
-              title: isMain ? 'Main' : collectionId,
-              slug: isMain ? 'main' : collectionId,
-              is_default: isMain,
-              icon: isMain ? '🌐' : '📁'
-            })
-            .select('id')
-            .single();
-          if (newCol) {
-            targetCollectionUuid = newCol.id;
-          }
         }
       }
 
@@ -835,17 +847,21 @@ export async function reorderCollectionItems(
 
           if (isMatch) {
             found = true;
-            return { ...c, itemIds: orderedItemIds, tabType: 'links' as const };
+            return {
+              ...c,
+              itemIds: orderedItemIds
+            };
           }
-          return { ...c, tabType: c.tabType || (isLinkCollection(c) ? 'links' : 'posts') };
+          return c;
         });
 
         if (!found) {
+          const isLink = isMain || collectionId.startsWith('col_link_');
           updated.push({
             id: collectionId,
             title: isMain ? 'Main' : collectionId,
-            tabType: 'links',
-            slug: isMain ? 'main' : collectionId,
+            tabType: isLink ? 'links' : 'posts',
+            slug: isLink ? (isMain ? 'main' : collectionId) : undefined,
             isDefault: isMain,
             itemIds: orderedItemIds
           });

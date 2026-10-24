@@ -29,7 +29,10 @@ src/components/profile/
 
 src/components/collections/
 ├── CollectionLensBar.tsx        # Horizontal quick-access stadium pills + modal trigger
-└── AllCollectionsModal.tsx      # Searchable modal displaying all curated presets
+├── AllCollectionsModal.tsx      # 50-slot Pokédex-style collection directory modal
+├── ReorderCollectionModal.tsx   # Visual 100-card post reordering workspace for collection owners
+├── CreateCollectionModal.tsx    # Modal for creating presets with emoji picker and quick-pin toggle
+└── AddToCollectionModal.tsx     # Modal for assigning posts/links to presets with instant checkboxes
 
 src/components/feed/
 ├── PostCard.tsx                 # Timeline post renderer (Standard, Carousel, Board, Link Card, Web Badge)

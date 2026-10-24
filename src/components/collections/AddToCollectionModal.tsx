@@ -47,6 +47,13 @@ export default function AddToCollectionModal({
 
   const handleToggle = async (collection: Collection) => {
     const isCurrentlyIn = selectedIds.has(collection.id);
+
+    // Hard limit: A collection cannot exceed 100 items
+    if (!isCurrentlyIn && collection.itemIds.length >= 100) {
+      alert(`This collection has reached the maximum limit of 100 posts. Please remove an item before adding a new one.`);
+      return;
+    }
+
     const newSelected = new Set(selectedIds);
 
     if (isCurrentlyIn) {
@@ -146,12 +153,13 @@ export default function AddToCollectionModal({
             {collections.length > 0 ? (
               collections.map((col) => {
                 const isChecked = selectedIds.has(col.id);
+                const isFull = col.itemIds.length >= 100 && !isChecked;
                 return (
                   <label
                     key={col.id}
                     onClick={() => handleToggle(col)}
                     className={`w-full p-3.5 flex items-center justify-between text-left transition-colors cursor-pointer select-none ${
-                      isChecked ? 'bg-[#1d9bf0]/5' : 'hover:bg-[#f7f9f9]'
+                      isChecked ? 'bg-[#1d9bf0]/5' : isFull ? 'opacity-60 hover:bg-gray-50' : 'hover:bg-[#f7f9f9]'
                     }`}
                   >
                     <div className="flex items-center gap-3 min-w-0 pr-2">
@@ -161,6 +169,14 @@ export default function AddToCollectionModal({
                       <div className="min-w-0">
                         <div className="font-bold text-xs sm:text-sm text-[#0f1419] flex items-center gap-1.5 truncate">
                           <span className="truncate">{col.title}</span>
+                          <span className="text-[11px] font-normal text-[#536471]">
+                            ({col.itemIds.length}/100)
+                          </span>
+                          {isFull && (
+                            <span className="text-[10px] bg-red-100 text-red-700 font-bold px-1.5 py-0.2 rounded shrink-0">
+                              Full
+                            </span>
+                          )}
                           {col.isPinned && (
                             <span title="Pinned" className="text-amber-500 shrink-0 flex items-center">
                               <Star className="w-3 h-3 fill-amber-500" />
