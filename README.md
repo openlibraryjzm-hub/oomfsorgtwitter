@@ -78,7 +78,8 @@
 │   ├── links.md                        # Linktree-style external accounts portal, 35+ platform registry, & custom logos
 │   ├── navigation.md                   # Global shell geometry, left sidebar registry (7 items), & responsive layout
 │   ├── post-types.md                   # Specification for active post formats & creation guide
-│   └── profile-page.md                 # Profile layout, identity section, 5 tabs, and status routing
+│   ├── profile-page.md                 # Profile layout, identity section, 5 tabs, and status routing
+│   └── tipjar.md                       # Glass Tip Jar system, 3-coin seed trinity, and alt accounts overwrite
 ├── supabase_schema.sql                 # Baseline schema: profiles, blocks, follows tables & RLS policies
 ├── supabase_follows_rpc.sql            # Supabase RPC migration for bidirectional mutual follower queries
 ├── supabase_collections.sql            # Collections & collection_items schema, indexes, and RLS policies

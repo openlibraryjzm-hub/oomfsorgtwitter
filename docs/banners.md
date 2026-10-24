@@ -48,6 +48,8 @@ Header banners are a core component of digital identity on X/Twitter. On `oomfs.
 | [`supabase_banners_storage.sql`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/supabase_banners_storage.sql) | Storage bucket definition and RLS policies for public reads and user-folder scoped writes. |
 | [`supabase_profile_columns.sql`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/supabase_profile_columns.sql) | DDL migration ensuring `banner_url`, `location`, and `website` columns exist on `public.profiles`. |
 | [`src/components/profile/ProfileView.tsx`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/components/profile/ProfileView.tsx) | Profile timeline header rendering, Edit Profile modal banner controls, and schema-resilient profile updates. |
+| [`src/components/profile/CanvasPreview.tsx`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/components/profile/CanvasPreview.tsx) | Collaborative r/place community canvas renderer supporting main banner, miniature, and fullscreen viewports. |
+| [`src/components/profile/FullscreenMediaModal.tsx`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/components/profile/FullscreenMediaModal.tsx) | Fullscreen lightbox with native photo viewing for banners and interactive entry portal for community canvas. |
 | [`src/components/network/UserNetworkView.tsx`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/components/network/UserNetworkView.tsx) | Follower, Following, and OOMFs network directory rendering banners in Cards, Canvas, and Link Wall modes. |
 
 ---

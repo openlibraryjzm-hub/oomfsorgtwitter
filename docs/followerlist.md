@@ -39,13 +39,13 @@ All network subroutes (`/[username]/oomfs`, `/[username]/following`, `/[username
 
 ## 3. Profile Stats Row Integration
 
-On any profile page ([`src/components/profile/ProfileView.tsx`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/components/profile/ProfileView.tsx)), the profile-facing stats row prominently features the **OOMFs** count linking directly to the mutuals route, while the full 3-tab network menu remains active inside the network subroutes:
+On any profile page ([`src/components/profile/ProfileView.tsx`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/components/profile/ProfileView.tsx)), the profile-facing stats row adheres strictly to 1:1 Twitter typography (`text-sm`) showcasing the app's unique **oomfs** counter highlighted in Twitter Blue, followed by **Following** and **Followers** in black with muted gray labels:
 
 | Stat | Destination | Description |
 | :--- | :--- | :--- |
-| **`[N] oomfs`** (Profile Facing) | `/[username]/oomfs` | Mutual followers directory ($A \leftrightarrow B$) |
-| **`[N] Following`** (Network Menu) | `/[username]/following` | Accounts that `@[username]` follows on `oomfs.org` |
-| **`[N] Followers`** (Network Menu) | `/[username]/followers` | Accounts following `@[username]` on `oomfs.org` |
+| **`[N] oomfs`** (Twitter Blue) | `/[username]/oomfs` | Mutual followers directory ($A \leftrightarrow B$) |
+| **`[N] Following`** | `/[username]/following` | Accounts that `@[username]` follows on `oomfs.org` |
+| **`[N] Followers`** | `/[username]/followers` | Accounts following `@[username]` on `oomfs.org` |
 
 ---
 

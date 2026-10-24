@@ -54,29 +54,42 @@ The profile header sits at the top of `ProfileView.tsx` and adheres strictly to 
    - Back button (`←`), user display name, verified checkmark, and active post count.
    - **Top Actions & Dynamic Scroll Swap**:
      - **Persistent "Back to X" Link**: A clean pill button (`View @username on 𝕏`) linking directly to `https://x.com/[username]` in a new tab, clarifying that `oomfs.org` is a complementary profile layer.
-     - **Header Action Icons**: Native circular icon buttons: **`More`** (three dots), **`Filter`** (funnel), and **`Search`** (magnifier, furthest to the right).
+     - **Header Action Icons**: Native circular icon buttons: **`More`** (three dots), **`Canvas / Banner Toggle`** (`Paintbrush` when showing banner, `ImageIcon` when showing canvas; swaps the active header viewport), and **`Search`** (magnifier, furthest to the right).
      - **Dynamic Follow Swap**: When scrolling down past the profile's primary Follow/Following button, the sticky header dynamically swaps the action icon buttons into a compact **`Follow` / `Following`** action pill (when viewing another profile while authenticated). Scrolling back up restores the icon buttons.
      - On own profile (`isSelf`) or when logged out, the action icons persist alongside the X link without swapping.
 
-2. **Banner & Avatar**:
-   - Banner: Height responsive (`h-44 sm:h-52`), 3:1 aspect ratio (`1500×500px`), object-cover with Twitter Light neutral slate fallback (`#cfd9de`).
-   - Avatar: Circular avatar overlapping banner (`-mt-16 sm:-mt-20`). Always run through `formatTwitterAvatar()` to ensure 400×400 HD resolution instead of Twitter's pixelated default `_normal.jpg`.
+2. **Banner & Living Doodle Viewport**:
+   - Main Viewport: Height responsive, 3:1 aspect ratio (`1500×500px`), 100% clean and unobstructed (no dots or overlays).
+   - Dual-Mode: Displays either the user's **Clean Header Banner** or the **Living Doodle Layer** (`CanvasPreview.tsx`), where mutual OOMFs sign, doodle, and place pixel stamps directly over the underlying banner image.
+   - 2 Ways to Swap:
+     1. Horizontal swipe/drag across the main banner (touch-thresholded to protect vertical scroll).
+     2. Dedicated top header toggle button (`Paintbrush` ↔ `Image`).
+   - Lightbox Portal & Attribution: Tapping the main banner opens `FullscreenMediaModal.tsx`. In doodle mode, tapping individual doodles reveals author attribution (`Signed by @username • Verified Mutual OOMF`), with a prominent `[ 🖌️ Sign / Doodle on Banner ]` entry button.
 
-3. **Action Row & Native Edit Profile Modal**:
+3. **Avatar & Glass Tip Jar**:
+   - Avatar: Circular avatar overlapping banner (`-mt-16 sm:-mt-20`). Always run through `formatTwitterAvatar()` to ensure 400×400 HD resolution instead of Twitter's pixelated default `_normal.jpg`.
+   - **Glass Tip Jar (`TipJar.tsx`)**: Realistic glass vessel with a wooden cork stopper that subtly crosses the banner edge (`-mt-4 sm:-mt-5`, $\sim 16\text{px}$–$20\text{px}$ overlap, distinctly less than the avatar). Contains the default 3-Coin Starter Trinity:
+     - 🥇 **The House Tip** (Gold, `@oomfsorg` cat mascot & sparkles)
+     - 🥈 **The Mutual Guilder** (Silver, bidirectional $A \leftrightarrow B$ arrows)
+     - 🥉 **The Lucky Penny** (Copper/Bronze, `★ 1¢` folklore anchor)
+   - Tapping the jar launches **`TipJarModal.tsx`**, presenting the jar, individual coin lore, and direct creator support actions. User alts can overwrite any starter coin.
+
+4. **Action Row & Native Edit Profile Modal**:
    - **`"Ask!"` Auxiliary Pill** (Viewing others' profiles only): Rendered immediately to the left of the primary action button with a custom monochrome shushing cat face (`CatShushIcon`). Hidden when viewing own profile.
    - **Contextual Action Button**:
      - Viewing own profile: **`"Edit profile"`** opens the native 1:1 X edit modal with header banner upload/remove, overlapping avatar, and interactive 1500×500 zoom & pan crop modal (`BannerCropModal.tsx`).
      - Viewing another profile (logged out): **`"Connect X"`** triggers Twitter OAuth 2.0 PKCE.
      - Viewing another profile (logged in): **`"Follow" / "Following"`** toggle.
 
-4. **User Details & Metadata**:
+5. **User Details & Metadata**:
    - Display name + Verified badge.
    - Handle (`@username`).
    - Bio: Multi-line text preserving whitespace. **Crucial Rule**: Always use nullish coalescing (`dbUser.bio !== null && dbUser.bio !== undefined ? dbUser.bio : fallback`) to prevent empty strings or brief bios from falling back to default text.
-   - **Focused Stats & Actions Row**:
-     - Prominently showcases **`[N] oomfs`** (`#1d9bf0`, enlarged font weight and size) linking directly to the mutuals directory (`/[username]/oomfs`).
-     - Profile-facing `Following` and `Followers` counters are removed to focus exclusively on mutual OOMFs.
-     - Features auxiliary native capsules to the right: **`Canvas`** (with Paintbrush icon, linking to the user's collaborative canvas) and **`Tip`** (with `$` DollarSign icon for direct support).
+   - **1:1 X Stats Row**:
+     - Follows authentic Twitter/X standard sizing (`text-sm`) ordered left-to-right:
+       - **`[N] oomfs`** (`font-bold text-[#1d9bf0]` count + `text-[#1d9bf0]` label) highlighted in Twitter Blue, linking to `/[username]/oomfs`.
+       - **`[N] Following`** (`font-bold text-[#0f1419]` count + `text-[#536471]` label) linking to `/[username]/following`.
+       - **`[N] Followers`** (`font-bold text-[#0f1419]` count + `text-[#536471]` label) linking to `/[username]/followers`.
 
 ---
 

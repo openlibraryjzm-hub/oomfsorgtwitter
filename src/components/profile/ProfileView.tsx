@@ -38,6 +38,10 @@ import {
 } from '@/lib/mockData';
 import PostCard from '@/components/feed/PostCard';
 import CommentCard from '@/components/feed/CommentCard';
+import CanvasPreview from './CanvasPreview';
+import FullscreenMediaModal from './FullscreenMediaModal';
+import TipJar from './TipJar';
+import TipJarModal from './TipJarModal';
 import PostComposer from '@/components/feed/PostComposer';
 import LinksPortal from '@/components/links/LinksPortal';
 import ReorderCollectionModal from '@/components/collections/ReorderCollectionModal';
@@ -75,7 +79,7 @@ function XLogo({ className = "w-3.5 h-3.5" }: { className?: string }) {
   );
 }
 
-function CatShushIcon({ className = "w-4 h-4" }: { className?: string }) {
+export function CatShushIcon({ className = "w-4 h-4" }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -340,6 +344,85 @@ export default function ProfileView({
   const [tempCropSrc, setTempCropSrc] = useState<string | null>(null);
   const bannerFileInputRef = useRef<HTMLInputElement>(null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  // Header Banner & Canvas Viewport Mode & Fullscreen Lightbox State
+  const [headerMode, setHeaderMode] = useState<'banner' | 'canvas'>('banner');
+  const [fullscreenMedia, setFullscreenMedia] = useState<'banner' | 'canvas' | null>(null);
+  const [tipJarModalOpen, setTipJarModalOpen] = useState(false);
+
+  // Gesture detection for swiping/dragging between Banner and Canvas
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const isSwipingRef = useRef(false);
+  const mouseStartRef = useRef<{ x: number; y: number } | null>(null);
+  const mouseDraggedRef = useRef(false);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+    isSwipingRef.current = false;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartRef.current) return;
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - touchStartRef.current.x;
+    const deltaY = touch.clientY - touchStartRef.current.y;
+    if (Math.abs(deltaX) > 15 && Math.abs(deltaX) > Math.abs(deltaY)) {
+      isSwipingRef.current = true;
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStartRef.current) return;
+    const touch = e.changedTouches[0];
+    const deltaX = touch.clientX - touchStartRef.current.x;
+    const deltaY = touch.clientY - touchStartRef.current.y;
+    const duration = Date.now() - touchStartRef.current.time;
+
+    // Trigger swap if swipe exceeds 40px horizontally and was fast
+    if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY) && duration < 800) {
+      setHeaderMode((prev) => (prev === 'banner' ? 'canvas' : 'banner'));
+    }
+
+    touchStartRef.current = null;
+    setTimeout(() => {
+      isSwipingRef.current = false;
+    }, 100);
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    mouseStartRef.current = { x: e.clientX, y: e.clientY };
+    mouseDraggedRef.current = false;
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!mouseStartRef.current) return;
+    const deltaX = e.clientX - mouseStartRef.current.x;
+    if (Math.abs(deltaX) > 10) {
+      mouseDraggedRef.current = true;
+    }
+  };
+
+  const handleMouseUp = (e: React.MouseEvent) => {
+    if (!mouseStartRef.current) return;
+    const deltaX = e.clientX - mouseStartRef.current.x;
+    if (Math.abs(deltaX) > 50) {
+      setHeaderMode((prev) => (prev === 'banner' ? 'canvas' : 'banner'));
+    }
+    mouseStartRef.current = null;
+    setTimeout(() => {
+      mouseDraggedRef.current = false;
+    }, 100);
+  };
+
+  const handleMainBannerClick = () => {
+    if (isSwipingRef.current || mouseDraggedRef.current) return;
+    setFullscreenMedia(headerMode);
+  };
+
+  const handleToggleHeaderMode = () => {
+    setHeaderMode((prev) => (prev === 'banner' ? 'canvas' : 'banner'));
+  };
 
   // Banner file selection and crop handlers
   const handleBannerFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1056,11 +1139,16 @@ export default function ProfileView({
                 </button>
                 <button
                   type="button"
-                  aria-label="Filter"
-                  title="Filter"
+                  onClick={handleToggleHeaderMode}
+                  aria-label={headerMode === 'banner' ? 'Show OOMF Doodles' : 'Show Clean Banner'}
+                  title={headerMode === 'banner' ? 'Show OOMF Doodles' : 'Show Clean Banner'}
                   className="p-2 hover:bg-[#0f1419]/10 rounded-full text-[#0f1419] transition-colors cursor-pointer"
                 >
-                  <Filter className="w-5 h-5" />
+                  {headerMode === 'banner' ? (
+                    <Paintbrush className="w-5 h-5 text-[#1d9bf0]" />
+                  ) : (
+                    <ImageIcon className="w-5 h-5 text-[#1d9bf0]" />
+                  )}
                 </button>
                 <button
                   type="button"
@@ -1076,43 +1164,72 @@ export default function ProfileView({
         </div>
       </header>
 
-      {/* Banner: 1:1 X Standard 3:1 Aspect Ratio (1500x500) */}
-      <div className="w-full aspect-[3/1] bg-[#cfd9de] relative overflow-hidden">
-        {userProfile.banner ? (
-          <img
-            src={userProfile.banner}
-            alt={`${userProfile.name}'s banner`}
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).style.display = 'none';
-            }}
-          />
+      {/* Banner & Doodle Viewport: 1:1 X Standard 3:1 Aspect Ratio (1500x500) */}
+      <div 
+        onClick={handleMainBannerClick}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        title={headerMode === 'banner' ? 'Tap to view banner (Swipe/drag to view OOMF Doodles)' : 'Tap to sign banner (Swipe/drag to view Clean Banner)'}
+        className="w-full aspect-[3/1] bg-[#cfd9de] relative overflow-hidden select-none cursor-pointer transition-opacity duration-300"
+      >
+        {headerMode === 'banner' ? (
+          userProfile.banner ? (
+            <img
+              src={userProfile.banner}
+              alt={`${userProfile.name}'s banner`}
+              className="w-full h-full object-cover pointer-events-none"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-r from-[#cfd9de] via-[#d5dde2] to-[#cfd9de]" />
+          )
         ) : (
-          <div className="w-full h-full bg-gradient-to-r from-[#cfd9de] via-[#d5dde2] to-[#cfd9de]" />
+          <CanvasPreview 
+            username={userProfile.username} 
+            bannerUrl={userProfile.banner}
+            mode="main" 
+            className="w-full h-full pointer-events-none" 
+          />
         )}
       </div>
 
       {/* Avatar & Action Button Row */}
       <div className="px-4 relative flex justify-between items-end pb-3">
-        {/* Avatar */}
-        <div className="relative -mt-16 sm:-mt-20">
-          <img
-            src={formatTwitterAvatar(userProfile.avatar)}
-            alt={userProfile.name}
-            className="w-28 h-28 sm:w-36 sm:h-36 rounded-full border-4 border-white object-cover bg-white shadow-md"
+        {/* Avatar & Glass Tip Jar */}
+        <div className="flex items-end gap-2.5 sm:gap-3 min-w-0">
+          {/* Avatar (top half overlaps banner, bottom half in white area) */}
+          <div className="relative -mt-16 sm:-mt-20 shrink-0">
+            <img
+              src={formatTwitterAvatar(userProfile.avatar)}
+              alt={userProfile.name}
+              className="w-28 h-28 sm:w-36 sm:h-36 rounded-full border-4 border-white object-cover bg-white shadow-md"
+            />
+          </div>
+
+          {/* Glass Tip Jar (Subtly crosses banner edge by ~16-20px, less than avatar) */}
+          <TipJar
+            username={userProfile.username}
+            name={userProfile.name}
+            onClick={() => setTipJarModalOpen(true)}
           />
         </div>
 
         {/* Action buttons */}
-        <div ref={followButtonRef} className="flex items-center gap-2 mb-2">
+        <div ref={followButtonRef} className="flex items-center gap-1.5 sm:gap-2 mb-2 shrink-0">
           {/* Ask! button (only visible when viewing another user's profile) */}
           {!isSelf && (
             <button
               type="button"
-              className="border border-[#cfd9de] hover:bg-[#0f1419]/5 text-[#0f1419] font-bold text-sm px-4 py-2 rounded-full transition-colors flex items-center gap-1.5 cursor-pointer"
+              className="border border-[#cfd9de] hover:bg-[#0f1419]/5 text-[#0f1419] font-bold text-xs sm:text-sm px-3 sm:px-4 py-2 rounded-full transition-colors flex items-center gap-1.5 cursor-pointer"
               title={`Ask @${userProfile.username}`}
             >
-              <CatShushIcon className="w-4 h-4 text-[#0f1419]" />
+              <CatShushIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#0f1419]" />
               <span>Ask!</span>
             </button>
           )}
@@ -1146,7 +1263,7 @@ export default function ProfileView({
               onMouseEnter={() => setIsHoveringFollow(true)}
               onMouseLeave={() => setIsHoveringFollow(false)}
               disabled={isFollowLoading}
-              className={`font-bold text-sm min-w-[105px] py-2 px-5 rounded-full transition-all cursor-pointer ${
+              className={`font-bold text-sm min-w-[95px] sm:min-w-[105px] py-2 px-4 sm:px-5 rounded-full transition-all cursor-pointer ${
                 isFollowing
                   ? isHoveringFollow
                     ? 'border border-red-200 bg-red-50 text-red-600'
@@ -1194,35 +1311,34 @@ export default function ProfileView({
           </p>
         )}
 
-        {/* Stats & Actions Row: Focused on OOMFs with auxiliary Canvas and Tip action buttons */}
-        <div className="flex items-center gap-2.5 pt-1 flex-wrap">
+        {/* 1:1 X Standard Stats Row: oomfs, Following, Followers */}
+        <div className="flex items-center gap-4 sm:gap-5 pt-1 flex-wrap text-sm">
+          {/* OOMFs (Highlighted in Twitter Blue) */}
           <Link 
             href={`/${userProfile.username}/oomfs`}
-            className="flex items-center gap-1.5 hover:underline cursor-pointer mr-1"
+            className="flex items-center gap-1 hover:underline cursor-pointer"
           >
-            <span className="font-extrabold text-base text-[#1d9bf0]">{userProfile.oomfsCount}</span>
-            <span className="font-semibold text-sm text-[#1d9bf0]">oomfs</span>
+            <span className="font-bold text-[#1d9bf0]">{userProfile.oomfsCount ?? 0}</span>
+            <span className="text-[#1d9bf0] font-medium">oomfs</span>
           </Link>
 
-          {/* Canvas Button (placeholder) */}
-          <button
-            type="button"
-            className="border border-[#cfd9de] hover:bg-[#0f1419]/5 text-[#0f1419] font-bold text-xs py-1 px-3 rounded-full flex items-center gap-1.5 transition-colors cursor-pointer"
-            title="Canvas"
+          {/* Following */}
+          <Link 
+            href={`/${userProfile.username}/following`}
+            className="flex items-center gap-1 hover:underline cursor-pointer"
           >
-            <Paintbrush className="w-3.5 h-3.5 text-[#536471]" />
-            <span>Canvas</span>
-          </button>
+            <span className="font-bold text-[#0f1419]">{userProfile.followingCount ?? 0}</span>
+            <span className="text-[#536471]">Following</span>
+          </Link>
 
-          {/* Tip Button (placeholder) */}
-          <button
-            type="button"
-            className="border border-[#cfd9de] hover:bg-[#0f1419]/5 text-[#0f1419] font-bold text-xs py-1 px-3 rounded-full flex items-center gap-1.5 transition-colors cursor-pointer"
-            title="Tip"
+          {/* Followers */}
+          <Link 
+            href={`/${userProfile.username}/followers`}
+            className="flex items-center gap-1 hover:underline cursor-pointer"
           >
-            <DollarSign className="w-3.5 h-3.5 text-[#536471]" />
-            <span>Tip</span>
-          </button>
+            <span className="font-bold text-[#0f1419]">{userProfile.followersCount ?? 0}</span>
+            <span className="text-[#536471]">Followers</span>
+          </Link>
         </div>
       </div>
 
@@ -1940,6 +2056,24 @@ export default function ProfileView({
           username={userProfile.username}
         />
       )}
+
+      {/* Fullscreen Banner / Canvas Lightbox Modal */}
+      <FullscreenMediaModal
+        isOpen={Boolean(fullscreenMedia)}
+        type={fullscreenMedia}
+        bannerUrl={userProfile.banner}
+        name={userProfile.name}
+        username={userProfile.username}
+        onClose={() => setFullscreenMedia(null)}
+      />
+
+      {/* Glass Tip Jar Modal */}
+      <TipJarModal
+        isOpen={tipJarModalOpen}
+        name={userProfile.name}
+        username={userProfile.username}
+        onClose={() => setTipJarModalOpen(false)}
+      />
     </div>
   );
 }
