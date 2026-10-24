@@ -7,6 +7,8 @@ export interface BioLink {
   clicks?: number;
   icon?: string;
   image?: string;
+  customIcon?: string;
+  actionLabel?: string;
 }
 
 export interface User {

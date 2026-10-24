@@ -21,20 +21,21 @@
    * 📝 **Standard Post (`standard`)**: Native 1:1 timeline tweet text post. Threadable, likeable, repostable.
    * 🎞️ **Carousel (`carousel`)**: Uncapped horizontal photo strip (`>4` slides) with a universal small header bar, natural portrait/landscape aspect ratio preservation (no forced square crops), desktop chevrons, and individual bottom overlay captions.
    * 📌 **Board (`board`)**: Pinterest-style visual curation boards (`3+` images). Renders as a 3-image preview on the profile timeline (`50%` left half, two `25%` stacked right images with a `+N` badge) and expands into a full **2-column Pinterest masonry grid** in the dedicated thread view (`/[username]/status/[id]`).
-   * 🔗 **Bio Link Card (`link_card`)**: High-visibility link showcase button with title, domain badge, description, and direct visit action. Showcased on the profile **Links** tab.
+   * 🔗 **Bio Link Card (`link_card`)**: High-visibility link showcase button with title, domain badge, description, and direct visit action. Can be embedded directly within the timeline as a post card.
    * 🏷️ **Web Badge (`badge`)**: Early-web 88×31 retro button badges. Features a dual-mode creation engine (Color gradient presets or 3x HiDPI PNG image uploads) with universal underneath micro-labels. Aggregates into the **Badge Wall** at the top of the **Links** tab.
    * 💬 **Profile Comments (`comment`)**: 1:1 X/Twitter-native guestbook comments supporting attached images (up to 4 photos), rich interaction suite (Reply, Repost, Like, Share), and full thread navigation (`/[author]/status/[id]`).
 
    *Detailed post format specifications and extension guides are available in [Post Types Context Doc](docs/post-types.md) and [Web Badges Context Doc](docs/badges.md).*
 
-4. **The 4 Distinct Profile Tabs & Curated Collections:**  
-   User profiles organize content across 4 clean tabs ordered left-to-right:
-   1. **Posts** (default): Actual posts (Standard, Carousel, Board). Supports full thread navigation (`/[username]/status/[id]`) and custom author-curated collection lenses (`Posts ▾`).
-   2. **Comments**: Cross-profile guestbook and conversational threads with up to 4 image attachments, "Replying to @username" context, and interactive Twitter cards.
-   3. **Links**: Linktree-style showcase of permanent bio links, link cards, Badge Wall, and curated link presets (`Links ▾`).
-   4. **Likes**: Posts liked by the user.
+4. **The 5 Distinct Profile Tabs:**  
+   User profiles organize content across 5 clean tabs ordered left-to-right:
+   1. **Posts** (default): Master chronological timeline displaying actual posts (Standard, Carousel, Board, Bio Link Card, Web Badge). Preserves clean 1:1 Twitter view without secondary stadium bars. When filtered by an active preset, displays a clean single-line breadcrumb (`← All posts` / `[Icon] [Title]` / `Reorder`) without heavy toolbars.
+   2. **Presets**: Dedicated in-situ switchboard channel directory and master feed launcher. Houses the author's curated post collections/playlists in a responsive 2-column grid. Clicking any preset launches the Posts tab filtered to that collection.
+   3. **Links**: Linktree-style external accounts and destination portal (`LinksPortal.tsx`) for the creator's personal accounts (Discord, Twitch, Steam, X, YouTube, GitHub, Spotify, etc.). Features a 35+ platform vector icon registry, custom logo uploads, domain auto-detection, and inline reordering.
+   4. **Comments**: 1:1 X/Twitter-native profile guestbook and conversational threads with up to 4 image attachments, "Replying to @username" context, and interactive Twitter cards.
+   5. **Likes**: Dedicated feed of posts liked by the user.
 
-   *Detailed profile layout rules and routing are available in [Profile Page Context Doc](docs/profile-page.md) and [Collections Context Doc](docs/collections.md).*
+   *Detailed profile layout rules and routing are available in [Profile Page Context Doc](docs/profile-page.md), [Collections Context Doc](docs/collections.md), and [Links Context Doc](docs/links.md).*
 
 5. **"Profile-First" Strategy (Overcoming Cold Start):**  
    * We do **not** focus on global feeds, algorithmic discovery, or notifications yet.
@@ -71,12 +72,13 @@
 │   ├── badges.md                       # 88×31 Web Badge system, 3x HiDPI canvas, & Badge Wall gallery
 │   ├── banners.md                      # 1:1 X Profile Banner system, 1500x500 crop engine, & cross-view parity
 │   ├── collections.md                  # Curated collections & preset lenses architecture and data models
+│   ├── comments.md                     # Profile comments guestbook, 1-4 photo grid, and cross-profile RLS
 │   ├── composer.md                     # Post composer architecture, flush builders, & media compression
 │   ├── followerlist.md                 # Network directory architecture (OOMFs, Following, Followers) & 4 view modes
-│   ├── links.md                        # Link Pages architecture, custom slugs, and drag-and-drop reordering
+│   ├── links.md                        # Linktree-style external accounts portal, 35+ platform registry, & custom logos
 │   ├── navigation.md                   # Global shell geometry, left sidebar registry (7 items), & responsive layout
 │   ├── post-types.md                   # Specification for active post formats & creation guide
-│   └── profile-page.md                 # Profile layout, identity section, 4 tabs, and status routing
+│   └── profile-page.md                 # Profile layout, identity section, 5 tabs, and status routing
 ├── supabase_schema.sql                 # Baseline schema: profiles, blocks, follows tables & RLS policies
 ├── supabase_follows_rpc.sql            # Supabase RPC migration for bidirectional mutual follower queries
 ├── supabase_collections.sql            # Collections & collection_items schema, indexes, and RLS policies
@@ -88,6 +90,8 @@
 │   ├── app/
 │   │   ├── [username]/
 │   │   │   ├── page.tsx                # Dynamic profile route (SSR with Supabase fetch + mock fallback)
+│   │   │   ├── presets/page.tsx        # Dedicated Presets switchboard route
+│   │   │   ├── links/page.tsx          # Dedicated Links portal route
 │   │   │   ├── followers/page.tsx      # In-app Followers list with mutual badges
 │   │   │   ├── following/page.tsx      # In-app Following list with mutual badges
 │   │   │   ├── oomfs/page.tsx          # Dedicated mutuals directory (A ↔ B)
@@ -110,13 +114,14 @@
 │   │   │   ├── RightSidebar.tsx        # 1:1 Right spacer column (350px) for layout geometry + footer links
 │   │   │   └── MainLayout.tsx          # 1:1 X.com layout shell (max-w-[1265px]) + compose modal
 │   │   ├── profile/
-│   │   │   ├── ProfileView.tsx         # Core profile view, 4 tabs, Edit Profile modal, composer, Badge Wall
+│   │   │   ├── ProfileView.tsx         # Core profile view, 5 tabs, Edit Profile modal, composer, Badge Wall
 │   │   │   └── BannerCropModal.tsx     # 1:1 X 1500x500 banner crop viewfinder, zoom slider, & wheel zoom
 │   │   ├── collections/
-│   │   │   ├── CollectionLensBar.tsx   # Quick-access stadium pills + modal trigger
-│   │   │   ├── AllCollectionsModal.tsx # Searchable modal displaying all curated presets + drag-and-drop reordering
-│   │   │   ├── CreateCollectionModal.tsx # Modal to create custom post/link preset collections
+│   │   │   ├── ReorderCollectionModal.tsx # Visual 100-card post reordering workspace for collection owners
+│   │   │   ├── CreateCollectionModal.tsx # Modal to create custom post preset collections
 │   │   │   └── AddToCollectionModal.tsx # Modal to assign existing blocks/posts to curated presets
+│   │   ├── links/
+│   │   │   └── LinksPortal.tsx         # Linktree-style vertical stack for external user accounts (35+ platforms, custom logos)
 │   │   ├── network/
 │   │   │   ├── FollowButton.tsx        # Dynamic optimistic Follow/Unfollow action pill
 │   │   │   └── UserNetworkView.tsx     # 1:1 network directory (OOMFs, Following, Followers) & 4 display modes
@@ -131,7 +136,7 @@
 │   │   ├── bannerStorage.ts            # Supabase Storage bucket uploader with resilient dataUrl fallback
 │   │   ├── collections.ts              # Supabase & localStorage dual-persistence manager for collections
 │   │   ├── follows.ts                  # Client follow toggle & network directory resolver
-│   │   ├── mockData.ts                 # Offline mock accounts & sample content for prototyping
+│   │   ├── mockData.ts                 # Offline mock accounts, bio links, sample content for prototyping
 │   │   ├── postStore.ts                # Client runtime store for newly created session posts
 │   │   ├── utils.ts                    # formatTwitterAvatar() (400x400 HD upscaler)
 │   │   └── supabase/
@@ -222,7 +227,7 @@ When onboarding onto this codebase, remember these crucial implementation detail
    When using Next.js 16 with `cacheComponents` enabled, components invoking dynamic client hooks like `usePathname()` (such as `LeftSidebar.tsx`) must be wrapped in `<Suspense>` within `MainLayout.tsx` to prevent build-time prerender bailout errors on dynamic routes.
 
 6. **Post Drafting & Global Reactivity:**  
-   Submitting posts via [`PostComposer.tsx`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/components/feed/PostComposer.tsx) persists records to Supabase `public.blocks` (for authenticated users), caches in [`postStore.ts`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/lib/postStore.ts), and emits the `oomfs:post-created` window event so [`ProfileView.tsx`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/components/profile/ProfileView.tsx) immediately updates without full page reloads.
+   Submitting posts via [`PostComposer.tsx`](src/components/feed/PostComposer.tsx) persists records to Supabase `public.blocks` (for authenticated users), caches in [`postStore.ts`](src/lib/postStore.ts), and emits the `oomfs:post-created` window event so [`ProfileView.tsx`](src/components/profile/ProfileView.tsx) immediately updates without full page reloads.
 
 ---
 
@@ -246,12 +251,14 @@ npm run build
 * [x] HD Avatar resolution upscaling (`_400x400`)
 * [x] 1:1 X Profile Banners (1500×500 interactive crop engine, Supabase Storage, and Cards view parity)
 * [x] Twitter bio extraction and native "Edit profile" modal persistence
-* [x] 4 Distinct Profile Tabs: Posts, Comments (flat guestbook), Links, Likes
+* [x] 5 Distinct Profile Tabs: Posts, Presets, Links (Linktree portal), Comments (flat guestbook), Likes
 * [x] Thread route (`/[username]/status/[id]`) with replies composer
 * [x] Custom Post Formats: Uncapped Photo Carousel & Pinterest-style Board
 * [x] Board Timeline 3-image preview + Thread 2-column masonry grid expansion
 * [x] Unified Post Composer with local file upload compression & sample presets
 * [x] Follow / Unfollow button wired to `public.follows`
 * [x] Real-time mutual follower count calculation (SQL view or RPC)
+* [x] Dedicated Presets tab with 1-line mobile-first breadcrumb navigation
+* [x] Linktree-style external accounts portal (`LinksPortal.tsx`) with 35+ platform registry & custom logos
 * [ ] Custom link click tracking / analytics for bio links
 * [ ] Dynamic Open Graph (OG) image generation for Twitter Cards (`oomfs.org/[username]`)

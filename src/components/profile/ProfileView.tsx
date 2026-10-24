@@ -10,7 +10,6 @@ import {
   Plus, 
   X,
   LogIn,
-  ChevronDown,
   Filter,
   Search,
   Paintbrush,
@@ -22,7 +21,8 @@ import {
   GripVertical,
   Camera,
   Layers,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Link2
 } from 'lucide-react';
 import { 
   User, 
@@ -39,8 +39,7 @@ import {
 import PostCard from '@/components/feed/PostCard';
 import CommentCard from '@/components/feed/CommentCard';
 import PostComposer from '@/components/feed/PostComposer';
-import CollectionLensBar from '@/components/collections/CollectionLensBar';
-import AllCollectionsModal from '@/components/collections/AllCollectionsModal';
+import LinksPortal from '@/components/links/LinksPortal';
 import ReorderCollectionModal from '@/components/collections/ReorderCollectionModal';
 import CreateCollectionModal from '@/components/collections/CreateCollectionModal';
 import AddToCollectionModal from '@/components/collections/AddToCollectionModal';
@@ -65,7 +64,7 @@ import {
 
 interface ProfileViewProps {
   user: User;
-  initialTab?: 'posts' | 'comments' | 'links' | 'likes';
+  initialTab?: 'posts' | 'presets' | 'links' | 'comments' | 'likes';
 }
 
 function XLogo({ className = "w-3.5 h-3.5" }: { className?: string }) {
@@ -119,8 +118,8 @@ export default function ProfileView({
   const { user: authUser, profile: authProfile, signInWithTwitter, refreshProfile } = useAuth();
   const supabase = createClient();
 
-  // 4 tabs requested left-to-right: 1. Posts (default), 2. Comments, 3. Links (Switchboard), 4. Likes
-  const [activeTab, setActiveTab] = useState<'posts' | 'comments' | 'links' | 'likes'>(initialTab);
+  // 5 tabs requested left-to-right: 1. Posts (default), 2. Presets, 3. Links, 4. Comments, 5. Likes
+  const [activeTab, setActiveTab] = useState<'posts' | 'presets' | 'links' | 'comments' | 'likes'>(initialTab);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isMutual, setIsMutual] = useState(false);
   const [followsYou, setFollowsYou] = useState(false);
@@ -143,9 +142,7 @@ export default function ProfileView({
     return isDemoProfile ? MOCK_COLLECTIONS : [];
   });
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
-  const [allCollectionsModalOpen, setAllCollectionsModalOpen] = useState(false);
   const [reorderTargetCollection, setReorderTargetCollection] = useState<Collection | null>(null);
-  const [showPostCollections, setShowPostCollections] = useState(false);
 
   // Item assignment & collection creation modals
   const [manageItem, setManageItem] = useState<{
@@ -156,9 +153,6 @@ export default function ProfileView({
 
   const handleSelectPostCollection = (id: string | null) => {
     setActiveCollectionId(id);
-    if (id !== null) {
-      setShowPostCollections(true);
-    }
   };
 
   // Check if viewing own profile
@@ -255,7 +249,6 @@ export default function ProfileView({
   const handleCreatedCollection = (newCol: Collection) => {
     setCollections((prev) => [newCol, ...prev]);
     setActiveCollectionId(newCol.id);
-    setShowPostCollections(true);
   };
 
   // Sticky header scroll detection & action state
@@ -1003,9 +996,18 @@ export default function ProfileView({
                 <CheckCircle2 className="w-4 h-4 text-[#1d9bf0] fill-[#1d9bf0] text-white shrink-0" />
               )}
             </h1>
-            <span className="text-xs text-[#536471] truncate">
-              {activeCollectionId ? `${timelinePosts.length} of ${allTimelinePosts.length}` : allTimelinePosts.length} Posts
-            </span>
+            {activeCollectionId ? (
+              <div className="flex items-center gap-1.5 text-xs truncate">
+                <span className="font-bold text-[#1d9bf0] truncate max-w-[140px] sm:max-w-[200px]">
+                  {collections.find(c => c.id === activeCollectionId)?.title || 'Preset'}
+                </span>
+                <span className="text-[#536471]">• {timelinePosts.length} posts</span>
+              </div>
+            ) : (
+              <span className="text-xs text-[#536471] truncate">
+                {allTimelinePosts.length} Posts
+              </span>
+            )}
           </div>
         </div>
 
@@ -1249,20 +1251,14 @@ export default function ProfileView({
         </div>
       )}
 
-      {/* 4 TABS BAR: Posts (1st), Comments (2nd), Links (3rd - Switchboard), Likes (4th) */}
+      {/* 5 TABS BAR: Posts (1st), Presets (2nd), Links (3rd), Comments (4th), Likes (5th) */}
       <div className="flex border-b border-[#eff3f4] mt-4 font-medium text-sm text-[#536471]">
         {/* 1. Posts */}
         <button
           onClick={() => {
-            if (activeTab === 'posts') {
-              if (collections.length > 0 || isSelf) {
-                setShowPostCollections(prev => !prev);
-              }
-            } else {
-              setActiveTab('posts');
-              if (typeof window !== 'undefined') {
-                window.history.replaceState(null, '', `/${userProfile.username}`);
-              }
+            setActiveTab('posts');
+            if (typeof window !== 'undefined') {
+              window.history.replaceState(null, '', `/${userProfile.username}`);
             }
           }}
           className={`flex-1 py-3.5 text-center relative hover:bg-[#f7f9f9] transition-colors font-bold cursor-pointer ${
@@ -1271,36 +1267,36 @@ export default function ProfileView({
         >
           <div className="flex items-center justify-center gap-1.5">
             <span>Posts</span>
-            {activeTab === 'posts' && (collections.length > 0 || isSelf) && (
-              <ChevronDown 
-                className={`w-3.5 h-3.5 text-[#536471] transition-transform duration-200 ${
-                  showPostCollections ? 'rotate-180 text-[#1d9bf0]' : ''
-                }`}
-              />
-            )}
             {activeCollectionId && (
-              <span className="w-1.5 h-1.5 rounded-full bg-[#1d9bf0] shrink-0" title="Preset collection active" />
+              <span className="w-1.5 h-1.5 rounded-full bg-[#1d9bf0] shrink-0" title="Preset active" />
             )}
           </div>
           {activeTab === 'posts' && (
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-1 bg-[#1d9bf0] rounded-full" />
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-14 sm:w-16 h-1 bg-[#1d9bf0] rounded-full" />
           )}
         </button>
 
-        {/* 2. Comments */}
+        {/* 2. Presets */}
         <button
-          onClick={() => setActiveTab('comments')}
+          onClick={() => {
+            setActiveTab('presets');
+            if (typeof window !== 'undefined') {
+              window.history.replaceState(null, '', `/${userProfile.username}/presets`);
+            }
+          }}
           className={`flex-1 py-3.5 text-center relative hover:bg-[#f7f9f9] transition-colors font-bold cursor-pointer ${
-            activeTab === 'comments' ? 'text-[#0f1419]' : ''
+            activeTab === 'presets' ? 'text-[#0f1419]' : ''
           }`}
         >
-          Comments
-          {activeTab === 'comments' && (
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-20 h-1 bg-[#1d9bf0] rounded-full" />
+          <div className="flex items-center justify-center gap-1.5">
+            <span>Presets</span>
+          </div>
+          {activeTab === 'presets' && (
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-14 sm:w-16 h-1 bg-[#1d9bf0] rounded-full" />
           )}
         </button>
 
-        {/* 3. Links (Switchboard) */}
+        {/* 3. Links */}
         <button
           onClick={() => {
             setActiveTab('links');
@@ -1316,11 +1312,24 @@ export default function ProfileView({
             <span>Links</span>
           </div>
           {activeTab === 'links' && (
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-1 bg-[#1d9bf0] rounded-full" />
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 sm:w-16 h-1 bg-[#1d9bf0] rounded-full" />
           )}
         </button>
 
-        {/* 4. Likes */}
+        {/* 4. Comments */}
+        <button
+          onClick={() => setActiveTab('comments')}
+          className={`flex-1 py-3.5 text-center relative hover:bg-[#f7f9f9] transition-colors font-bold cursor-pointer ${
+            activeTab === 'comments' ? 'text-[#0f1419]' : ''
+          }`}
+        >
+          Comments
+          {activeTab === 'comments' && (
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-16 sm:w-20 h-1 bg-[#1d9bf0] rounded-full" />
+          )}
+        </button>
+
+        {/* 5. Likes */}
         <button
           onClick={() => setActiveTab('likes')}
           className={`flex-1 py-3.5 text-center relative hover:bg-[#f7f9f9] transition-colors font-bold cursor-pointer ${
@@ -1329,7 +1338,7 @@ export default function ProfileView({
         >
           Likes
           {activeTab === 'likes' && (
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-1 bg-[#1d9bf0] rounded-full" />
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 sm:w-16 h-1 bg-[#1d9bf0] rounded-full" />
           )}
         </button>
       </div>
@@ -1339,61 +1348,39 @@ export default function ProfileView({
         {/* 1. POSTS TAB */}
         {activeTab === 'posts' && (
           <div>
-            {/* Secondary Row: Curated Collection Lens Bar (Hidden by default, toggle by clicking Posts tab) */}
-            {showPostCollections && (
-              <CollectionLensBar
-                collections={collections}
-                activeCollectionId={activeCollectionId}
-                onSelectCollection={handleSelectPostCollection}
-                onOpenAllModal={() => setAllCollectionsModalOpen(true)}
-                totalCount={allTimelinePosts.length}
-                isSelf={isSelf}
-                onCreateCollection={() => setCreateCollectionTab('posts')}
-              />
-            )}
-
-            {/* Active Lens Indicator Banner if filtered */}
+            {/* Minimalist Breadcrumb / Clear Indicator when a preset is active */}
             {activeCollectionId && (() => {
               const activeCol = collections.find((c) => c.id === activeCollectionId);
-              return activeCol ? (
-                <div className="flex items-center justify-between px-4 py-2 bg-blue-50/60 border-b border-blue-100/80 text-xs text-[#0f1419]">
-                  <div className="flex items-center gap-1.5 truncate">
-                    <span className="text-sm">{activeCol.icon || '📁'}</span>
-                    <span className="font-semibold text-blue-950">Viewing collection:</span>
-                    <span className="font-bold text-[#1d9bf0] truncate">{activeCol.title}</span>
-                    <span className="text-gray-500 font-medium">({timelinePosts.length} posts in custom order)</span>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0 ml-2">
+              if (!activeCol) return null;
+              return (
+                <div className="flex items-center justify-between px-4 py-2 border-b border-[#eff3f4] text-xs bg-[#f7f9f9]/70">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectPostCollection(null)}
+                    className="flex items-center gap-1.5 text-[#1d9bf0] font-bold hover:underline cursor-pointer"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>All posts</span>
+                  </button>
+
+                  <div className="flex items-center gap-3">
+                    <span className="text-[#536471] font-medium truncate max-w-[140px] sm:max-w-xs">
+                      {activeCol.icon || '📁'} {activeCol.title}
+                    </span>
                     {isSelf && (
                       <button
                         type="button"
                         onClick={() => setReorderTargetCollection(activeCol)}
-                        className="px-2.5 py-1 bg-white hover:bg-blue-50 text-[#1d9bf0] border border-blue-200 rounded-full font-bold flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
+                        className="text-[#1d9bf0] font-bold hover:underline cursor-pointer flex items-center gap-1"
                         title="Reorder posts in this collection"
                       >
                         <ArrowUpDown className="w-3 h-3" />
                         <span>Reorder</span>
                       </button>
                     )}
-                    {!showPostCollections && (
-                      <button
-                        type="button"
-                        onClick={() => setShowPostCollections(true)}
-                        className="text-xs font-semibold text-[#1d9bf0] hover:underline cursor-pointer"
-                      >
-                        Change preset
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => handleSelectPostCollection(null)}
-                      className="text-xs font-semibold text-[#536471] hover:text-[#0f1419] hover:underline cursor-pointer"
-                    >
-                      Clear filter
-                    </button>
                   </div>
                 </div>
-              ) : null;
+              );
             })()}
 
             {timelinePosts.length > 0 ? (
@@ -1407,7 +1394,7 @@ export default function ProfileView({
               ))
             ) : (
               <div className="text-center py-12 text-[#536471] text-sm">
-                No posts in this collection yet.{' '}
+                No posts in this preset yet.{' '}
                 <button
                   type="button"
                   onClick={() => setActiveCollectionId(null)}
@@ -1418,6 +1405,209 @@ export default function ProfileView({
               </div>
             )}
           </div>
+        )}
+
+        {/* 2. PRESETS TAB */}
+        {activeTab === 'presets' && (
+          <div className="flex flex-col">
+            {/* Presets Header */}
+            <div className="px-4 py-3.5 bg-[#f7f9f9]/80 border-b border-[#eff3f4] flex items-center justify-between">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-full bg-[#1d9bf0]/10 text-[#1d9bf0] flex items-center justify-center shrink-0">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-extrabold text-[#0f1419] text-sm sm:text-base leading-tight truncate">
+                    Presets & Collections
+                  </h3>
+                  <p className="text-xs text-[#536471] truncate">
+                    Curated channels and post collections by @{userProfile.username}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                {isSelf && (
+                  <button
+                    type="button"
+                    onClick={() => setCreateCollectionTab('posts')}
+                    className="text-xs font-bold text-white bg-[#1d9bf0] hover:bg-[#1a8cd8] px-3 py-1.5 rounded-full transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>New Collection</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="p-4 flex flex-col gap-4">
+              {/* Master Feed Launcher Card */}
+              <button
+                type="button"
+                onClick={() => {
+                  handleSelectPostCollection(null);
+                  setActiveTab('posts');
+                  if (typeof window !== 'undefined') {
+                    window.history.replaceState(null, '', `/${userProfile.username}`);
+                  }
+                }}
+                className="w-full text-left bg-gradient-to-r from-blue-50/70 via-white to-blue-50/30 border border-blue-100 hover:border-[#1d9bf0] hover:shadow-xs rounded-2xl p-4 transition-all cursor-pointer group flex items-center justify-between"
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-11 h-11 rounded-2xl bg-[#1d9bf0] text-white flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                    <Layers className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-extrabold text-[#0f1419] text-sm sm:text-base group-hover:text-[#1d9bf0] transition-colors truncate">
+                        All Posts (Master Timeline)
+                      </h4>
+                      <span className="text-[11px] font-bold text-[#1d9bf0] bg-blue-100/60 px-2 py-0.5 rounded-full shrink-0">
+                        {allTimelinePosts.length} posts
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#536471] mt-0.5 line-clamp-1">
+                      View the complete chronological timeline featuring all posts, photo carousels, boards, and link cards.
+                    </p>
+                  </div>
+                </div>
+                <div className="text-[#1d9bf0] font-bold text-xs flex items-center gap-1 shrink-0 ml-3 group-hover:translate-x-1 transition-transform">
+                  <span className="hidden sm:inline">Open Feed</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </div>
+              </button>
+
+              {/* Collections Presets Grid */}
+              {collections.length > 0 ? (
+                <div>
+                  <div className="flex items-center justify-between mb-2.5 px-0.5">
+                    <span className="text-xs font-extrabold text-[#536471] uppercase tracking-wider">
+                      Curated Presets ({collections.length})
+                    </span>
+                    <span className="text-[11px] text-[#536471]">
+                      Click any preset to view posts
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {collections.map((col) => (
+                      <div
+                        key={col.id}
+                        className="bg-white border border-[#eff3f4] hover:border-[#1d9bf0]/60 hover:shadow-xs rounded-2xl p-4 transition-all flex flex-col justify-between group"
+                      >
+                        <div 
+                          onClick={() => {
+                            handleSelectPostCollection(col.id);
+                            setActiveTab('posts');
+                            if (typeof window !== 'undefined') {
+                              window.history.replaceState(null, '', `/${userProfile.username}`);
+                            }
+                          }}
+                          className="cursor-pointer"
+                        >
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-2xl shrink-0 group-hover:scale-110 transition-transform">
+                                {col.icon || '📁'}
+                              </span>
+                              <h4 className="font-extrabold text-[#0f1419] text-sm sm:text-base group-hover:text-[#1d9bf0] transition-colors truncate">
+                                {col.title}
+                              </h4>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <span className="text-xs font-semibold text-[#536471] bg-[#f7f9f9] px-2 py-0.5 rounded-full">
+                                {col.itemIds?.length || 0}
+                              </span>
+                            </div>
+                          </div>
+
+                          {col.description && (
+                            <p className="text-xs text-[#536471] line-clamp-2 leading-relaxed">
+                              {col.description}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-between pt-3 mt-3 border-t border-[#f7f9f9] text-xs">
+                          {isSelf ? (
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setReorderTargetCollection(col);
+                                }}
+                                className="text-[11px] font-semibold text-[#1d9bf0] hover:underline cursor-pointer flex items-center gap-1"
+                              >
+                                <ArrowUpDown className="w-3 h-3" />
+                                <span>Reorder</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (confirm(`Delete collection "${col.title}"?`)) {
+                                    handleDeleteCollection(col.id);
+                                  }
+                                }}
+                                className="text-[11px] font-semibold text-red-500 hover:underline cursor-pointer ml-1"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-[11px] text-[#536471] font-medium">
+                              Preset Lens
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleSelectPostCollection(col.id);
+                              setActiveTab('posts');
+                              if (typeof window !== 'undefined') {
+                                window.history.replaceState(null, '', `/${userProfile.username}`);
+                              }
+                            }}
+                            className="text-[#1d9bf0] font-bold flex items-center gap-1 group-hover:translate-x-1 transition-transform cursor-pointer"
+                          >
+                            <span>View posts</span>
+                            <span>→</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-12 px-4 border border-dashed border-gray-200 rounded-2xl">
+                  <div className="w-12 h-12 rounded-full bg-gray-100 text-[#536471] flex items-center justify-center mx-auto mb-3">
+                    <Layers className="w-6 h-6" />
+                  </div>
+                  <h4 className="font-extrabold text-[#0f1419] text-sm mb-1">
+                    No Presets Yet
+                  </h4>
+                  <p className="text-xs text-[#536471] max-w-sm mx-auto mb-4">
+                    Presets allow you to group your posts, carousels, boards, and links into curated playlists.
+                  </p>
+                  {isSelf && (
+                    <button
+                      type="button"
+                      onClick={() => setCreateCollectionTab('posts')}
+                      className="bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-bold text-xs px-4 py-2 rounded-full transition-colors cursor-pointer"
+                    >
+                      Create Your First Preset
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 3. LINKS TAB: LINKTREE-STYLE PORTAL */}
+        {activeTab === 'links' && (
+          <LinksPortal user={userProfile} isSelf={isSelf} />
         )}
 
         {/* 2. COMMENTS TAB */}
@@ -1531,181 +1721,7 @@ export default function ProfileView({
           </div>
         )}
 
-        {/* 3. LINKS TAB: THE SWITCHBOARD */}
-        {activeTab === 'links' && (
-          <div className="flex flex-col">
-            {/* Switchboard Header */}
-            <div className="px-4 py-3.5 bg-[#f7f9f9]/80 border-b border-[#eff3f4] flex items-center justify-between">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-full bg-[#1d9bf0]/10 text-[#1d9bf0] flex items-center justify-center shrink-0">
-                  <Sparkles className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="font-extrabold text-[#0f1419] text-sm sm:text-base leading-tight truncate">
-                    Switchboard
-                  </h3>
-                  <p className="text-xs text-[#536471] truncate">
-                    Curated channels and post collections by @{userProfile.username}
-                  </p>
-                </div>
-              </div>
 
-              <div className="flex items-center gap-2 shrink-0">
-                {isSelf && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => setCreateCollectionTab('posts')}
-                      className="text-xs font-bold text-white bg-[#1d9bf0] hover:bg-[#1a8cd8] px-3 py-1.5 rounded-full transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>New Collection</span>
-                    </button>
-                    {collections.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setAllCollectionsModalOpen(true)}
-                        className="text-xs font-bold text-[#536471] hover:text-[#0f1419] hover:bg-[#0f1419]/5 px-2.5 py-1.5 rounded-full transition-colors cursor-pointer"
-                        title="Manage & reorder collections"
-                      >
-                        Manage
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-
-            <div className="p-4 flex flex-col gap-4">
-              {/* Master Feed Launcher Card */}
-              <button
-                type="button"
-                onClick={() => {
-                  handleSelectPostCollection(null);
-                  setActiveTab('posts');
-                  if (typeof window !== 'undefined') {
-                    window.history.replaceState(null, '', `/${userProfile.username}`);
-                  }
-                }}
-                className="w-full text-left bg-gradient-to-r from-blue-50/70 via-white to-blue-50/30 border border-blue-100 hover:border-[#1d9bf0] hover:shadow-xs rounded-2xl p-4 transition-all cursor-pointer group flex items-center justify-between"
-              >
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-11 h-11 rounded-2xl bg-[#1d9bf0] text-white flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
-                    <Layers className="w-5 h-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-extrabold text-[#0f1419] text-sm sm:text-base group-hover:text-[#1d9bf0] transition-colors truncate">
-                        All Posts (Master Timeline)
-                      </h4>
-                      <span className="text-[11px] font-bold text-[#1d9bf0] bg-blue-100/60 px-2 py-0.5 rounded-full shrink-0">
-                        {allTimelinePosts.length} posts
-                      </span>
-                    </div>
-                    <p className="text-xs text-[#536471] mt-0.5 line-clamp-1">
-                      View the complete chronological timeline featuring all posts, photo carousels, boards, and link cards.
-                    </p>
-                  </div>
-                </div>
-                <div className="text-[#1d9bf0] font-bold text-xs flex items-center gap-1 shrink-0 ml-3 group-hover:translate-x-1 transition-transform">
-                  <span className="hidden sm:inline">Open Feed</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </div>
-              </button>
-
-              {/* Collections Switchboard Grid */}
-              {collections.length > 0 ? (
-                <div>
-                  <div className="flex items-center justify-between mb-2.5 px-0.5">
-                    <span className="text-xs font-extrabold text-[#536471] uppercase tracking-wider">
-                      Curated Channels ({collections.length})
-                    </span>
-                    <span className="text-[11px] text-[#536471]">
-                      Click any channel to open on Posts
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {collections.map((col) => (
-                      <button
-                        key={col.id}
-                        type="button"
-                        onClick={() => {
-                          handleSelectPostCollection(col.id);
-                          setActiveTab('posts');
-                          if (typeof window !== 'undefined') {
-                            window.history.replaceState(null, '', `/${userProfile.username}`);
-                          }
-                        }}
-                        className="text-left bg-white border border-[#eff3f4] hover:border-[#1d9bf0]/60 hover:shadow-xs rounded-2xl p-4 transition-all cursor-pointer flex flex-col justify-between group"
-                      >
-                        <div>
-                          <div className="flex items-start justify-between gap-2 mb-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className="text-2xl shrink-0 group-hover:scale-110 transition-transform">
-                                {col.icon || '📁'}
-                              </span>
-                              <h4 className="font-extrabold text-[#0f1419] text-sm sm:text-base group-hover:text-[#1d9bf0] transition-colors truncate">
-                                {col.title}
-                              </h4>
-                            </div>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              {col.isPinned && (
-                                <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
-                                  ⭐ Pinned
-                                </span>
-                              )}
-                              <span className="text-xs font-semibold text-[#536471] bg-[#f7f9f9] px-2 py-0.5 rounded-full">
-                                {col.itemIds?.length || 0}
-                              </span>
-                            </div>
-                          </div>
-
-                          {col.description && (
-                            <p className="text-xs text-[#536471] line-clamp-2 leading-relaxed">
-                              {col.description}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="flex items-center justify-between pt-3 mt-3 border-t border-[#f7f9f9] text-xs">
-                          <span className="text-[11px] text-[#536471] font-medium">
-                            Channel Lens
-                          </span>
-                          <span className="text-[#1d9bf0] font-bold flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                            <span>Explore</span>
-                            <span>→</span>
-                          </span>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-12 px-4 border border-dashed border-gray-200 rounded-2xl">
-                  <div className="w-12 h-12 rounded-full bg-gray-100 text-[#536471] flex items-center justify-center mx-auto mb-3">
-                    <Layers className="w-6 h-6" />
-                  </div>
-                  <h4 className="font-extrabold text-[#0f1419] text-sm mb-1">
-                    No Curated Channels Yet
-                  </h4>
-                  <p className="text-xs text-[#536471] max-w-sm mx-auto mb-4">
-                    Collections allow you to group your posts, carousels, boards, and links into curated playlists.
-                  </p>
-                  {isSelf && (
-                    <button
-                      type="button"
-                      onClick={() => setCreateCollectionTab('posts')}
-                      className="bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-bold text-xs px-4 py-2 rounded-full transition-colors cursor-pointer"
-                    >
-                      Create Your First Collection
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* 4. LIKES TAB */}
         {activeTab === 'likes' && (
@@ -1885,22 +1901,6 @@ export default function ProfileView({
         />
       )}
 
-      {/* All Collections Searchable Modal (Posts) */}
-      <AllCollectionsModal
-        isOpen={allCollectionsModalOpen}
-        onClose={() => setAllCollectionsModalOpen(false)}
-        collections={collections}
-        activeCollectionId={activeCollectionId}
-        onSelectCollection={handleSelectPostCollection}
-        totalCount={allTimelinePosts.length}
-        itemTypeLabel="posts"
-        userId={activeCreatorUserId}
-        isSelf={isSelf}
-        onCreateCollection={() => setCreateCollectionTab('posts')}
-        onTogglePin={(id) => handleTogglePinCollection(id)}
-        onDeleteCollection={(id) => handleDeleteCollection(id)}
-        onOpenReorder={(col) => setReorderTargetCollection(col)}
-      />
 
       {/* Owner Post Reordering Modal (up to 100 posts per collection) */}
       {reorderTargetCollection && (
