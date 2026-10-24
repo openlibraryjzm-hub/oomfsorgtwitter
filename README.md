@@ -19,17 +19,17 @@
 3. **Specialized Post & Block Types (Beyond Tweets):**  
    Profiles showcase rich, modular content formats tailored to creative work and visual curation:
    * 📝 **Standard Post (`standard`)**: Native 1:1 timeline tweet text post. Threadable, likeable, repostable.
-   * 🎞️ **Carousel (`carousel`)**: Uncapped horizontal photo strip (`>4` slides) with a universal small header bar, natural portrait/landscape aspect ratio preservation (no forced square crops), desktop chevrons, and individual bottom overlay captions.
-   * 📌 **Board (`board`)**: Pinterest-style visual curation boards (`3+` images). Renders as a 3-image preview on the profile timeline (`50%` left half, two `25%` stacked right images with a `+N` badge) and expands into a full **2-column Pinterest masonry grid** in the dedicated thread view (`/[username]/status/[id]`).
-   * 🔗 **Bio Link Card (`link_card`)**: High-visibility link showcase button with title, domain badge, description, and direct visit action. Can be embedded directly within the timeline as a post card.
-   * 🏷️ **Web Badge (`badge`)**: Early-web 88×31 retro button badges. Features a dual-mode creation engine (Color gradient presets or 3x HiDPI PNG image uploads) with universal underneath micro-labels. Aggregates into the **Badge Wall** at the top of the **Links** tab.
+   * 🎞️ **Carousel (`carousel`)**: Uncapped horizontal photo strip (`>4` slides) with natural portrait/landscape aspect ratio preservation (no forced square crops), desktop chevrons, individual bottom overlay captions, and top commentary.
+   * 📌 **Board (`board`)**: Pinterest-style visual curation boards (`3+` images). Renders as a 3-image preview on the profile timeline (`50%` left half, two `25%` stacked right images with a `+N` badge) with a dedicated exploration mini banner between the media and action metrics, expanding into a full **2-column Pinterest masonry grid** in the dedicated thread view (`/[username]/status/[id]`).
+   * 🔗 **Bio Link Card (`link_card`)**: High-visibility link showcase button with in-situ editable title, subtitle, clean domain, and flush right-half cover image. Can be embedded directly within the timeline as a post card.
+   * ⊞ **Avatars & Links Grid (`grid`)**: Unified 4 or 5 column curation matrix presenting as a standard timeline post with circular user avatars (linking to profiles) and square generic links (with cover images/icons and external URLs). Max 4 rows preview on timeline with thread expansion.
    * 💬 **Profile Comments (`comment`)**: 1:1 X/Twitter-native guestbook comments supporting attached images (up to 4 photos), rich interaction suite (Reply, Repost, Like, Share), and full thread navigation (`/[author]/status/[id]`).
 
-   *Detailed post format specifications and extension guides are available in [Post Types Context Doc](docs/post-types.md) and [Web Badges Context Doc](docs/badges.md).*
+   *Detailed post format specifications and extension guides are available in [Post Types Context Doc](docs/post-types.md) and [Composer Context Doc](docs/composer.md).*
 
 4. **The 5 Distinct Profile Tabs:**  
    User profiles organize content across 5 clean tabs ordered left-to-right:
-   1. **Posts** (default): Master chronological timeline displaying actual posts (Standard, Carousel, Board, Bio Link Card, Web Badge). Preserves clean 1:1 Twitter view without secondary stadium bars. When filtered by an active preset, displays a clean single-line breadcrumb (`← All posts` / `[Icon] [Title]` / `Reorder`) without heavy toolbars.
+   1. **Posts** (default): Master chronological timeline displaying actual posts (Standard, Carousel, Board, Bio Link Card, Avatars & Links Grid). Preserves clean 1:1 Twitter view without secondary stadium bars. When filtered by an active preset, displays a clean single-line breadcrumb (`← All posts` / `[Icon] [Title]` / `Reorder`) without heavy toolbars.
    2. **Presets**: Dedicated in-situ switchboard channel directory and master feed launcher. Houses the author's curated post collections/playlists in a responsive 2-column grid. Clicking any preset launches the Posts tab filtered to that collection.
    3. **Links**: Linktree-style external accounts and destination portal (`LinksPortal.tsx`) for the creator's personal accounts (Discord, Twitch, Steam, X, YouTube, GitHub, Spotify, etc.). Features a 35+ platform vector icon registry, custom logo uploads, domain auto-detection, and inline reordering.
    4. **Comments**: 1:1 X/Twitter-native profile guestbook and conversational threads with up to 4 image attachments, "Replying to @username" context, and interactive Twitter cards.
@@ -127,9 +127,9 @@
 │   │   │   ├── FollowButton.tsx        # Dynamic optimistic Follow/Unfollow action pill
 │   │   │   └── UserNetworkView.tsx     # 1:1 network directory (OOMFs, Following, Followers) & 4 display modes
 │   │   └── feed/
-│   │       ├── PostCard.tsx            # 1:1 timeline post rendering (Standard, Carousel, Board, Badge)
+│   │       ├── PostCard.tsx            # 1:1 timeline post rendering (Standard, Carousel, Board, Bio Link Card, Grid)
 │   │       ├── CommentCard.tsx         # Flat guestbook comment card (non-threaded)
-│   │       └── PostComposer.tsx        # Unified post composer with flush builders & bottom icon toggles
+│   │       └── PostComposer.tsx        # Unified post composer with bottom icon toggles & in-situ templates
 │   │
 │   ├── context/
 │   │   └── AuthContext.tsx             # Supabase auth session, profile state, signInWithTwitter, signOut
@@ -162,11 +162,11 @@ Stores user profile information synced from Twitter or edited on `oomfs.org`:
 * `created_at` (`timestamptz`)
 
 ### 2. `public.blocks`
-Stores custom profile content blocks (posts, carousels, boards, links, comments):
+Stores custom profile content blocks (posts, carousels, boards, link cards, grids, comments):
 * `id` (`uuid`, primary key, `default gen_random_uuid()`)
 * `user_id` (`uuid`, references `public.profiles.id` on delete cascade)
-* `type` (`text`: `'standard' | 'carousel' | 'board' | 'link_card' | 'comment'`)
-* `content` (`jsonb`, post payload such as `text`, `carouselData`, `boardData`, `linkData`, or `author`)
+* `type` (`text`: `'standard' | 'carousel' | 'board' | 'link_card' | 'grid' | 'comment'`)
+* `content` (`jsonb`, post payload such as `text`, `carouselData`, `boardData`, `linkData`, `gridData`, or `author`)
 * `created_at` (`timestamptz`)
 
 ### 3. `public.follows`

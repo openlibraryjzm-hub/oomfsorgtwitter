@@ -39,7 +39,8 @@ export default function ThreadClientView({ initialPost, username }: ThreadClient
     const isFallback = initialPost.text === `Post #${initialPost.id} on oomfs.org` &&
       !initialPost.carouselData &&
       !initialPost.boardData &&
-      !initialPost.linkData;
+      !initialPost.linkData &&
+      !initialPost.gridData;
 
     if (isFallback) {
       const fetchFromSupabase = async () => {
@@ -76,6 +77,7 @@ export default function ThreadClientView({ initialPost, username }: ThreadClient
               carouselData: dbBlock.content?.carouselData,
               boardData: dbBlock.content?.boardData,
               linkData: dbBlock.content?.linkData,
+              gridData: dbBlock.content?.gridData,
               badgeData: dbBlock.content?.badgeData,
               likesCount: dbBlock.content?.likesCount || 0,
               repostsCount: dbBlock.content?.repostsCount || 0,

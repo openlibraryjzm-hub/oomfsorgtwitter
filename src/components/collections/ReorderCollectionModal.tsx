@@ -41,6 +41,7 @@ function getPostTypeLabel(type: string): string {
     case 'carousel': return '🎞️ Carousel';
     case 'board': return '📌 Board';
     case 'link_card': return '🔗 Link';
+    case 'grid': return '⊞ Grid';
     case 'badge': return '🏷️ Badge';
     default: return '📝 Post';
   }

@@ -42,6 +42,25 @@ export interface BoardImage {
   caption?: string;
 }
 
+export type GridItemKind = 'avatar' | 'link';
+
+export interface GridItem {
+  id: string;
+  kind: GridItemKind; // 'avatar' (circle) | 'link' (square)
+  title: string;
+  url: string;
+  subtitle?: string;
+  imageUrl?: string;
+  icon?: string;
+  bgColor?: string;
+  showLabel?: boolean;
+}
+
+export interface GridPostData {
+  columns: 4 | 5;
+  items: GridItem[];
+}
+
 export interface BadgeData {
   title: string;
   url: string;
@@ -61,13 +80,13 @@ export interface Post {
   id: string;
   author: User;
   createdAt: string;
-  type: 'standard' | 'carousel' | 'board' | 'link_card' | 'badge' | 'comment';
+  type: 'standard' | 'carousel' | 'board' | 'link_card' | 'grid' | 'comment';
   images?: string[];
   targetUsername?: string;
   targetUserId?: string;
   text: string;
   carouselData?: {
-    header: string;
+    header?: string;
     slides: CarouselSlide[];
   };
   boardData?: {
@@ -83,6 +102,7 @@ export interface Post {
     buttonText?: string;
     pageId?: string;
   };
+  gridData?: GridPostData;
   badgeData?: BadgeData;
   likesCount: number;
   repostsCount: number;
@@ -477,191 +497,118 @@ export const MOCK_POSTS: Post[] = [
     isLiked: true
   },
   {
-    id: 'post_badge_1',
+    id: 'post_grid_1',
     author: MOCK_USERS.amberlyn,
-    createdAt: '4h',
-    type: 'badge',
-    text: 'OOMFS Mutual Badge',
-    badgeData: {
-      title: 'OOMFS.ORG Mutual',
-      url: 'https://oomfs.org/amberlyn',
-      badgeType: 'custom',
-      label: 'MUTUAL',
-      sublabel: 'OOMF',
-      bgColor: '#1d9bf0',
-      textColor: '#ffffff',
-      icon: '✨'
+    createdAt: '3h',
+    type: 'grid',
+    text: 'favorite mutuals, open-source repos & creative tools this month ✦\n(circles link to mutual profiles, squares open sites directly)',
+    gridData: {
+      columns: 5,
+      items: [
+        {
+          id: 'gi_1',
+          kind: 'avatar',
+          title: 'Kyle Vance',
+          url: '/dev_kyle',
+          subtitle: '@dev_kyle',
+          imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
+          showLabel: true
+        },
+        {
+          id: 'gi_2',
+          kind: 'link',
+          title: 'GitHub',
+          url: 'https://github.com',
+          subtitle: 'github.com',
+          bgColor: '#0f1419',
+          icon: '💻',
+          showLabel: true
+        },
+        {
+          id: 'gi_3',
+          kind: 'avatar',
+          title: 'Sora',
+          url: '/sora_arts',
+          subtitle: '@sora_arts',
+          imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+          showLabel: true
+        },
+        {
+          id: 'gi_4',
+          kind: 'link',
+          title: 'Figma',
+          url: 'https://figma.com',
+          subtitle: 'figma.com',
+          bgColor: 'linear-gradient(135deg, #8b5cf6, #ec4899)',
+          icon: '🎨',
+          showLabel: true
+        },
+        {
+          id: 'gi_5',
+          kind: 'avatar',
+          title: 'Jack',
+          url: '/jack',
+          subtitle: '@jack',
+          imageUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=400&q=80',
+          showLabel: true
+        },
+        {
+          id: 'gi_6',
+          kind: 'link',
+          title: 'Next.js',
+          url: 'https://nextjs.org',
+          subtitle: 'nextjs.org',
+          bgColor: '#000000',
+          icon: '▲',
+          showLabel: false
+        },
+        {
+          id: 'gi_7',
+          kind: 'link',
+          title: 'Spotify',
+          url: 'https://spotify.com',
+          subtitle: 'spotify.com',
+          bgColor: 'linear-gradient(135deg, #10b981, #06b6d4)',
+          icon: '🎧',
+          showLabel: false
+        },
+        {
+          id: 'gi_8',
+          kind: 'link',
+          title: 'Neocities',
+          url: 'https://neocities.org',
+          subtitle: 'neocities.org',
+          bgColor: '#e06800',
+          icon: '👾',
+          showLabel: false
+        },
+        {
+          id: 'gi_9',
+          kind: 'link',
+          title: 'Substack',
+          url: 'https://substack.com',
+          subtitle: 'substack.com',
+          bgColor: '#f97316',
+          icon: '📡',
+          showLabel: false
+        },
+        {
+          id: 'gi_10',
+          kind: 'link',
+          title: 'Tailwind',
+          url: 'https://tailwindcss.com',
+          subtitle: 'tailwindcss.com',
+          bgColor: 'linear-gradient(135deg, #06b6d4, #1d9bf0)',
+          icon: '🌊',
+          showLabel: false
+        }
+      ]
     },
-    likesCount: 12,
-    repostsCount: 2,
-    repliesCount: 0,
-    viewsCount: '320'
-  },
-  {
-    id: 'post_badge_2',
-    author: MOCK_USERS.amberlyn,
-    createdAt: '4h',
-    type: 'badge',
-    text: 'Neocities personal site button',
-    badgeData: {
-      title: 'Amber on Neocities',
-      url: 'https://neocities.org',
-      badgeType: 'custom',
-      label: 'CITIES',
-      sublabel: 'NEO',
-      bgColor: '#e06800',
-      textColor: '#ffffff',
-      icon: '👾'
-    },
-    likesCount: 24,
-    repostsCount: 4,
-    repliesCount: 1,
-    viewsCount: '480'
-  },
-  {
-    id: 'post_badge_3',
-    author: MOCK_USERS.amberlyn,
-    createdAt: '4h',
-    type: 'badge',
-    text: 'GitHub open source button',
-    badgeData: {
-      title: 'GitHub Repositories',
-      url: 'https://github.com',
-      badgeType: 'custom',
-      label: 'REPOS',
-      sublabel: 'GIT',
-      bgColor: '#0f1419',
-      textColor: '#ffffff',
-      icon: '💻'
-    },
-    likesCount: 19,
-    repostsCount: 1,
-    repliesCount: 0,
-    viewsCount: '390'
-  },
-  {
-    id: 'post_badge_4',
-    author: MOCK_USERS.amberlyn,
-    createdAt: '4h',
-    type: 'badge',
-    text: 'Spotify late night playlist',
-    badgeData: {
-      title: 'Late Night Coding on Spotify',
-      url: 'https://spotify.com',
-      badgeType: 'custom',
-      label: 'ON AIR',
-      sublabel: 'SPOTIFY',
-      bgColor: '#10b981',
-      textColor: '#ffffff',
-      icon: '🎧'
-    },
-    likesCount: 31,
-    repostsCount: 5,
-    repliesCount: 2,
-    viewsCount: '620'
-  },
-  {
-    id: 'post_badge_5',
-    author: MOCK_USERS.amberlyn,
-    createdAt: '4h',
-    type: 'badge',
-    text: 'RSS Web Feed',
-    badgeData: {
-      title: 'Subscribe to RSS Feed',
-      url: 'https://amberlyn.substack.com/feed',
-      badgeType: 'custom',
-      label: 'FEED',
-      sublabel: 'RSS',
-      bgColor: '#f97316',
-      textColor: '#ffffff',
-      icon: '📡'
-    },
-    likesCount: 15,
-    repostsCount: 3,
-    repliesCount: 0,
-    viewsCount: '270'
-  },
-  {
-    id: 'post_badge_6',
-    author: MOCK_USERS.amberlyn,
-    createdAt: '4h',
-    type: 'badge',
-    text: 'Figma UI Library badge',
-    badgeData: {
-      title: 'Figma Design System',
-      url: 'https://figma.com',
-      badgeType: 'custom',
-      label: 'DESIGN',
-      sublabel: 'FIGMA',
-      bgColor: '#8b5cf6',
-      textColor: '#ffffff',
-      icon: '🎨'
-    },
-    likesCount: 28,
-    repostsCount: 6,
-    repliesCount: 1,
-    viewsCount: '510'
-  },
-  {
-    id: 'post_badge_7',
-    author: MOCK_USERS.amberlyn,
-    createdAt: '4h',
-    type: 'badge',
-    text: 'Cyberpunk Webring',
-    badgeData: {
-      title: 'Cyberpunk Indie Webring',
-      url: 'https://webring.org',
-      badgeType: 'custom',
-      label: 'WEBRING',
-      sublabel: 'CYBER',
-      bgColor: '#06b6d4',
-      textColor: '#ffffff',
-      icon: '⚡'
-    },
-    likesCount: 22,
-    repostsCount: 4,
-    repliesCount: 0,
-    viewsCount: '440'
-  },
-  {
-    id: 'post_badge_8',
-    author: MOCK_USERS.amberlyn,
-    createdAt: '4h',
-    type: 'badge',
-    text: 'Made with Next.js 16',
-    badgeData: {
-      title: 'Built with Next.js 16 App Router',
-      url: 'https://nextjs.org',
-      badgeType: 'custom',
-      label: 'NEXT.JS',
-      sublabel: 'APP',
-      bgColor: '#000000',
-      textColor: '#ffffff',
-      icon: '▲'
-    },
-    likesCount: 45,
-    repostsCount: 8,
-    repliesCount: 3,
-    viewsCount: '890'
-  },
-  {
-    id: 'post_badge_oomf_1',
-    author: MOCK_USERS.amberlyn,
-    createdAt: '1h',
-    type: 'badge',
-    text: 'Featured mutual friend Kyle',
-    badgeData: {
-      title: 'Kyle Vance',
-      url: '/dev_kyle',
-      badgeType: 'avatar',
-      imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
-      label: '@dev_kyle',
-      targetUsername: 'dev_kyle'
-    },
-    likesCount: 19,
-    repostsCount: 3,
-    repliesCount: 1,
-    viewsCount: '410'
+    likesCount: 54,
+    repostsCount: 12,
+    repliesCount: 4,
+    viewsCount: '1.2K',
+    isLiked: true
   },
   {
     id: 'post_kyle_1',

@@ -63,6 +63,7 @@ async function ThreadContent({ params }: { params: Promise<{ username: string; i
         carouselData: dbBlock.content?.carouselData,
         boardData: dbBlock.content?.boardData,
         linkData: dbBlock.content?.linkData,
+        gridData: dbBlock.content?.gridData,
         badgeData: dbBlock.content?.badgeData,
         likesCount: dbBlock.content?.likesCount || 0,
         repostsCount: dbBlock.content?.repostsCount || 0,

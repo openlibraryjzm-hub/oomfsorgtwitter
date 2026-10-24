@@ -38,7 +38,7 @@ create table if not exists public.blocks (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references public.profiles(id) on delete cascade not null,
   target_user_id uuid references public.profiles(id) on delete cascade,
-  type text not null check (type in ('standard', 'carousel', 'board', 'link_card', 'comment')),
+  type text not null check (type in ('standard', 'carousel', 'board', 'link_card', 'comment', 'grid')),
   content jsonb not null default '{}'::jsonb,
   created_at timestamptz default timezone('utc'::text, now()) not null
 );

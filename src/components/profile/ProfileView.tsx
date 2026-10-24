@@ -330,7 +330,7 @@ export default function ProfileView({
 
   // Composer Drawer State (for Posts & Links)
   const [composerOpen, setComposerOpen] = useState(false);
-  const [blockType, setBlockType] = useState<'standard' | 'carousel' | 'board' | 'link_card' | 'badge'>('standard');
+  const [blockType, setBlockType] = useState<'standard' | 'carousel' | 'board' | 'link_card' | 'grid'>('standard');
 
   // Edit Profile Modal State
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -573,6 +573,7 @@ export default function ProfileView({
                 b.type === 'carousel' ||
                 b.type === 'board' ||
                 b.type === 'link_card' ||
+                b.type === 'grid' ||
                 b.type === 'badge'
               ) {
                 const postObj: Post = {
@@ -590,6 +591,7 @@ export default function ProfileView({
                   carouselData: b.content?.carouselData,
                   boardData: b.content?.boardData,
                   linkData: b.content?.linkData,
+                  gridData: b.content?.gridData,
                   badgeData: b.content?.badgeData,
                   likesCount: b.content?.likesCount || 0,
                   repostsCount: b.content?.repostsCount || 0,

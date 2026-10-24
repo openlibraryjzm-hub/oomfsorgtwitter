@@ -76,29 +76,16 @@ export default function PostCard({ post, onDelete, onManageCollections, isThread
     });
   };
 
-  // Render Carousel Media Strip (Universal Header + Peeking Natural Aspect Ratio Slides + Bottom Caption Overlays)
+  // Render Carousel Media Strip (Peeking Natural Aspect Ratio Slides + Bottom Caption Overlays)
   const renderCarousel = () => {
     if (post.type !== 'carousel' || !post.carouselData || post.carouselData.slides.length === 0) {
       return null;
     }
 
-    const { header, slides } = post.carouselData;
+    const { slides } = post.carouselData;
 
     return (
       <div className="mt-2.5 flex flex-col gap-2">
-        {/* Universal Small Header */}
-        <div className="flex items-center justify-between px-3 py-1.5 bg-[#f7f9f9] border border-[#eff3f4] rounded-xl">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <Layers className="w-3.5 h-3.5 text-[#1d9bf0] shrink-0" />
-            <span className="text-xs font-bold text-[#0f1419] truncate">
-              {header || 'Photo Carousel'}
-            </span>
-          </div>
-          <span className="text-[11px] font-semibold text-[#536471] shrink-0 ml-2">
-            {slides.length} {slides.length === 1 ? 'slide' : 'slides'}
-          </span>
-        </div>
-
         {/* Horizontal Peeking Scroll Strip */}
         <div className="relative group/carousel">
           {/* Desktop Scroll Left Button */}
@@ -243,42 +230,66 @@ export default function PostCard({ post, onDelete, onManageCollections, isThread
     const extraCount = Math.max(0, images.length - 3);
 
     return (
-      <div className="mt-2.5 rounded-2xl overflow-hidden border border-[#eff3f4] h-72 sm:h-80 w-full grid grid-cols-2 gap-0.5 bg-[#eff3f4] relative group/board">
-        {/* Left Half: 1st Image (50% width, 100% height) */}
-        <div className="relative w-full h-full overflow-hidden bg-[#f7f9f9]">
-          <img
-            src={firstImg.url}
-            alt={firstImg.caption || 'Board preview 1'}
-            className="w-full h-full object-cover group-hover/board:scale-[1.02] transition-transform duration-200"
-          />
-        </div>
-
-        {/* Right Half: 2nd and 3rd Images (25% total area each) */}
-        <div className="grid grid-rows-2 gap-0.5 w-full h-full overflow-hidden">
-          {/* Top-Right Quarter: 2nd Image */}
+      <div className="mt-2.5 flex flex-col gap-2">
+        <div className="rounded-2xl overflow-hidden border border-[#eff3f4] h-72 sm:h-80 w-full grid grid-cols-2 gap-0.5 bg-[#eff3f4] relative group/board">
+          {/* Left Half: 1st Image (50% width, 100% height) */}
           <div className="relative w-full h-full overflow-hidden bg-[#f7f9f9]">
             <img
-              src={secondImg.url}
-              alt={secondImg.caption || 'Board preview 2'}
+              src={firstImg.url}
+              alt={firstImg.caption || 'Board preview 1'}
               className="w-full h-full object-cover group-hover/board:scale-[1.02] transition-transform duration-200"
             />
           </div>
 
-          {/* Bottom-Right Quarter: 3rd Image */}
-          <div className="relative w-full h-full overflow-hidden bg-[#f7f9f9]">
-            <img
-              src={thirdImg.url}
-              alt={thirdImg.caption || 'Board preview 3'}
-              className="w-full h-full object-cover group-hover/board:scale-[1.02] transition-transform duration-200"
-            />
-
-            {/* Overlay Badge indicating Board & remaining count */}
-            <div className="absolute inset-0 bg-black/20 group-hover/board:bg-black/30 transition-colors flex items-end justify-end p-2.5">
-              <span className="bg-black/75 backdrop-blur-xs text-white text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-xs">
-                <LayoutGrid className="w-3 h-3 text-[#1d9bf0]" />
-                <span>{extraCount > 0 ? `+${extraCount} more` : 'View Board'}</span>
-              </span>
+          {/* Right Half: 2nd and 3rd Images (25% total area each) */}
+          <div className="grid grid-rows-2 gap-0.5 w-full h-full overflow-hidden">
+            {/* Top-Right Quarter: 2nd Image */}
+            <div className="relative w-full h-full overflow-hidden bg-[#f7f9f9]">
+              <img
+                src={secondImg.url}
+                alt={secondImg.caption || 'Board preview 2'}
+                className="w-full h-full object-cover group-hover/board:scale-[1.02] transition-transform duration-200"
+              />
             </div>
+
+            {/* Bottom-Right Quarter: 3rd Image */}
+            <div className="relative w-full h-full overflow-hidden bg-[#f7f9f9]">
+              <img
+                src={thirdImg.url}
+                alt={thirdImg.caption || 'Board preview 3'}
+                className="w-full h-full object-cover group-hover/board:scale-[1.02] transition-transform duration-200"
+              />
+
+              {/* Overlay Badge indicating Board & remaining count */}
+              <div className="absolute inset-0 bg-black/20 group-hover/board:bg-black/30 transition-colors flex items-end justify-end p-2.5">
+                <span className="bg-black/75 backdrop-blur-xs text-white text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-xs">
+                  <LayoutGrid className="w-3 h-3 text-[#1d9bf0]" />
+                  <span>{extraCount > 0 ? `+${extraCount} more` : 'View Board'}</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Special Board Mini Banner below images and above metrics */}
+        <div
+          onClick={handleCardClick}
+          className="flex items-center justify-between px-3.5 py-2 bg-[#f7f9f9] hover:bg-[#1d9bf0]/10 border border-[#eff3f4] hover:border-[#1d9bf0]/40 rounded-xl transition-all cursor-pointer group/board-banner select-none"
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-5 h-5 rounded-md bg-[#1d9bf0]/15 text-[#1d9bf0] flex items-center justify-center shrink-0">
+              <LayoutGrid className="w-3.5 h-3.5" />
+            </div>
+            <span className="text-xs font-bold text-[#0f1419] group-hover/board-banner:text-[#1d9bf0] transition-colors truncate">
+              {extraCount > 0
+                ? `Click to view ${extraCount} more ${extraCount === 1 ? 'image' : 'images'} on this board`
+                : `Click to view full board (${images.length} images)`}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1 text-xs font-semibold text-[#1d9bf0] shrink-0">
+            <span>Explore board</span>
+            <ChevronRight className="w-3.5 h-3.5 group-hover/board-banner:translate-x-0.5 transition-transform" />
           </div>
         </div>
       </div>
@@ -352,58 +363,109 @@ export default function PostCard({ post, onDelete, onManageCollections, isThread
     );
   };
 
-  // Render Badge
-  const renderBadge = () => {
-    if (post.type !== 'badge' || !post.badgeData) return null;
-    const b = post.badgeData;
+  // Render Unified Grid (Avatars & Generic Links in 4 or 5 columns)
+  const renderGrid = () => {
+    if (post.type !== 'grid' || !post.gridData || !post.gridData.items || post.gridData.items.length === 0) {
+      return null;
+    }
+
+    const columns = post.gridData.columns || 5;
+    const allItems = post.gridData.items;
+    const maxRows = 4;
+    const maxTimelineItems = columns * maxRows;
+    const isCapped = !isThreadView && allItems.length > maxTimelineItems;
+    const displayItems = isCapped ? allItems.slice(0, maxTimelineItems) : allItems;
+    const remainingCount = allItems.length - maxTimelineItems;
 
     return (
-      <div className="mt-2.5 inline-flex flex-col items-start gap-1.5" onClick={(e) => e.stopPropagation()}>
-        <a
-          href={b.url}
-          target={b.url.startsWith('http') ? '_blank' : undefined}
-          rel="noopener noreferrer"
-          title={`${b.title} (${b.url})`}
-          className="group/badge inline-block shrink-0 transition-transform hover:scale-105"
+      <div className="mt-2.5 flex flex-col gap-2">
+        <div 
+          className={`p-3 sm:p-4 rounded-2xl bg-[#f7f9f9]/90 border border-[#eff3f4] grid gap-2.5 sm:gap-3.5 justify-items-center ${
+            columns === 4 ? 'grid-cols-4' : 'grid-cols-5'
+          }`}
         >
-          {b.badgeType === 'avatar' && b.imageUrl ? (
-            <div className="w-[52px] h-[52px] rounded-full overflow-hidden border border-black/15 shadow-2xs block">
-              <img
-                src={b.imageUrl}
-                alt={b.title}
-                className="w-[52px] h-[52px] rounded-full object-cover block"
-              />
-            </div>
-          ) : b.badgeType === 'image' && b.imageUrl ? (
-            <div className="w-[88px] h-[31px] rounded-xs overflow-hidden border border-black/20 shadow-xs block">
-              <img
-                src={b.imageUrl}
-                alt={b.title}
-                className="w-[88px] h-[31px] object-cover block"
-              />
-            </div>
-          ) : (
-            <div
-              className="w-[88px] h-[31px] rounded-xs overflow-hidden border border-black/30 shadow-xs"
-              style={{
-                background: b.bgColor || '#0f1419'
-              }}
-            />
-          )}
-        </a>
-        {b.showText !== false && (b.label || b.title) && (
-          <div className="flex items-center gap-1.5 text-xs text-[#536471]">
-            <span className="font-semibold text-[#0f1419]">{b.label || b.title}</span>
-            <span>·</span>
-            <a
-              href={b.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[#1d9bf0] hover:underline flex items-center gap-0.5 font-mono text-[11px]"
-            >
-              <span>{b.url.replace(/^https?:\/\//, '')}</span>
-              <ExternalLink className="w-3 h-3" />
-            </a>
+          {displayItems.map((item, idx) => {
+            const isExternal = item.url.startsWith('http');
+            const isAvatar = item.kind === 'avatar';
+            
+            return (
+              <div 
+                key={item.id || `gi_${idx}`}
+                className="flex flex-col items-center justify-start min-w-0 w-full"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <a
+                  href={item.url}
+                  target={isExternal ? '_blank' : undefined}
+                  rel={isExternal ? 'noopener noreferrer' : undefined}
+                  title={`${item.title}${item.subtitle ? ` · ${item.subtitle}` : ''} (${item.url})`}
+                  className={`group/grid-item block shrink-0 transition-all hover:scale-105 active:scale-95 ${
+                    columns === 4 
+                      ? 'w-16 h-16 sm:w-20 sm:h-20' 
+                      : 'w-12 h-12 sm:w-16 sm:h-16'
+                  } ${
+                    isAvatar 
+                      ? 'rounded-full ring-2 ring-black/10 shadow-xs hover:shadow-md bg-gray-100' 
+                      : 'rounded-2xl border border-black/10 shadow-xs hover:shadow-md bg-white'
+                  } overflow-hidden`}
+                >
+                  {isAvatar ? (
+                    item.imageUrl ? (
+                      <img
+                        src={item.imageUrl}
+                        alt={item.title}
+                        className="w-full h-full rounded-full object-cover block pointer-events-none"
+                      />
+                    ) : (
+                      <div className="w-full h-full rounded-full bg-gradient-to-br from-[#1d9bf0] to-[#8b5cf6] flex items-center justify-center text-white font-bold text-sm sm:text-base select-none">
+                        {item.title.slice(0, 1).toUpperCase()}
+                      </div>
+                    )
+                  ) : (
+                    item.imageUrl ? (
+                      <img
+                        src={item.imageUrl}
+                        alt={item.title}
+                        className="w-full h-full object-cover block pointer-events-none"
+                      />
+                    ) : (
+                      <div 
+                        className="w-full h-full flex flex-col items-center justify-center text-white p-1 text-center select-none"
+                        style={{
+                          background: item.bgColor || 'linear-gradient(135deg, #0f1419, #536471)'
+                        }}
+                      >
+                        {item.icon ? (
+                          <span className="text-lg sm:text-2xl leading-none">{item.icon}</span>
+                        ) : (
+                          <span className="font-bold text-xs sm:text-sm tracking-wider uppercase truncate max-w-full">
+                            {item.title.slice(0, 3)}
+                          </span>
+                        )}
+                      </div>
+                    )
+                  )}
+                </a>
+
+                {item.showLabel && (
+                  <span 
+                    title={item.title}
+                    className="text-[10px] sm:text-[11px] font-semibold text-[#0f1419] truncate max-w-full text-center mt-1 leading-tight px-0.5"
+                  >
+                    {item.title}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {isCapped && remainingCount > 0 && (
+          <div className="flex justify-center -mt-1">
+            <span className="text-xs font-semibold text-[#1d9bf0] bg-[#1d9bf0]/10 hover:bg-[#1d9bf0]/20 px-3 py-1 rounded-full transition-colors flex items-center gap-1 cursor-pointer">
+              <span>+{remainingCount} more in thread view</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </span>
           </div>
         )}
       </div>
@@ -499,7 +561,7 @@ export default function PostCard({ post, onDelete, onManageCollections, isThread
         {renderCarousel()}
         {renderBoard()}
         {renderLinkCard()}
-        {renderBadge()}
+        {renderGrid()}
         {post.images && post.images.length > 0 && (
           <TwitterMediaGrid images={post.images} />
         )}
@@ -676,7 +738,7 @@ export default function PostCard({ post, onDelete, onManageCollections, isThread
         {renderCarousel()}
         {renderBoard()}
         {renderLinkCard()}
-        {renderBadge()}
+        {renderGrid()}
         {post.images && post.images.length > 0 && (
           <TwitterMediaGrid images={post.images} />
         )}

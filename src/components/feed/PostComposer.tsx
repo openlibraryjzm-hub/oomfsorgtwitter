@@ -17,9 +17,13 @@ import {
   FolderPlus,
   Globe,
   Users,
-  ExternalLink
+  ExternalLink,
+  Grid2X2,
+  Circle,
+  Square,
+  Check
 } from 'lucide-react';
-import { CURRENT_USER, Post, User, Collection } from '@/lib/mockData';
+import { CURRENT_USER, Post, User, Collection, GridItem, GridItemKind } from '@/lib/mockData';
 import { saveSessionPost } from '@/lib/postStore';
 import { useAuth } from '@/context/AuthContext';
 import { createClient } from '@/lib/supabase/client';
@@ -30,7 +34,7 @@ import SelectOomfModal, { SelectableOomf } from './SelectOomfModal';
 interface PostComposerProps {
   onAddPost?: (post: Post) => void;
   onClose?: () => void;
-  defaultType?: 'standard' | 'carousel' | 'board' | 'link_card' | 'badge';
+  defaultType?: 'standard' | 'carousel' | 'board' | 'link_card' | 'grid';
   targetUser?: User;
   compact?: boolean;
   collections?: Collection[];
@@ -239,11 +243,10 @@ export default function PostComposer({
   const { user: authUser, profile: authProfile } = useAuth();
   const supabase = createClient();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const badgeImageInputRef = useRef<HTMLInputElement | null>(null);
   const linkImageInputRef = useRef<HTMLInputElement | null>(null);
+  const gridItemImageInputRef = useRef<HTMLInputElement | null>(null);
 
-  const [composerTab, setComposerTab] = useState<'post' | 'link'>('post');
-  const [postType, setPostType] = useState<'standard' | 'carousel' | 'board' | 'link_card' | 'badge'>(defaultType);
+  const [postType, setPostType] = useState<'standard' | 'carousel' | 'board' | 'link_card' | 'grid'>(defaultType);
   const [text, setText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
@@ -272,9 +275,57 @@ export default function PostComposer({
   const availableCollections = userPostCols;
   const activeSelectedCollection = availableCollections.find((c) => c.id === selectedCollectionId);
 
-  // Carousel state
-  const [carouselHeader, setCarouselHeader] = useState('');
+  // Carousel & Board media state
   const [mediaItems, setMediaItems] = useState<DraftMediaItem[]>([]);
+  const singleSlotFileInputRef = useRef<HTMLInputElement | null>(null);
+  const targetSlotIndexRef = useRef<number | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+  const createBlankCarouselSlots = (): DraftMediaItem[] => [
+    { id: `c_slot_${Date.now()}_1`, url: '', caption: '' },
+    { id: `c_slot_${Date.now()}_2`, url: '', caption: '' },
+    { id: `c_slot_${Date.now()}_3`, url: '', caption: '' },
+    { id: `c_slot_${Date.now()}_4`, url: '', caption: '' },
+    { id: `c_slot_${Date.now()}_5`, url: '', caption: '' },
+  ];
+
+  const createBlankBoardSlots = (): DraftMediaItem[] => [
+    { id: `b_slot_${Date.now()}_1`, url: '', caption: '' },
+    { id: `b_slot_${Date.now()}_2`, url: '', caption: '' },
+    { id: `b_slot_${Date.now()}_3`, url: '', caption: '' },
+    { id: `b_slot_${Date.now()}_4`, url: '', caption: '' },
+    { id: `b_slot_${Date.now()}_5`, url: '', caption: '' },
+  ];
+
+  const handleSlotUploadClick = (index: number) => {
+    targetSlotIndexRef.current = index;
+    singleSlotFileInputRef.current?.click();
+  };
+
+  const handleSingleSlotFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    setIsProcessingFiles(true);
+    setErrorMsg(null);
+    try {
+      const dataUrl = await compressImageFile(file);
+      const targetIdx = targetSlotIndexRef.current;
+      if (targetIdx !== null && targetIdx >= 0) {
+        setMediaItems((prev) =>
+          prev.map((item, idx) => (idx === targetIdx ? { ...item, url: dataUrl } : item))
+        );
+      }
+    } catch (err) {
+      console.error('Error uploading slot image:', err);
+      setErrorMsg('Failed to process image upload.');
+    } finally {
+      setIsProcessingFiles(false);
+      targetSlotIndexRef.current = null;
+      if (singleSlotFileInputRef.current) singleSlotFileInputRef.current.value = '';
+    }
+  };
+
   const [urlInput, setUrlInput] = useState('');
   const [showUrlInput, setShowUrlInput] = useState(false);
 
@@ -286,23 +337,22 @@ export default function PostComposer({
   const [linkUrl, setLinkUrl] = useState('');
   const [linkDescription, setLinkDescription] = useState('');
 
-  // Badge state
-  const [badgeMode, setBadgeMode] = useState<'color' | 'image' | 'avatar'>('color');
-  const [badgeText, setBadgeText] = useState('MUTUAL OOMF');
-  const [badgeUrl, setBadgeUrl] = useState('');
-  const [badgeBaseColor, setBadgeBaseColor] = useState('#1d9bf0');
-  const [badgeStyle, setBadgeStyle] = useState<BadgeStyleId>('angled');
-  const [badgeImageUrl, setBadgeImageUrl] = useState('');
-  const [badgeImageIsLight, setBadgeImageIsLight] = useState(false);
-  const [badgeShowText, setBadgeShowText] = useState(true);
-  const [badgeOverlayStyle, setBadgeOverlayStyle] = useState<'scrim' | 'plaque' | 'auto'>('scrim');
-  const [isSelectOomfModalOpen, setIsSelectOomfModalOpen] = useState(false);
-  const [selectedOomf, setSelectedOomf] = useState<SelectableOomf | null>(null);
-  const badgeTextColor = getOptimalTextColor(badgeBaseColor);
+  // Grid Post state (circles = avatars, squares = generic links)
+  const [gridColumns, setGridColumns] = useState<4 | 5>(5);
+  const [gridItems, setGridItems] = useState<GridItem[]>([]);
+  const [slotModalOpen, setSlotModalOpen] = useState(false);
+  const [editingSlotIndex, setEditingSlotIndex] = useState<number | null>(null);
 
-  useEffect(() => {
-    setPostType(defaultType);
-  }, [defaultType]);
+  // Slot draft state for the Item Builder modal
+  const [slotKind, setSlotKind] = useState<GridItemKind>('avatar');
+  const [slotTitle, setSlotTitle] = useState('');
+  const [slotUrl, setSlotUrl] = useState('');
+  const [slotSubtitle, setSlotSubtitle] = useState('');
+  const [slotImageUrl, setSlotImageUrl] = useState('');
+  const [slotBgColor, setSlotBgColor] = useState('#1d9bf0');
+  const [slotIcon, setSlotIcon] = useState('💻');
+  const [slotShowLabel, setSlotShowLabel] = useState(true);
+  const [isSelectOomfModalOpen, setIsSelectOomfModalOpen] = useState(false);
 
   const authorUser: User = targetUser || (authProfile ? {
     id: authUser?.id || `usr_${authProfile.username}`,
@@ -318,6 +368,15 @@ export default function PostComposer({
     links: []
   } : CURRENT_USER);
 
+  useEffect(() => {
+    setPostType(defaultType);
+    if (defaultType === 'carousel') {
+      setMediaItems(createBlankCarouselSlots());
+    } else if (defaultType === 'board') {
+      setMediaItems(createBlankBoardSlots());
+    }
+  }, [defaultType]);
+
   // Handle multi-file upload from computer
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -327,18 +386,37 @@ export default function PostComposer({
     setErrorMsg(null);
 
     try {
-      const added: DraftMediaItem[] = [];
+      const dataUrls: string[] = [];
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         if (!file.type.startsWith('image/')) continue;
         const dataUrl = await compressImageFile(file);
-        added.push({
-          id: `media_${Date.now()}_${i}`,
-          url: dataUrl,
-          caption: ''
-        });
+        dataUrls.push(dataUrl);
       }
-      setMediaItems((prev) => [...prev, ...added]);
+
+      setMediaItems((prev) => {
+        let fileIdx = 0;
+        // First fill empty slots in order
+        const updated = prev.map((item) => {
+          if (!item.url && fileIdx < dataUrls.length) {
+            const filled = { ...item, url: dataUrls[fileIdx] };
+            fileIdx++;
+            return filled;
+          }
+          return item;
+        });
+
+        // If more files remain, append new slots
+        while (fileIdx < dataUrls.length) {
+          updated.push({
+            id: `media_${Date.now()}_${fileIdx}`,
+            url: dataUrls[fileIdx],
+            caption: ''
+          });
+          fileIdx++;
+        }
+        return updated;
+      });
     } catch (err) {
       console.error('Error processing uploaded images:', err);
       setErrorMsg('Could not process one or more image files.');
@@ -386,26 +464,172 @@ export default function PostComposer({
     setMediaItems(updated);
   };
 
-  const handleBadgeImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleGridItemImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     const file = files[0];
     setIsProcessingFiles(true);
     setErrorMsg(null);
     try {
-      const { dataUrl, isLight } = await compressBadgeImage(file);
-      setBadgeImageUrl(dataUrl);
-      setBadgeImageIsLight(isLight);
-      setBadgeMode('image');
+      const dataUrl = await compressImageFile(file, 800, 0.85);
+      setSlotImageUrl(dataUrl);
     } catch (err) {
-      console.error('Error processing badge image:', err);
-      setErrorMsg('Failed to process badge image.');
+      console.error('Error processing grid item image:', err);
+      setErrorMsg('Failed to process image.');
     } finally {
       setIsProcessingFiles(false);
-      if (badgeImageInputRef.current) {
-        badgeImageInputRef.current.value = '';
+      if (gridItemImageInputRef.current) {
+        gridItemImageInputRef.current.value = '';
       }
     }
+  };
+
+  const handleOpenSlotModal = (index?: number) => {
+    if (index !== undefined && index >= 0 && index < gridItems.length) {
+      const item = gridItems[index];
+      setEditingSlotIndex(index);
+      setSlotKind(item.kind);
+      setSlotTitle(item.title || '');
+      setSlotUrl(item.url || '');
+      setSlotSubtitle(item.subtitle || '');
+      setSlotImageUrl(item.imageUrl || '');
+      setSlotBgColor(item.bgColor || '#1d9bf0');
+      setSlotIcon(item.icon || (item.kind === 'avatar' ? '👤' : '🔗'));
+      setSlotShowLabel(item.showLabel !== false);
+    } else {
+      setEditingSlotIndex(null);
+      setSlotKind('avatar');
+      setSlotTitle('');
+      setSlotUrl('');
+      setSlotSubtitle('');
+      setSlotImageUrl('');
+      setSlotBgColor('#1d9bf0');
+      setSlotIcon('💻');
+      setSlotShowLabel(true);
+    }
+    setSlotModalOpen(true);
+  };
+
+  const handleSaveSlot = () => {
+    if (!slotTitle.trim() || !slotUrl.trim()) {
+      setErrorMsg('Please provide both a Title and Destination URL.');
+      return;
+    }
+
+    const itemData: GridItem = {
+      id: editingSlotIndex !== null && gridItems[editingSlotIndex] 
+        ? gridItems[editingSlotIndex].id 
+        : `gi_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      kind: slotKind,
+      title: slotTitle.trim(),
+      url: slotUrl.trim().startsWith('http') || slotUrl.trim().startsWith('/') ? slotUrl.trim() : `https://${slotUrl.trim()}`,
+      subtitle: slotSubtitle.trim() || undefined,
+      imageUrl: slotImageUrl.trim() || undefined,
+      bgColor: slotKind === 'link' ? slotBgColor : undefined,
+      icon: slotKind === 'link' && !slotImageUrl ? slotIcon : undefined,
+      showLabel: slotShowLabel
+    };
+
+    if (editingSlotIndex !== null && editingSlotIndex >= 0) {
+      setGridItems((prev) => prev.map((item, idx) => idx === editingSlotIndex ? itemData : item));
+    } else {
+      setGridItems((prev) => [...prev, itemData]);
+    }
+
+    setSlotModalOpen(false);
+    setEditingSlotIndex(null);
+    setErrorMsg(null);
+  };
+
+  const handleRemoveSlot = (index: number) => {
+    setGridItems((prev) => prev.filter((_, idx) => idx !== index));
+    if (editingSlotIndex === index) {
+      setSlotModalOpen(false);
+      setEditingSlotIndex(null);
+    }
+  };
+
+  const handleLoadSampleGrid = () => {
+    setGridItems([
+      {
+        id: `gi_${Date.now()}_1`,
+        kind: 'avatar',
+        title: 'Kyle Vance',
+        url: '/dev_kyle',
+        subtitle: '@dev_kyle',
+        imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
+        showLabel: true
+      },
+      {
+        id: `gi_${Date.now()}_2`,
+        kind: 'link',
+        title: 'GitHub',
+        url: 'https://github.com',
+        subtitle: 'github.com',
+        bgColor: '#0f1419',
+        icon: '💻',
+        showLabel: true
+      },
+      {
+        id: `gi_${Date.now()}_3`,
+        kind: 'avatar',
+        title: 'Sora',
+        url: '/sora_arts',
+        subtitle: '@sora_arts',
+        imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+        showLabel: true
+      },
+      {
+        id: `gi_${Date.now()}_4`,
+        kind: 'link',
+        title: 'Figma',
+        url: 'https://figma.com',
+        subtitle: 'figma.com',
+        bgColor: 'linear-gradient(135deg, #8b5cf6, #ec4899)',
+        icon: '🎨',
+        showLabel: true
+      },
+      {
+        id: `gi_${Date.now()}_5`,
+        kind: 'avatar',
+        title: 'Jack',
+        url: '/jack',
+        subtitle: '@jack',
+        imageUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=400&q=80',
+        showLabel: true
+      },
+      {
+        id: `gi_${Date.now()}_6`,
+        kind: 'link',
+        title: 'Next.js',
+        url: 'https://nextjs.org',
+        subtitle: 'nextjs.org',
+        bgColor: '#000000',
+        icon: '▲',
+        showLabel: false
+      },
+      {
+        id: `gi_${Date.now()}_7`,
+        kind: 'link',
+        title: 'Spotify',
+        url: 'https://spotify.com',
+        subtitle: 'spotify.com',
+        bgColor: 'linear-gradient(135deg, #10b981, #06b6d4)',
+        icon: '🎧',
+        showLabel: false
+      },
+      {
+        id: `gi_${Date.now()}_8`,
+        kind: 'link',
+        title: 'Neocities',
+        url: 'https://neocities.org',
+        subtitle: 'neocities.org',
+        bgColor: '#e06800',
+        icon: '👾',
+        showLabel: false
+      }
+    ]);
+    setErrorMsg(null);
   };
 
   const handleLinkImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -432,23 +656,10 @@ export default function PostComposer({
   const canSubmit = () => {
     if (isSubmitting || isProcessingFiles) return false;
     if (postType === 'standard') return text.trim().length > 0;
-    if (postType === 'carousel') return mediaItems.length >= 1;
-    if (postType === 'board') return mediaItems.length >= 3;
+    if (postType === 'carousel') return mediaItems.some((m) => m.url.trim().length > 0);
+    if (postType === 'board') return mediaItems.filter((m) => m.url.trim().length > 0).length >= 3;
     if (postType === 'link_card') return linkTitle.trim().length > 0 && linkUrl.trim().length > 0;
-    if (postType === 'badge') {
-      const hasUrl = badgeUrl.trim().length > 0;
-      if (badgeMode === 'avatar') {
-        const hasImg = badgeImageUrl.trim().length > 0;
-        return hasUrl && hasImg;
-      }
-      if (badgeMode === 'image') {
-        const hasImg = badgeImageUrl.trim().length > 0;
-        if (!badgeShowText) return hasUrl && hasImg;
-        return hasUrl && hasImg && badgeText.trim().length > 0;
-      }
-      if (!badgeShowText) return hasUrl;
-      return hasUrl && badgeText.trim().length > 0;
-    }
+    if (postType === 'grid') return gridItems.length >= 1;
     return false;
   };
 
@@ -456,12 +667,18 @@ export default function PostComposer({
     e.preventDefault();
     setErrorMsg(null);
 
-    if (postType === 'carousel' && mediaItems.length < 1) {
-      setErrorMsg('Please add at least 1 image to your Carousel.');
+    const filledCarouselSlides = mediaItems.filter((m) => m.url.trim().length > 0);
+    if (postType === 'carousel' && filledCarouselSlides.length < 1) {
+      setErrorMsg('Please upload at least 1 photo for your carousel.');
       return;
     }
-    if (postType === 'board' && mediaItems.length < 3) {
-      setErrorMsg('Boards require at least 3 images (for the 3-image preview & thread board).');
+    const filledBoardImages = mediaItems.filter((m) => m.url.trim().length > 0);
+    if (postType === 'board' && filledBoardImages.length < 3) {
+      setErrorMsg('Boards require at least 3 uploaded images.');
+      return;
+    }
+    if (postType === 'grid' && gridItems.length < 1) {
+      setErrorMsg('Please add at least 1 item to your Grid.');
       return;
     }
 
@@ -472,8 +689,7 @@ export default function PostComposer({
       text: text.trim(),
       ...(postType === 'carousel' ? {
         carouselData: {
-          header: carouselHeader.trim() || 'Photo Carousel',
-          slides: mediaItems.map((m) => ({
+          slides: filledCarouselSlides.map((m) => ({
             id: m.id,
             url: m.url,
             caption: m.caption.trim() || undefined
@@ -482,7 +698,7 @@ export default function PostComposer({
       } : {}),
       ...(postType === 'board' ? {
         boardData: {
-          images: mediaItems.map((m) => ({
+          images: filledBoardImages.map((m) => ({
             id: m.id,
             url: m.url,
             caption: m.caption.trim() || undefined
@@ -501,17 +717,10 @@ export default function PostComposer({
           pageId: selectedCollectionId || 'main'
         }
       } : {}),
-      ...(postType === 'badge' ? {
-        badgeData: {
-          title: (badgeShowText && badgeText.trim()) || selectedOomf?.name || 'OOMF Badge',
-          url: badgeUrl.trim().startsWith('http') || badgeUrl.trim().startsWith('/') ? badgeUrl.trim() : `https://${badgeUrl.trim()}`,
-          badgeType: badgeMode === 'avatar' ? 'avatar' : badgeMode === 'image' ? 'image' : 'custom',
-          imageUrl: badgeMode !== 'color' ? badgeImageUrl : undefined,
-          label: badgeShowText ? badgeText.trim() : undefined,
-          targetUsername: selectedOomf?.username,
-          bgColor: badgeMode === 'color' ? computeBadgeBackground(badgeBaseColor, badgeStyle) : undefined,
-          showText: badgeShowText,
-          pageId: selectedCollectionId || 'main'
+      ...(postType === 'grid' ? {
+        gridData: {
+          columns: gridColumns,
+          items: gridItems
         }
       } : {})
     };
@@ -557,7 +766,7 @@ export default function PostComposer({
       carouselData: blockContent.carouselData,
       boardData: blockContent.boardData,
       linkData: blockContent.linkData,
-      badgeData: blockContent.badgeData,
+      gridData: blockContent.gridData,
       likesCount: 0,
       repostsCount: 0,
       repliesCount: 0,
@@ -588,7 +797,6 @@ export default function PostComposer({
     // Reset state
     setSelectedCollectionId(null);
     setText('');
-    setCarouselHeader('');
     setMediaItems([]);
     setLinkTitle('');
     setLinkSubtitle('');
@@ -596,15 +804,8 @@ export default function PostComposer({
     setLinkImageUrl('');
     setLinkUrl('');
     setLinkDescription('');
-    setBadgeText('MUTUAL OOMF');
-    setBadgeUrl('');
-    setBadgeBaseColor('#1d9bf0');
-    setBadgeStyle('angled');
-    setBadgeImageUrl('');
-    setBadgeImageIsLight(false);
-    setBadgeShowText(true);
-    setBadgeOverlayStyle('scrim');
-    setBadgeMode('color');
+    setGridItems([]);
+    setGridColumns(5);
     setIsSubmitting(false);
 
     if (onClose) {
@@ -612,139 +813,9 @@ export default function PostComposer({
     }
   };
 
-  const handleLoadSampleCarousel = () => {
-    setErrorMsg(null);
-    if (!carouselHeader.trim()) {
-      setCarouselHeader('weekend film roll 📸 (5 slides)');
-    }
-    setMediaItems([
-      {
-        id: `sample_c_${Date.now()}_1`,
-        url: 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?w=600&h=900&fit=crop',
-        caption: '01 — morning light (portrait)'
-      },
-      {
-        id: `sample_c_${Date.now()}_2`,
-        url: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=1000&h=680&fit=crop',
-        caption: '02 — desk setup (landscape)'
-      },
-      {
-        id: `sample_c_${Date.now()}_3`,
-        url: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=600&h=880&fit=crop',
-        caption: '03 — late night study'
-      },
-      {
-        id: `sample_c_${Date.now()}_4`,
-        url: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=960&h=640&fit=crop',
-        caption: '04 — shipping build v1'
-      },
-      {
-        id: `sample_c_${Date.now()}_5`,
-        url: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=620&h=900&fit=crop',
-        caption: '05 — handheld console archive'
-      }
-    ]);
-  };
-
-  const handleLoadSampleBoard = () => {
-    setErrorMsg(null);
-    setMediaItems([
-      {
-        id: `sample_b_${Date.now()}_1`,
-        url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=700&h=950&fit=crop',
-        caption: 'Concrete & warm oak facade'
-      },
-      {
-        id: `sample_b_${Date.now()}_2`,
-        url: 'https://images.unsplash.com/photo-1507652313519-d4e9174996dd?w=700&h=550&fit=crop',
-        caption: 'Brushed aluminum details'
-      },
-      {
-        id: `sample_b_${Date.now()}_3`,
-        url: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=700&h=600&fit=crop',
-        caption: 'Minimalist studio lighting'
-      },
-      {
-        id: `sample_b_${Date.now()}_4`,
-        url: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=700&h=920&fit=crop',
-        caption: 'Mid-century lounge chair'
-      },
-      {
-        id: `sample_b_${Date.now()}_5`,
-        url: 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=700&h=560&fit=crop',
-        caption: 'Clean modular shelving'
-      }
-    ]);
-  };
-
   return (
     <div className={`bg-white flex flex-col ${compact ? '' : 'border-b border-[#eff3f4]'}`}>
-      {/* Top Dual Tab Switcher: [ Post ] vs [ Link ] */}
-      <div className="flex border-b border-[#eff3f4] bg-[#f7f9f9]/40 px-4 pt-1.5">
-        <button
-          type="button"
-          onClick={() => setComposerTab('post')}
-          className={`pb-2 px-3.5 font-bold text-xs sm:text-sm transition-colors relative cursor-pointer ${
-            composerTab === 'post' ? 'text-[#0f1419]' : 'text-[#536471] hover:text-[#0f1419]'
-          }`}
-        >
-          Post
-          {composerTab === 'post' && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1d9bf0] rounded-full" />
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={() => setComposerTab('link')}
-          className={`pb-2 px-3.5 font-bold text-xs sm:text-sm transition-colors relative cursor-pointer ${
-            composerTab === 'link' ? 'text-[#0f1419]' : 'text-[#536471] hover:text-[#0f1419]'
-          }`}
-        >
-          Link
-          {composerTab === 'link' && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1d9bf0] rounded-full" />
-          )}
-        </button>
-      </div>
-
-      {composerTab === 'link' ? (
-        <div className="p-6 sm:p-8 flex flex-col items-center text-center max-w-md mx-auto">
-          <div className="w-12 h-12 rounded-full bg-blue-50 text-[#1d9bf0] flex items-center justify-center mb-3">
-            <Link2 className="w-6 h-6" />
-          </div>
-          <h3 className="font-extrabold text-[#0f1419] text-base mb-1">
-            Links & Badges Are Now Posts
-          </h3>
-          <p className="text-xs text-[#536471] leading-relaxed mb-4">
-            Bio link cards and 88×31 retro web badges are now created directly as timeline posts. They appear in your master feed, thread views, and can be organized into any Curated Post Collection on your Switchboard.
-          </p>
-          <div className="flex flex-wrap gap-2.5 justify-center">
-            <button
-              type="button"
-              onClick={() => {
-                setPostType('link_card');
-                setComposerTab('post');
-              }}
-              className="bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-bold text-xs px-4 py-2 rounded-full transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
-            >
-              <Link2 className="w-3.5 h-3.5" />
-              <span>Draft Bio Link Post</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setPostType('badge');
-                setComposerTab('post');
-              }}
-              className="border border-[#cfd9de] hover:bg-[#f7f9f9] text-[#0f1419] font-bold text-xs px-4 py-2 rounded-full transition-colors cursor-pointer flex items-center gap-1.5"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-[#1d9bf0]" />
-              <span>Draft Web Badge Post</span>
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="p-4 flex gap-3">
+      <div className="p-4 flex gap-3">
           <img
             src={formatTwitterAvatar(authorUser.avatar)}
             alt={authorUser.name}
@@ -752,16 +823,33 @@ export default function PostComposer({
           />
 
           <form onSubmit={handleSubmit} className="flex-1 min-w-0 flex flex-col gap-3">
-        {/* Main Post Textarea (only for standard posts; carousel, board, link, badge sit flush) */}
-        {postType === 'standard' && (
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="What is happening?!"
-            rows={compact ? 2 : 3}
-            className="w-full text-[15px] text-[#0f1419] placeholder-[#536471] outline-none resize-none bg-transparent"
-          />
-        )}
+        {/* Main Post Textarea (visible for all post types with contextual placeholder) */}
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder={
+            postType === 'grid'
+              ? "Add thoughts or a caption for your grid... (optional)"
+              : postType === 'link_card'
+              ? "Add thoughts or a caption for your link... (optional)"
+              : postType === 'carousel'
+              ? "Add thoughts or a caption for your carousel... (optional)"
+              : postType === 'board'
+              ? "Add thoughts or a caption for your board... (optional)"
+              : "What is happening?!"
+          }
+          rows={compact ? 2 : 3}
+          className="w-full text-[15px] text-[#0f1419] placeholder-[#536471] outline-none resize-none bg-transparent"
+        />
+
+        {/* Hidden Single Slot File Input */}
+        <input
+          ref={singleSlotFileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleSingleSlotFileChange}
+          className="hidden"
+        />
 
         {/* Hidden Multi-File Input */}
         <input
@@ -773,12 +861,12 @@ export default function PostComposer({
           className="hidden"
         />
 
-        {/* Hidden Badge Image Input */}
+        {/* Hidden Grid Item Image Input */}
         <input
-          ref={badgeImageInputRef}
+          ref={gridItemImageInputRef}
           type="file"
           accept="image/*"
-          onChange={handleBadgeImageChange}
+          onChange={handleGridItemImageChange}
           className="hidden"
         />
 
@@ -794,93 +882,113 @@ export default function PostComposer({
         {/* CAROUSEL DRAFTING UI */}
         {postType === 'carousel' && (
           <div className="bg-[#f7f9f9] border border-[#eff3f4] rounded-2xl p-3.5 flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-extrabold text-[#0f1419] uppercase tracking-wider flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5 text-[#1d9bf0]" />
-                <span>Carousel Builder ({mediaItems.length} slides · uncapped)</span>
-              </span>
-            </div>
-
-            {/* Universal Header Input */}
-            <div>
-              <label className="text-[11px] font-bold text-[#536471] block mb-1">
-                Universal Carousel Header
-              </label>
-              <input
-                type="text"
-                placeholder="e.g., october studio & camera roll 📸"
-                value={carouselHeader}
-                onChange={(e) => setCarouselHeader(e.target.value)}
-                className="w-full bg-white border border-[#eff3f4] focus:border-[#1d9bf0] rounded-xl px-3 py-2 text-xs font-semibold text-[#0f1419] outline-none"
-              />
-            </div>
-
-            {/* Live Horizontal Slide Previews & Individual Bottom Captions */}
-            {mediaItems.length > 0 && (
-              <div className="flex gap-3 overflow-x-auto pb-2 pt-1">
-                {mediaItems.map((slide, idx) => (
-                  <div
-                    key={slide.id}
-                    className="w-48 shrink-0 bg-white border border-[#eff3f4] rounded-xl overflow-hidden flex flex-col shadow-2xs"
-                  >
-                    <div className="relative h-36 bg-[#eff3f4] flex items-center justify-center overflow-hidden">
-                      <img
-                        src={slide.url}
-                        alt={`Slide ${idx + 1}`}
-                        className="h-full w-auto object-cover"
-                      />
-                      <span className="absolute top-1.5 left-1.5 bg-black/65 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                        #{idx + 1}
-                      </span>
-
-                      <div className="absolute top-1.5 right-1.5 flex items-center gap-1">
-                        {idx > 0 && (
+            {/* Horizontal Slide Previews with Upload Placeholders */}
+            <div className="flex gap-3 overflow-x-auto pb-2 pt-1">
+              {mediaItems.map((slide, idx) => (
+                <div
+                  key={slide.id}
+                  className="w-48 shrink-0 bg-white border border-[#eff3f4] rounded-xl overflow-hidden flex flex-col shadow-2xs"
+                >
+                  <div className="relative h-36 bg-[#eff3f4] flex items-center justify-center overflow-hidden">
+                    {slide.url ? (
+                      <>
+                        <img
+                          src={slide.url}
+                          alt={`Slide ${idx + 1}`}
+                          className="h-full w-full object-cover"
+                        />
+                        <span className="absolute top-1.5 left-1.5 bg-black/65 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                          #{idx + 1}
+                        </span>
+                        <div className="absolute top-1.5 right-1.5 flex items-center gap-1">
+                          {idx > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => handleMoveMedia(idx, 'left')}
+                              className="p-1 bg-black/65 hover:bg-black text-white rounded-full cursor-pointer"
+                              title="Move left"
+                            >
+                              <ArrowLeft className="w-3 h-3" />
+                            </button>
+                          )}
+                          {idx < mediaItems.length - 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleMoveMedia(idx, 'right')}
+                              className="p-1 bg-black/65 hover:bg-black text-white rounded-full cursor-pointer"
+                              title="Move right"
+                            >
+                              <ArrowRight className="w-3 h-3" />
+                            </button>
+                          )}
                           <button
                             type="button"
-                            onClick={() => handleMoveMedia(idx, 'left')}
-                            className="p-1 bg-black/65 hover:bg-black text-white rounded-full cursor-pointer"
-                            title="Move left"
+                            onClick={() => handleRemoveMedia(slide.id)}
+                            className="p-1 bg-red-600/90 hover:bg-red-600 text-white rounded-full cursor-pointer"
+                            title="Remove slide"
                           >
-                            <ArrowLeft className="w-3 h-3" />
+                            <X className="w-3 h-3" />
                           </button>
-                        )}
-                        {idx < mediaItems.length - 1 && (
-                          <button
-                            type="button"
-                            onClick={() => handleMoveMedia(idx, 'right')}
-                            className="p-1 bg-black/65 hover:bg-black text-white rounded-full cursor-pointer"
-                            title="Move right"
-                          >
-                            <ArrowRight className="w-3 h-3" />
-                          </button>
-                        )}
+                        </div>
+                      </>
+                    ) : (
+                      <div
+                        onClick={() => handleSlotUploadClick(idx)}
+                        className="w-full h-full flex flex-col items-center justify-center text-[#536471] hover:text-[#1d9bf0] hover:bg-blue-50/50 transition-colors cursor-pointer p-3 text-center border-2 border-dashed border-[#cfd9de] hover:border-[#1d9bf0] rounded-t-xl"
+                        title="Click to upload photo"
+                      >
+                        <span className="absolute top-1.5 left-1.5 bg-gray-200 text-[#536471] text-[10px] font-bold px-2 py-0.5 rounded-full">
+                          #{idx + 1}
+                        </span>
                         <button
                           type="button"
-                          onClick={() => handleRemoveMedia(slide.id)}
-                          className="p-1 bg-red-600/90 hover:bg-red-600 text-white rounded-full cursor-pointer"
-                          title="Remove slide"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveMedia(slide.id);
+                          }}
+                          className="absolute top-1.5 right-1.5 p-1 text-[#536471] hover:text-red-500 rounded-full cursor-pointer"
+                          title="Remove slot"
                         >
                           <X className="w-3 h-3" />
                         </button>
+                        <Upload className="w-5 h-5 mb-1 text-[#1d9bf0]" />
+                        <span className="text-[11px] font-bold">Add Photo</span>
+                        <span className="text-[9px] text-[#536471]">(Click to browse)</span>
                       </div>
-                    </div>
-
-                    <div className="p-2">
-                      <input
-                        type="text"
-                        placeholder="Bottom overlay caption..."
-                        value={slide.caption}
-                        onChange={(e) => handleUpdateCaption(slide.id, e.target.value)}
-                        className="w-full text-xs text-[#0f1419] placeholder-[#536471] bg-[#f7f9f9] border border-[#eff3f4] focus:border-[#1d9bf0] rounded-lg px-2 py-1.5 outline-none"
-                      />
-                    </div>
+                    )}
                   </div>
-                ))}
-              </div>
-            )}
 
-            {/* Add Images Controls */}
-            <div className="flex flex-wrap items-center gap-2">
+                  <div className="p-2">
+                    <input
+                      type="text"
+                      placeholder={`Post — ${String(idx + 1).padStart(2, '0')}`}
+                      value={slide.caption}
+                      onChange={(e) => handleUpdateCaption(slide.id, e.target.value)}
+                      className="w-full text-xs text-[#0f1419] placeholder-[#536471]/50 bg-[#f7f9f9] border border-[#eff3f4] focus:border-[#1d9bf0] rounded-lg px-2 py-1.5 outline-none transition-colors"
+                    />
+                  </div>
+                </div>
+              ))}
+
+              {/* Add Slide Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setMediaItems((prev) => [
+                    ...prev,
+                    { id: `c_slot_${Date.now()}_${prev.length + 1}`, url: '', caption: '' }
+                  ]);
+                }}
+                className="w-44 shrink-0 h-44 rounded-xl border-2 border-dashed border-[#cfd9de] hover:border-[#1d9bf0] hover:bg-[#1d9bf0]/5 text-[#536471] hover:text-[#1d9bf0] transition-colors flex flex-col items-center justify-center gap-1.5 cursor-pointer"
+                title="Add another slide slot"
+              >
+                <Plus className="w-5 h-5" />
+                <span className="text-xs font-bold">Add Slide</span>
+              </button>
+            </div>
+
+            {/* Upload multi-files control */}
+            <div className="flex flex-wrap items-center gap-2 pt-1">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
@@ -898,15 +1006,6 @@ export default function PostComposer({
               >
                 <LinkIcon className="w-3.5 h-3.5 text-[#536471]" />
                 <span>Paste Image URL</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleLoadSampleCarousel}
-                className="bg-white border border-[#eff3f4] hover:border-[#1d9bf0] text-[#1d9bf0] text-xs font-semibold px-3 py-2 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Load 5 Sample Slides</span>
               </button>
             </div>
 
@@ -937,81 +1036,94 @@ export default function PostComposer({
             <div className="flex items-center justify-between">
               <span className="text-xs font-extrabold text-[#0f1419] uppercase tracking-wider flex items-center gap-1.5">
                 <LayoutGrid className="w-3.5 h-3.5 text-[#1d9bf0]" />
-                <span>Board Builder ({mediaItems.length} images · min 3)</span>
+                <span>Board Builder ({mediaItems.filter(m => m.url.trim().length > 0).length} images · min 3)</span>
               </span>
-              {mediaItems.length < 3 && (
+              {mediaItems.filter(m => m.url.trim().length > 0).length < 3 && (
                 <span className="text-[11px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                  Add {3 - mediaItems.length} more {3 - mediaItems.length === 1 ? 'image' : 'images'}
+                  Upload at least 3 images
                 </span>
               )}
             </div>
 
-            {/* Live 3-Image Split Preview when at least 3 images exist */}
-            {mediaItems.length >= 3 && (
-              <div>
-                <span className="text-[11px] font-bold text-[#536471] block mb-1">
-                  Timeline 3-Image Split Preview:
-                </span>
-                <div className="h-44 w-full rounded-xl overflow-hidden border border-[#eff3f4] grid grid-cols-2 gap-0.5 bg-[#eff3f4]">
-                  <div className="w-full h-full overflow-hidden bg-white">
-                    <img src={mediaItems[0].url} alt="" className="w-full h-full object-cover" />
+            {/* List of 5 Board Image Slots with Placeholders */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              {mediaItems.map((img, idx) => (
+                <div
+                  key={img.id}
+                  className="bg-white border border-[#eff3f4] rounded-xl overflow-hidden flex flex-col shadow-2xs"
+                >
+                  <div className="relative h-28 bg-[#eff3f4] flex items-center justify-center overflow-hidden">
+                    {img.url ? (
+                      <>
+                        <img src={img.url} alt="" className="w-full h-full object-cover" />
+                        <span className="absolute top-1 left-1 bg-black/65 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                          #{idx + 1}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveMedia(img.id)}
+                          className="absolute top-1 right-1 p-1 bg-red-600/90 hover:bg-red-600 text-white rounded-full cursor-pointer"
+                          title="Remove image"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </>
+                    ) : (
+                      <div
+                        onClick={() => handleSlotUploadClick(idx)}
+                        className="w-full h-full flex flex-col items-center justify-center text-[#536471] hover:text-[#1d9bf0] hover:bg-blue-50/50 transition-colors cursor-pointer p-2 text-center border-2 border-dashed border-[#cfd9de] hover:border-[#1d9bf0] rounded-t-xl"
+                        title="Click to upload image"
+                      >
+                        <span className="absolute top-1 left-1 bg-gray-200 text-[#536471] text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                          #{idx + 1}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveMedia(img.id);
+                          }}
+                          className="absolute top-1 right-1 p-1 text-[#536471] hover:text-red-500 rounded-full cursor-pointer"
+                          title="Remove slot"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                        <Upload className="w-4 h-4 mb-0.5 text-[#1d9bf0]" />
+                        <span className="text-[10px] font-bold">Add Image</span>
+                      </div>
+                    )}
                   </div>
-                  <div className="grid grid-rows-2 gap-0.5 w-full h-full overflow-hidden">
-                    <div className="w-full h-full overflow-hidden bg-white">
-                      <img src={mediaItems[1].url} alt="" className="w-full h-full object-cover" />
-                    </div>
-                    <div className="relative w-full h-full overflow-hidden bg-white">
-                      <img src={mediaItems[2].url} alt="" className="w-full h-full object-cover" />
-                      {mediaItems.length > 3 && (
-                        <div className="absolute inset-0 bg-black/35 flex items-end justify-end p-2">
-                          <span className="bg-black/75 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                            +{mediaItems.length - 3} more in thread
-                          </span>
-                        </div>
-                      )}
-                    </div>
+                  <div className="p-1.5">
+                    <input
+                      type="text"
+                      placeholder={`Board — ${String(idx + 1).padStart(2, '0')}`}
+                      value={img.caption}
+                      onChange={(e) => handleUpdateCaption(img.id, e.target.value)}
+                      className="w-full text-[11px] text-[#0f1419] placeholder-[#536471]/50 bg-[#f7f9f9] border border-[#eff3f4] rounded px-1.5 py-1 outline-none transition-colors"
+                    />
                   </div>
                 </div>
-              </div>
-            )}
+              ))}
 
-            {/* List of Board Images */}
-            {mediaItems.length > 0 && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {mediaItems.map((img, idx) => (
-                  <div
-                    key={img.id}
-                    className="bg-white border border-[#eff3f4] rounded-xl overflow-hidden flex flex-col"
-                  >
-                    <div className="relative h-24 bg-[#eff3f4]">
-                      <img src={img.url} alt="" className="w-full h-full object-cover" />
-                      <span className="absolute top-1 left-1 bg-black/65 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                        {idx === 0 ? '1 (Left)' : idx === 1 ? '2 (Top-R)' : idx === 2 ? '3 (Bot-R)' : `#${idx + 1}`}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveMedia(img.id)}
-                        className="absolute top-1 right-1 p-1 bg-red-600/90 hover:bg-red-600 text-white rounded-full cursor-pointer"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                    <div className="p-1.5">
-                      <input
-                        type="text"
-                        placeholder="Note (optional)..."
-                        value={img.caption}
-                        onChange={(e) => handleUpdateCaption(img.id, e.target.value)}
-                        className="w-full text-[11px] text-[#0f1419] bg-[#f7f9f9] border border-[#eff3f4] rounded px-1.5 py-1 outline-none"
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+              {/* Add Board Image Slot Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setMediaItems((prev) => [
+                    ...prev,
+                    { id: `b_slot_${Date.now()}_${prev.length + 1}`, url: '', caption: '' }
+                  ]);
+                }}
+                className="h-36 rounded-xl border-2 border-dashed border-[#cfd9de] hover:border-[#1d9bf0] hover:bg-[#1d9bf0]/5 text-[#536471] hover:text-[#1d9bf0] transition-colors flex flex-col items-center justify-center gap-1.5 cursor-pointer"
+                title="Add another board slot"
+              >
+                <Plus className="w-5 h-5" />
+                <span className="text-xs font-bold">Add Slot</span>
+              </button>
+            </div>
 
             {/* Upload / Paste URL Buttons */}
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 pt-1">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
@@ -1029,15 +1141,6 @@ export default function PostComposer({
               >
                 <LinkIcon className="w-3.5 h-3.5 text-[#536471]" />
                 <span>Paste Image URL</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleLoadSampleBoard}
-                className="bg-white border border-[#eff3f4] hover:border-[#1d9bf0] text-[#1d9bf0] text-xs font-semibold px-3 py-2 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Load 5 Sample Board Images</span>
               </button>
             </div>
 
@@ -1062,466 +1165,274 @@ export default function PostComposer({
           </div>
         )}
 
-        {/* BIO LINK CARD DRAFTING UI */}
+        {/* IN-SITU EDITABLE BIO LINK CARD */}
         {postType === 'link_card' && (
-          <div className="bg-[#f7f9f9] border border-[#eff3f4] rounded-2xl p-3.5 flex flex-col gap-3">
-            {/* LIVE CARD PREVIEW */}
-            <div className="flex flex-col gap-1.5">
-              <span className="text-[11px] font-extrabold text-[#536471] uppercase tracking-wider">
-                Live Card Preview
+          <div className="bg-[#f7f9f9] border border-[#eff3f4] rounded-2xl p-3.5 flex flex-col gap-2.5">
+            <div className="flex items-center justify-between px-0.5">
+              <span className="text-xs font-bold text-[#0f1419]">
+                Bio Link Card (Edit directly in card)
               </span>
-              <div className="w-full h-28 sm:h-32 border border-[#eff3f4] rounded-2xl bg-white overflow-hidden flex flex-row shadow-2xs">
-                {/* Left Half: Icon, Title, Subtitle, URL */}
-                <div className="w-1/2 p-3 sm:p-4 flex flex-col justify-between min-w-0 pr-3">
-                  <div className="flex flex-col min-w-0">
-                    <div className="flex items-center gap-2 min-w-0">
-                      {linkIcon && (
-                        <span className="text-lg sm:text-xl shrink-0 select-none leading-none">
-                          {linkIcon}
-                        </span>
-                      )}
-                      <h4 className="font-bold text-[#0f1419] text-sm sm:text-base truncate">
-                        {linkTitle.trim() || 'Link Title'}
-                      </h4>
-                    </div>
-                    <p className="text-xs text-[#536471] line-clamp-2 leading-relaxed mt-1">
-                      {linkSubtitle.trim() || 'Subtitle or short description will appear here'}
-                    </p>
+              {linkImageUrl && (
+                <button
+                  type="button"
+                  onClick={() => setLinkImageUrl('')}
+                  className="text-[11px] text-red-500 hover:underline font-semibold cursor-pointer flex items-center gap-1"
+                >
+                  <X className="w-3 h-3" />
+                  <span>Remove cover image</span>
+                </button>
+              )}
+            </div>
+
+            {/* The Interactive Card Container */}
+            <div className="w-full h-32 sm:h-36 border border-[#cfd9de] focus-within:border-[#1d9bf0] rounded-2xl bg-white overflow-hidden flex flex-row shadow-2xs transition-colors">
+              {/* Left Half (50%): Direct In-Card Form Inputs */}
+              <div className="w-1/2 p-3 sm:p-4 flex flex-col justify-between min-w-0 pr-3">
+                <div className="flex flex-col min-w-0 gap-1.5">
+                  {/* Top Row: Icon Button + Title Input */}
+                  <div className="flex items-center gap-2 min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                      title="Click to choose icon/emoji"
+                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gray-100 hover:bg-[#1d9bf0]/10 hover:text-[#1d9bf0] flex items-center justify-center text-lg shrink-0 transition-colors cursor-pointer select-none"
+                    >
+                      {linkIcon || '🌐'}
+                    </button>
+                    <input
+                      type="text"
+                      placeholder="Link Title (e.g. Portfolio)..."
+                      value={linkTitle}
+                      onChange={(e) => setLinkTitle(e.target.value)}
+                      className="font-bold text-[#0f1419] text-sm sm:text-base w-full bg-transparent outline-none border-b border-dashed border-transparent hover:border-gray-300 focus:border-[#1d9bf0] transition-colors truncate"
+                      required
+                    />
                   </div>
-                  <div className="pt-1">
-                    <span className="text-[11px] text-[#1d9bf0] font-mono truncate flex items-center gap-1">
-                      <ExternalLink className="w-3 h-3 shrink-0" />
-                      {linkUrl.trim() ? linkUrl.trim().replace(/^https?:\/\//, '') : 'example.com'}
-                    </span>
-                  </div>
+
+                  {/* Subtitle Input */}
+                  <input
+                    type="text"
+                    placeholder="Subtitle or short note..."
+                    value={linkSubtitle}
+                    onChange={(e) => setLinkSubtitle(e.target.value)}
+                    className="text-xs text-[#536471] w-full bg-transparent outline-none border-b border-dashed border-transparent hover:border-gray-300 focus:border-[#1d9bf0] transition-colors"
+                  />
                 </div>
 
-                {/* Right Half: Flush Image or Placeholder */}
-                <div className="w-1/2 h-full overflow-hidden shrink-0 border-l border-[#eff3f4] bg-gray-50 relative">
-                  {linkImageUrl ? (
+                {/* Bottom URL Input */}
+                <div className="pt-1 flex items-center gap-1.5 text-[11px] text-[#1d9bf0] font-mono min-w-0">
+                  <ExternalLink className="w-3 h-3 shrink-0" />
+                  <input
+                    type="text"
+                    placeholder="https://example.com"
+                    value={linkUrl}
+                    onChange={(e) => setLinkUrl(e.target.value)}
+                    className="w-full text-[11px] text-[#1d9bf0] font-mono bg-transparent outline-none border-b border-dashed border-transparent hover:border-gray-300 focus:border-[#1d9bf0] transition-colors"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Right Half (50%): Click-to-Upload Cover Image */}
+              <div 
+                onClick={() => linkImageInputRef.current?.click()}
+                className="w-1/2 h-full overflow-hidden shrink-0 border-l border-[#eff3f4] bg-gray-50 relative cursor-pointer group flex items-center justify-center"
+                title={linkImageUrl ? "Click to change cover image" : "Click to upload cover image"}
+              >
+                {linkImageUrl ? (
+                  <>
                     <img
                       src={linkImageUrl}
                       alt="Preview"
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover group-hover:opacity-90 transition-opacity pointer-events-none"
                     />
-                  ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#f7f9f9] to-[#eff3f4] text-[#cfd9de] gap-1 p-2 text-center">
-                      {linkIcon ? (
-                        <span className="text-3xl opacity-40">{linkIcon}</span>
-                      ) : (
-                        <ExternalLink className="w-6 h-6 opacity-30" />
-                      )}
-                      <span className="text-[10px] text-gray-400 font-medium">Image optional</span>
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-bold gap-1.5 transition-opacity">
+                      <Upload className="w-4 h-4" />
+                      <span>Change</span>
                     </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* FORM INPUTS */}
-            <div className="flex flex-col gap-2.5 pt-1">
-              {/* Icon / Emoji Row */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-bold text-[#536471]">
-                  Card Icon / Emoji
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    placeholder="🌐"
-                    value={linkIcon}
-                    onChange={(e) => setLinkIcon(e.target.value)}
-                    className="w-12 text-center text-lg bg-white border border-[#eff3f4] rounded-xl py-1.5 text-[#0f1419] outline-none focus:border-[#1d9bf0]"
-                    maxLength={4}
-                  />
-                  <div className="flex flex-wrap gap-1 items-center">
-                    {['🌐', '🎨', '💼', '📝', '🎧', '⚡', '☕', '🔗', '🚀', '📸'].map((emoji) => (
-                      <button
-                        key={emoji}
-                        type="button"
-                        onClick={() => setLinkIcon(emoji)}
-                        className={`w-7 h-7 text-sm rounded-lg flex items-center justify-center transition-all cursor-pointer ${
-                          linkIcon === emoji ? 'bg-[#1d9bf0]/15 ring-1 ring-[#1d9bf0]' : 'bg-white hover:bg-gray-100 border border-[#eff3f4]'
-                        }`}
-                      >
-                        {emoji}
-                      </button>
-                    ))}
+                  </>
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#f7f9f9] to-[#eff3f4] text-[#536471] group-hover:text-[#1d9bf0] group-hover:bg-blue-50/40 transition-colors gap-1.5 p-3 text-center">
+                    <div className="w-8 h-8 rounded-full bg-white shadow-2xs flex items-center justify-center text-[#1d9bf0] group-hover:scale-110 transition-transform">
+                      <Upload className="w-4 h-4" />
+                    </div>
+                    <span className="text-[11px] font-bold">Upload Cover Image</span>
+                    <span className="text-[9px] text-[#536471]">(Click to browse)</span>
                   </div>
-                </div>
-              </div>
-
-              {/* Title & Subtitle */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-bold text-[#536471]">
-                  Title & Subtitle
-                </label>
-                <input
-                  type="text"
-                  placeholder="Link Title (e.g., My 2026 Design Portfolio)"
-                  value={linkTitle}
-                  onChange={(e) => setLinkTitle(e.target.value)}
-                  className="bg-white border border-[#eff3f4] rounded-xl px-3 py-2 text-xs text-[#0f1419] outline-none focus:border-[#1d9bf0]"
-                  required
-                />
-                <input
-                  type="text"
-                  placeholder="Subtitle (e.g., Case studies, design systems & explorations)"
-                  value={linkSubtitle}
-                  onChange={(e) => setLinkSubtitle(e.target.value)}
-                  className="bg-white border border-[#eff3f4] rounded-xl px-3 py-2 text-xs text-[#0f1419] outline-none focus:border-[#1d9bf0]"
-                />
-              </div>
-
-              {/* Destination URL */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-bold text-[#536471]">
-                  Destination URL
-                </label>
-                <input
-                  type="text"
-                  placeholder="https://amberlyn.design"
-                  value={linkUrl}
-                  onChange={(e) => setLinkUrl(e.target.value)}
-                  className="bg-white border border-[#eff3f4] rounded-xl px-3 py-2 text-xs text-[#0f1419] outline-none focus:border-[#1d9bf0]"
-                  required
-                />
-              </div>
-
-              {/* Right Half Image (Optional) */}
-              <div className="flex flex-col gap-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-bold text-[#536471]">
-                    Right-Side Cover Image (Optional)
-                  </label>
-                  {linkImageUrl && (
-                    <button
-                      type="button"
-                      onClick={() => setLinkImageUrl('')}
-                      className="text-[10px] text-red-500 hover:text-red-600 font-semibold cursor-pointer"
-                    >
-                      Remove image
-                    </button>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => linkImageInputRef.current?.click()}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#cfd9de] hover:border-[#1d9bf0] hover:text-[#1d9bf0] text-xs font-semibold text-[#0f1419] rounded-xl transition-colors cursor-pointer"
-                  >
-                    <ImageIcon className="w-3.5 h-3.5 text-[#1d9bf0]" />
-                    <span>{linkImageUrl ? 'Change Image' : 'Upload Image'}</span>
-                  </button>
-                  <span className="text-[11px] text-[#536471]">or paste URL:</span>
-                  <input
-                    type="text"
-                    placeholder="https://images.unsplash.com/..."
-                    value={linkImageUrl.startsWith('data:') ? '' : linkImageUrl}
-                    onChange={(e) => setLinkImageUrl(e.target.value)}
-                    className="flex-1 bg-white border border-[#eff3f4] rounded-xl px-3 py-1.5 text-xs text-[#0f1419] outline-none focus:border-[#1d9bf0]"
-                  />
-                </div>
+                )}
               </div>
             </div>
+
+            {/* Quick Emoji Picker Drawer */}
+            {showEmojiPicker && (
+              <div className="flex flex-wrap gap-1.5 items-center p-2 bg-white rounded-xl border border-[#eff3f4] animate-in fade-in duration-100">
+                <span className="text-[11px] font-bold text-[#536471] mr-1">Quick Icons:</span>
+                {['🌐', '🎨', '💼', '📝', '🎧', '⚡', '☕', '🔗', '🚀', '📸', '💻', '✨', '🔥'].map((em) => (
+                  <button
+                    key={em}
+                    type="button"
+                    onClick={() => {
+                      setLinkIcon(em);
+                      setShowEmojiPicker(false);
+                    }}
+                    className={`w-7 h-7 text-sm rounded-lg flex items-center justify-center transition-all cursor-pointer ${
+                      linkIcon === em ? 'bg-[#1d9bf0]/15 ring-1 ring-[#1d9bf0]' : 'hover:bg-gray-100'
+                    }`}
+                  >
+                    {em}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
-        {/* BADGE (88x31) DRAFTING UI */}
-        {postType === 'badge' && (
+        {/* UNIFIED GRID (4 or 5 Columns, Circles = Avatars, Squares = Links) */}
+        {postType === 'grid' && (
           <div className="bg-[#f7f9f9] border border-[#eff3f4] rounded-2xl p-3.5 flex flex-col gap-3">
-            {/* LIVE PREVIEW BOX - Badge With Label Underneath */}
-            <div className="bg-white border border-[#eff3f4] rounded-xl p-3.5 flex flex-col items-center justify-center gap-1.5 shadow-2xs">
-              {badgeMode === 'avatar' ? (
-                badgeImageUrl ? (
-                  <div className="w-[52px] h-[52px] rounded-full overflow-hidden border border-black/15 shadow-xs block shrink-0 my-0.5">
-                    <img
-                      src={badgeImageUrl}
-                      alt={badgeText || 'OOMF avatar'}
-                      className="w-[52px] h-[52px] rounded-full object-cover block"
-                    />
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setIsSelectOomfModalOpen(true)}
-                    className="w-[52px] h-[52px] rounded-full border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center text-gray-400 hover:border-[#1d9bf0] hover:text-[#1d9bf0] transition-colors cursor-pointer shrink-0 my-0.5"
-                  >
-                    <Users className="w-5 h-5" />
-                  </button>
-                )
-              ) : badgeMode === 'image' ? (
-                badgeImageUrl ? (
-                  <div className="w-[88px] h-[31px] rounded-xs overflow-hidden border border-black/20 shadow-xs block shrink-0">
-                    <img
-                      src={badgeImageUrl}
-                      alt={badgeText || 'Badge preview'}
-                      className="w-[88px] h-[31px] object-cover block"
-                    />
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => badgeImageInputRef.current?.click()}
-                    className="w-[88px] h-[31px] rounded-xs border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center text-[9px] font-mono text-gray-400 hover:border-[#1d9bf0] hover:text-[#1d9bf0] transition-colors cursor-pointer shrink-0"
-                  >
-                    + Upload
-                  </button>
-                )
-              ) : (
-                <div
-                  className="w-[88px] h-[31px] rounded-xs overflow-hidden border border-black/30 shadow-xs shrink-0"
-                  style={{
-                    background: computeBadgeBackground(badgeBaseColor, badgeStyle)
-                  }}
-                />
-              )}
-
-              {badgeShowText && badgeText.trim() && (
-                <span className="text-xs font-semibold text-[#0f1419] max-w-[160px] text-center truncate">
-                  {badgeText}
+            {/* Header controls: Columns toggle & Load sample */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[#eff3f4]">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-[#0f1419]">Grid Canvas</span>
+                <span className="text-[11px] text-[#536471]">
+                  ({gridItems.length} {gridItems.length === 1 ? 'item' : 'items'} · circles = avatars, squares = links)
                 </span>
-              )}
-            </div>
-
-            {/* Compact Switcher Row: [Color | Image | OOMF] + Optional Label Underneath Toggle */}
-            <div className="flex items-center justify-between border-b border-[#eff3f4] pb-2.5">
-              <div className="inline-flex items-center bg-[#eff3f4] p-0.5 rounded-lg text-xs font-semibold">
-                <button
-                  type="button"
-                  onClick={() => setBadgeMode('color')}
-                  className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
-                    badgeMode === 'color'
-                      ? 'bg-white text-[#0f1419] shadow-2xs'
-                      : 'text-[#536471] hover:text-[#0f1419]'
-                  }`}
-                >
-                  Color
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setBadgeMode('image')}
-                  className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
-                    badgeMode === 'image'
-                      ? 'bg-white text-[#0f1419] shadow-2xs'
-                      : 'text-[#536471] hover:text-[#0f1419]'
-                  }`}
-                >
-                  Image
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBadgeMode('avatar');
-                    if (!badgeImageUrl) {
-                      setIsSelectOomfModalOpen(true);
-                    }
-                  }}
-                  className={`px-3 py-1 rounded-md transition-all cursor-pointer flex items-center gap-1 ${
-                    badgeMode === 'avatar'
-                      ? 'bg-white text-[#0f1419] shadow-2xs'
-                      : 'text-[#536471] hover:text-[#0f1419]'
-                  }`}
-                >
-                  <Users className="w-3.5 h-3.5" />
-                  <span>OOMF</span>
-                </button>
               </div>
 
-              <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-[#536471] select-none hover:text-[#0f1419]">
-                <input
-                  type="checkbox"
-                  checked={badgeShowText}
-                  onChange={(e) => setBadgeShowText(e.target.checked)}
-                  className="w-3.5 h-3.5 rounded text-[#1d9bf0] focus:ring-0 cursor-pointer"
-                />
-                <span>Label underneath</span>
-              </label>
-            </div>
-
-            {/* Inputs: Destination URL & (Badge Label if Label Underneath is enabled) */}
-            <div className={`grid gap-2 ${badgeShowText ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
-              <div>
-                <label className="text-[11px] font-semibold text-[#536471] block mb-1">
-                  Destination URL *
-                </label>
-                <input
-                  type="text"
-                  placeholder="https://... or /username"
-                  value={badgeUrl}
-                  onChange={(e) => setBadgeUrl(e.target.value)}
-                  className="w-full bg-white border border-[#eff3f4] rounded-xl px-3 py-2 text-xs text-[#0f1419] outline-none focus:border-[#1d9bf0]"
-                  required
-                />
-              </div>
-              {badgeShowText && (
-                <div>
-                  <label className="text-[11px] font-semibold text-[#536471] block mb-1">
-                    Label Underneath *
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. @username or Name"
-                    value={badgeText}
-                    onChange={(e) => setBadgeText(e.target.value)}
-                    maxLength={28}
-                    className="w-full bg-white border border-[#eff3f4] rounded-xl px-3 py-2 text-xs text-[#0f1419] outline-none focus:border-[#1d9bf0]"
-                    required={badgeShowText}
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* MODE SPECIFIC CONTROLS */}
-            {badgeMode === 'avatar' ? (
-              <div className="flex flex-col gap-2 pt-0.5">
-                <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-xl flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    {selectedOomf ? (
-                      <img
-                        src={selectedOomf.avatar}
-                        alt={selectedOomf.name}
-                        className="w-9 h-9 rounded-full object-cover border border-black/10 shrink-0"
-                      />
-                    ) : (
-                      <div className="w-9 h-9 rounded-full bg-[#1d9bf0]/10 flex items-center justify-center text-[#1d9bf0] shrink-0">
-                        <Users className="w-4 h-4" />
-                      </div>
-                    )}
-                    <div className="min-w-0">
-                      <div className="font-bold text-[#0f1419] text-xs truncate">
-                        {selectedOomf ? selectedOomf.name : 'Select a friend to feature'}
-                      </div>
-                      <div className="text-[11px] text-[#536471] truncate">
-                        {selectedOomf ? `@${selectedOomf.username}` : 'Choose from your mutual OOMFs or following list'}
-                      </div>
-                    </div>
-                  </div>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center bg-white border border-[#eff3f4] rounded-lg p-0.5 text-xs font-semibold">
                   <button
                     type="button"
-                    onClick={() => setIsSelectOomfModalOpen(true)}
-                    className="px-3 py-1.5 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white text-xs font-bold rounded-full transition-colors cursor-pointer shrink-0 shadow-2xs"
+                    onClick={() => setGridColumns(4)}
+                    className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
+                      gridColumns === 4 ? 'bg-[#1d9bf0] text-white font-bold shadow-2xs' : 'text-[#536471] hover:text-[#0f1419]'
+                    }`}
                   >
-                    {selectedOomf ? 'Change' : 'Browse OOMFs'}
+                    4 Cols
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGridColumns(5)}
+                    className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
+                      gridColumns === 5 ? 'bg-[#1d9bf0] text-white font-bold shadow-2xs' : 'text-[#536471] hover:text-[#0f1419]'
+                    }`}
+                  >
+                    5 Cols
                   </button>
                 </div>
-              </div>
-            ) : badgeMode === 'color' ? (
-              <div className="flex flex-col gap-2 pt-0.5">
-                {/* Color Swatches & Rainbow Selector (Single Row) */}
-                <div className="flex items-center gap-1.5 sm:gap-2 flex-nowrap overflow-x-auto no-scrollbar py-1">
-                  <span className="text-[11px] font-semibold text-[#536471] shrink-0 mr-0.5">
-                    Color:
-                  </span>
-                  {BADGE_PRESET_COLORS.map((color) => (
-                    <button
-                      key={color.hex}
-                      type="button"
-                      title={color.name}
-                      onClick={() => setBadgeBaseColor(color.hex)}
-                      className={`w-5 h-5 rounded-full transition-transform cursor-pointer border border-black/10 shrink-0 ${
-                        badgeBaseColor.toLowerCase() === color.hex.toLowerCase()
-                          ? 'scale-125 ring-2 ring-[#0f1419]'
-                          : 'hover:scale-110'
-                      }`}
-                      style={{ backgroundColor: color.hex }}
-                    />
-                  ))}
 
-                  {/* Custom Color Selector - Rainbow Only (No Icon) */}
-                  <label
-                    title="Custom color picker"
-                    className={`relative w-5 h-5 rounded-full cursor-pointer border border-black/20 shadow-xs transition-transform hover:scale-110 shrink-0 ${
-                      !BADGE_PRESET_COLORS.some(
-                        (c) => c.hex.toLowerCase() === badgeBaseColor.toLowerCase()
-                      )
-                        ? 'scale-125 ring-2 ring-[#0f1419]'
-                        : ''
-                    }`}
-                    style={{
-                      background:
-                        'conic-gradient(from 180deg at 50% 50%, #ff0000 0deg, #ffa500 51deg, #ffff00 102deg, #008000 154deg, #00ffff 205deg, #0000ff 257deg, #ee82ee 308deg, #ff0000 360deg)'
+                <button
+                  type="button"
+                  onClick={handleLoadSampleGrid}
+                  className="text-xs font-semibold text-[#1d9bf0] hover:bg-[#1d9bf0]/10 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                  title="Populate test avatars and square links"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Load Sample</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Dotted outlines matrix */}
+            <div className={`grid gap-2.5 sm:gap-3 p-3 bg-white rounded-xl border border-[#eff3f4] ${
+              gridColumns === 4 ? 'grid-cols-4' : 'grid-cols-5'
+            }`}>
+              {/* Existing Items */}
+              {gridItems.map((item, idx) => (
+                <div
+                  key={item.id || `gi_${idx}`}
+                  onClick={() => handleOpenSlotModal(idx)}
+                  className="group/slot relative flex flex-col items-center justify-start p-1.5 rounded-xl border border-transparent hover:border-[#1d9bf0]/40 hover:bg-[#1d9bf0]/5 transition-all cursor-pointer"
+                  title={`Click to edit ${item.title}`}
+                >
+                  {/* Remove Button */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveSlot(idx);
                     }}
+                    className="absolute -top-1 -right-1 z-10 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover/slot:opacity-100 transition-opacity shadow-xs cursor-pointer"
+                    title="Remove item"
                   >
-                    <input
-                      type="color"
-                      value={badgeBaseColor}
-                      onChange={(e) => setBadgeBaseColor(e.target.value)}
-                      className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
-                    />
-                  </label>
-                </div>
+                    <X className="w-3 h-3" />
+                  </button>
 
-                {/* Style Buffet (Defaults to Angle, Horizontal Pill Buffet) */}
-                <div className="flex flex-col gap-1.5 pt-2 border-t border-[#eff3f4]">
-                  <span className="text-[11px] font-semibold text-[#536471]">
-                    Style:
-                  </span>
-                  <div className="flex items-center gap-1.5 flex-wrap py-0.5">
-                    {BADGE_STYLE_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => setBadgeStyle(opt.id)}
-                        className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
-                          badgeStyle === opt.id
-                            ? 'bg-[#0f1419] text-white shadow-xs'
-                            : 'bg-white border border-[#eff3f4] text-[#536471] hover:text-[#0f1419] hover:border-gray-300'
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              /* IMAGE MODE CONTROLS */
-              <div className="flex flex-col gap-2.5 pt-0.5">
-                {/* Image Upload / Replace / Status */}
-                <div className="flex items-center justify-between gap-2 bg-white border border-[#eff3f4] rounded-xl p-2.5">
-                  <div className="flex items-center gap-2 min-w-0">
-                    {badgeImageUrl ? (
-                      <>
-                        <img
-                          src={badgeImageUrl}
-                          alt="Badge thumbnail"
-                          className="w-11 h-4 object-cover rounded-xs border border-black/20 shrink-0"
-                        />
-                        <div className="text-xs text-[#0f1419] font-medium truncate">
-                          Cropped & compressed (88×31)
+                  {/* Slot Media Shape */}
+                  <div className={`overflow-hidden shrink-0 flex items-center justify-center ${
+                    gridColumns === 4 
+                      ? 'w-14 h-14 sm:w-16 sm:h-16' 
+                      : 'w-11 h-11 sm:w-14 sm:h-14'
+                  } ${
+                    item.kind === 'avatar' 
+                      ? 'rounded-full ring-2 ring-black/10 bg-gray-100' 
+                      : 'rounded-xl border border-black/10 bg-white'
+                  }`}>
+                    {item.kind === 'avatar' ? (
+                      item.imageUrl ? (
+                        <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover rounded-full pointer-events-none" />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-[#1d9bf0] to-[#8b5cf6] text-white font-bold flex items-center justify-center text-sm select-none">
+                          {item.title.slice(0, 1).toUpperCase()}
                         </div>
-                      </>
+                      )
                     ) : (
-                      <span className="text-xs text-[#536471]">No image selected</span>
+                      item.imageUrl ? (
+                        <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover pointer-events-none" />
+                      ) : (
+                        <div
+                          className="w-full h-full flex flex-col items-center justify-center text-white p-1 text-center select-none"
+                          style={{ background: item.bgColor || '#0f1419' }}
+                        >
+                          {item.icon ? (
+                            <span className="text-lg leading-none">{item.icon}</span>
+                          ) : (
+                            <span className="font-bold text-xs truncate max-w-full">{item.title.slice(0, 3)}</span>
+                          )}
+                        </div>
+                      )
                     )}
                   </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => badgeImageInputRef.current?.click()}
-                      className="px-3 py-1 bg-[#1d9bf0]/10 hover:bg-[#1d9bf0]/20 text-[#1d9bf0] font-bold text-xs rounded-full transition-colors cursor-pointer"
-                    >
-                      {badgeImageUrl ? 'Replace' : 'Upload Image'}
-                    </button>
-                    {badgeImageUrl && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setBadgeImageUrl('');
-                          setBadgeImageIsLight(false);
-                        }}
-                        className="p-1 hover:bg-gray-100 text-[#536471] hover:text-red-500 rounded-full transition-colors cursor-pointer"
-                        title="Remove image"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
+
+                  {/* Micro-label */}
+                  {item.showLabel && (
+                    <span className="text-[10px] font-semibold text-[#0f1419] truncate max-w-full text-center mt-1 leading-tight px-0.5">
+                      {item.title}
+                    </span>
+                  )}
                 </div>
-              </div>
-            )}
+              ))}
+
+              {/* Dotted Empty Slot(s) */}
+              {Array.from({ length: gridItems.length === 0 ? gridColumns : 1 }).map((_, emptyIdx) => (
+                <div
+                  key={`empty_${emptyIdx}`}
+                  onClick={() => handleOpenSlotModal()}
+                  className="flex flex-col items-center justify-center min-h-[76px] p-2 rounded-xl border-2 border-dashed border-[#cfd9de] hover:border-[#1d9bf0] hover:bg-[#1d9bf0]/5 text-[#536471] hover:text-[#1d9bf0] transition-all cursor-pointer group"
+                  title="Click to place a circle avatar or square link"
+                >
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-50 group-hover:bg-[#1d9bf0]/10 transition-colors">
+                    <Plus className="w-4 h-4" />
+                  </div>
+                  <span className="text-[10px] font-bold mt-1 text-center group-hover:text-[#1d9bf0]">
+                    Add Slot
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Hint & Add Slot Pill */}
+            <div className="flex items-center justify-between text-xs text-[#536471] px-1">
+              <span>Click any slot to customize circle or square.</span>
+              <button
+                type="button"
+                onClick={() => handleOpenSlotModal()}
+                className="text-[#1d9bf0] font-bold hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Slot</span>
+              </button>
+            </div>
           </div>
         )}
 
@@ -1573,7 +1484,14 @@ export default function PostComposer({
               type="button"
               onClick={() => {
                 setErrorMsg(null);
-                setPostType((prev) => (prev === 'carousel' ? 'standard' : 'carousel'));
+                if (postType === 'carousel') {
+                  setPostType('standard');
+                } else {
+                  setPostType('carousel');
+                  if (mediaItems.length === 0) {
+                    setMediaItems(createBlankCarouselSlots());
+                  }
+                }
               }}
               title="Create Carousel"
               className={`p-2 rounded-full transition-colors cursor-pointer ${
@@ -1586,7 +1504,14 @@ export default function PostComposer({
               type="button"
               onClick={() => {
                 setErrorMsg(null);
-                setPostType((prev) => (prev === 'board' ? 'standard' : 'board'));
+                if (postType === 'board') {
+                  setPostType('standard');
+                } else {
+                  setPostType('board');
+                  if (mediaItems.length === 0) {
+                    setMediaItems(createBlankBoardSlots());
+                  }
+                }
               }}
               title="Create Board"
               className={`p-2 rounded-full transition-colors cursor-pointer ${
@@ -1612,35 +1537,14 @@ export default function PostComposer({
               type="button"
               onClick={() => {
                 setErrorMsg(null);
-                setPostType((prev) => (prev === 'badge' ? 'standard' : 'badge'));
+                setPostType((prev) => (prev === 'grid' ? 'standard' : 'grid'));
               }}
-              title="Create Web Badge"
+              title="Avatars & Links Grid"
               className={`p-2 rounded-full transition-colors cursor-pointer ${
-                postType === 'badge' && badgeMode !== 'avatar' ? 'bg-[#1d9bf0]/15 text-[#1d9bf0]' : 'hover:bg-[#1d9bf0]/10'
+                postType === 'grid' ? 'bg-[#1d9bf0]/15 text-[#1d9bf0]' : 'hover:bg-[#1d9bf0]/10'
               }`}
             >
-              <Sparkles className="w-5 h-5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setErrorMsg(null);
-                if (postType === 'badge' && badgeMode === 'avatar') {
-                  setPostType('standard');
-                } else {
-                  setPostType('badge');
-                  setBadgeMode('avatar');
-                  if (!badgeImageUrl) {
-                    setIsSelectOomfModalOpen(true);
-                  }
-                }
-              }}
-              title="Feature an OOMF Avatar"
-              className={`p-2 rounded-full transition-colors cursor-pointer ${
-                postType === 'badge' && badgeMode === 'avatar' ? 'bg-[#1d9bf0]/15 text-[#1d9bf0]' : 'hover:bg-[#1d9bf0]/10'
-              }`}
-            >
-              <Users className="w-5 h-5" />
+              <Grid2X2 className="w-5 h-5" />
             </button>
           </div>
 
@@ -1665,18 +1569,319 @@ export default function PostComposer({
         </div>
       </form>
     </div>
-  )}
 
-      {/* Modal for selecting an OOMF / Mutual to feature */}
+      {/* MODAL: Configure Grid Item (Circle Avatar or Square Generic Link) */}
+      {slotModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-[#eff3f4] overflow-hidden animate-in fade-in zoom-in-95 duration-150 my-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b border-[#eff3f4]">
+              <span className="font-bold text-sm text-[#0f1419]">
+                {editingSlotIndex !== null ? 'Edit Grid Item' : 'Add Item to Grid'}
+              </span>
+              <button
+                type="button"
+                onClick={() => setSlotModalOpen(false)}
+                className="p-1 text-[#536471] hover:bg-[#f7f9f9] rounded-full transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-4 flex flex-col gap-4">
+              {/* Archetype Selector (Circle Avatar vs Square Link) */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSlotKind('avatar')}
+                  className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1.5 ${
+                    slotKind === 'avatar'
+                      ? 'border-[#1d9bf0] bg-[#1d9bf0]/5 ring-1 ring-[#1d9bf0]'
+                      : 'border-[#eff3f4] hover:bg-[#f7f9f9]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="w-8 h-8 rounded-full bg-blue-100 text-[#1d9bf0] flex items-center justify-center">
+                      <Circle className="w-5 h-5 fill-current" />
+                    </div>
+                    {slotKind === 'avatar' && <Check className="w-4 h-4 text-[#1d9bf0]" />}
+                  </div>
+                  <div>
+                    <h5 className="font-bold text-xs text-[#0f1419]">Avatar (Circle)</h5>
+                    <p className="text-[10px] text-[#536471] leading-tight mt-0.5">
+                      Mutual, friend, or user profile
+                    </p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSlotKind('link')}
+                  className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1.5 ${
+                    slotKind === 'link'
+                      ? 'border-[#1d9bf0] bg-[#1d9bf0]/5 ring-1 ring-[#1d9bf0]'
+                      : 'border-[#eff3f4] hover:bg-[#f7f9f9]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="w-8 h-8 rounded-xl bg-purple-100 text-[#8b5cf6] flex items-center justify-center">
+                      <Square className="w-5 h-5 fill-current" />
+                    </div>
+                    {slotKind === 'link' && <Check className="w-4 h-4 text-[#1d9bf0]" />}
+                  </div>
+                  <div>
+                    <h5 className="font-bold text-xs text-[#0f1419]">Generic Link (Square)</h5>
+                    <p className="text-[10px] text-[#536471] leading-tight mt-0.5">
+                      Website, tool, portfolio, or repo
+                    </p>
+                  </div>
+                </button>
+              </div>
+
+              {/* Live Slot Preview */}
+              <div className="flex flex-col items-center justify-center p-3 bg-[#f7f9f9] border border-[#eff3f4] rounded-xl gap-1.5">
+                <div className={`w-14 h-14 overflow-hidden shrink-0 flex items-center justify-center ${
+                  slotKind === 'avatar' 
+                    ? 'rounded-full ring-2 ring-black/10 bg-gray-100' 
+                    : 'rounded-xl border border-black/10 bg-white'
+                }`}>
+                  {slotKind === 'avatar' ? (
+                    slotImageUrl ? (
+                      <img src={slotImageUrl} alt="preview" className="w-full h-full object-cover rounded-full" />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-[#1d9bf0] to-[#8b5cf6] text-white font-bold flex items-center justify-center text-base">
+                        {slotTitle ? slotTitle.slice(0, 1).toUpperCase() : '👤'}
+                      </div>
+                    )
+                  ) : (
+                    slotImageUrl ? (
+                      <img src={slotImageUrl} alt="preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <div
+                        className="w-full h-full flex flex-col items-center justify-center text-white p-1 text-center"
+                        style={{ background: slotBgColor || '#0f1419' }}
+                      >
+                        <span className="text-xl leading-none">{slotIcon || '🔗'}</span>
+                      </div>
+                    )
+                  )}
+                </div>
+                {slotShowLabel && (
+                  <span className="text-[11px] font-semibold text-[#0f1419] truncate max-w-[120px] text-center">
+                    {slotTitle || 'Item Label'}
+                  </span>
+                )}
+              </div>
+
+              {/* Avatar Specific Options */}
+              {slotKind === 'avatar' && (
+                <div className="flex flex-col gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setIsSelectOomfModalOpen(true)}
+                    className="w-full py-2 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                  >
+                    <Users className="w-4 h-4" />
+                    <span>Select from Mutuals & Following</span>
+                  </button>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[11px] font-bold text-[#536471]">Display Name</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Kyle Vance"
+                        value={slotTitle}
+                        onChange={(e) => setSlotTitle(e.target.value)}
+                        className="bg-white border border-[#eff3f4] rounded-xl px-3 py-1.5 text-xs text-[#0f1419] outline-none focus:border-[#1d9bf0]"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[11px] font-bold text-[#536471]">Profile URL</label>
+                      <input
+                        type="text"
+                        placeholder="/username"
+                        value={slotUrl}
+                        onChange={(e) => setSlotUrl(e.target.value)}
+                        className="bg-white border border-[#eff3f4] rounded-xl px-3 py-1.5 text-xs text-[#0f1419] outline-none focus:border-[#1d9bf0]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[11px] font-bold text-[#536471]">Avatar Image</label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => gridItemImageInputRef.current?.click()}
+                        className="px-3 py-1.5 bg-white border border-[#cfd9de] hover:border-[#1d9bf0] text-xs font-semibold text-[#0f1419] rounded-xl transition-colors cursor-pointer shrink-0"
+                      >
+                        {slotImageUrl ? 'Change' : 'Upload'}
+                      </button>
+                      <input
+                        type="text"
+                        placeholder="or paste image URL..."
+                        value={slotImageUrl.startsWith('data:') ? '' : slotImageUrl}
+                        onChange={(e) => setSlotImageUrl(e.target.value)}
+                        className="flex-1 bg-white border border-[#eff3f4] rounded-xl px-3 py-1.5 text-xs text-[#0f1419] outline-none focus:border-[#1d9bf0]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Generic Link Specific Options */}
+              {slotKind === 'link' && (
+                <div className="flex flex-col gap-2.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[11px] font-bold text-[#536471]">Title</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. GitHub, Figma..."
+                        value={slotTitle}
+                        onChange={(e) => setSlotTitle(e.target.value)}
+                        className="bg-white border border-[#eff3f4] rounded-xl px-3 py-1.5 text-xs text-[#0f1419] outline-none focus:border-[#1d9bf0]"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[11px] font-bold text-[#536471]">Destination URL</label>
+                      <input
+                        type="text"
+                        placeholder="https://..."
+                        value={slotUrl}
+                        onChange={(e) => setSlotUrl(e.target.value)}
+                        className="bg-white border border-[#eff3f4] rounded-xl px-3 py-1.5 text-xs text-[#0f1419] outline-none focus:border-[#1d9bf0]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[11px] font-bold text-[#536471]">Cover Image (Square)</label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => gridItemImageInputRef.current?.click()}
+                        className="px-3 py-1.5 bg-white border border-[#cfd9de] hover:border-[#1d9bf0] text-xs font-semibold text-[#0f1419] rounded-xl transition-colors cursor-pointer shrink-0"
+                      >
+                        {slotImageUrl ? 'Change' : 'Upload'}
+                      </button>
+                      <input
+                        type="text"
+                        placeholder="or paste square image URL..."
+                        value={slotImageUrl.startsWith('data:') ? '' : slotImageUrl}
+                        onChange={(e) => setSlotImageUrl(e.target.value)}
+                        className="flex-1 bg-white border border-[#eff3f4] rounded-xl px-3 py-1.5 text-xs text-[#0f1419] outline-none focus:border-[#1d9bf0]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Icon & Color Fallback */}
+                  <div className="flex flex-col gap-1.5 pt-1">
+                    <label className="text-[11px] font-bold text-[#536471]">Preset Icon & Color (if no image)</label>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {['💻', '🎨', '⚡', '▲', '🎧', '👾', '🌊', '📁', '🌐', '✨', '🔥', '🚀'].map((em) => (
+                        <button
+                          key={em}
+                          type="button"
+                          onClick={() => setSlotIcon(em)}
+                          className={`w-7 h-7 rounded-lg text-sm flex items-center justify-center transition-transform ${
+                            slotIcon === em ? 'bg-[#1d9bf0]/20 scale-110 ring-2 ring-[#1d9bf0]' : 'hover:bg-gray-100'
+                          }`}
+                        >
+                          {em}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                      {[
+                        '#0f1419',
+                        '#1d9bf0',
+                        '#10b981',
+                        '#8b5cf6',
+                        '#ec4899',
+                        '#ef4444',
+                        '#f59e0b',
+                        '#06b6d4',
+                        'linear-gradient(135deg, #1d9bf0, #8b5cf6)',
+                        'linear-gradient(135deg, #8b5cf6, #ec4899)',
+                        'linear-gradient(135deg, #10b981, #06b6d4)'
+                      ].map((bg) => (
+                        <button
+                          key={bg}
+                          type="button"
+                          onClick={() => setSlotBgColor(bg)}
+                          className={`w-5 h-5 rounded-md transition-transform cursor-pointer ${
+                            slotBgColor === bg ? 'scale-125 ring-2 ring-offset-1 ring-[#1d9bf0]' : 'hover:scale-110'
+                          }`}
+                          style={{ background: bg }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Micro-label toggle */}
+              <div className="pt-2 border-t border-[#eff3f4]">
+                <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-semibold text-[#0f1419]">
+                  <input
+                    type="checkbox"
+                    checked={slotShowLabel}
+                    onChange={(e) => setSlotShowLabel(e.target.checked)}
+                    className="rounded text-[#1d9bf0] focus:ring-[#1d9bf0] w-4 h-4 cursor-pointer"
+                  />
+                  <span>Show text title underneath item</span>
+                </label>
+              </div>
+
+              {/* Modal Actions */}
+              <div className="flex items-center justify-between pt-2 border-t border-[#eff3f4]">
+                {editingSlotIndex !== null ? (
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveSlot(editingSlotIndex)}
+                    className="text-xs font-bold text-red-500 hover:text-red-600 transition-colors cursor-pointer"
+                  >
+                    Delete Item
+                  </button>
+                ) : <div />}
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSlotModalOpen(false)}
+                    className="px-4 py-1.5 text-xs font-bold text-[#536471] hover:bg-[#f7f9f9] rounded-full transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveSlot}
+                    disabled={!slotTitle.trim() || !slotUrl.trim()}
+                    className="bg-[#1d9bf0] hover:bg-[#1a8cd8] disabled:opacity-40 text-white font-bold text-xs px-4 py-1.5 rounded-full transition-colors cursor-pointer shadow-2xs"
+                  >
+                    {editingSlotIndex !== null ? 'Save Changes' : 'Add to Grid'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal for selecting an OOMF / Mutual to feature in Avatar mode */}
       <SelectOomfModal
         isOpen={isSelectOomfModalOpen}
         onClose={() => setIsSelectOomfModalOpen(false)}
         currentUserId={authUser?.id}
         onSelectUser={(user) => {
-          setSelectedOomf(user);
-          setBadgeImageUrl(user.avatar);
-          setBadgeUrl(`/${user.username}`);
-          setBadgeText(`@${user.username}`);
+          setSlotTitle(user.name);
+          setSlotUrl(`/${user.username}`);
+          setSlotSubtitle(`@${user.username}`);
+          setSlotImageUrl(user.avatar);
+          setSlotKind('avatar');
         }}
       />
     </div>
