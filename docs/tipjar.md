@@ -1,37 +1,54 @@
-# Glass Tip Jar System (`docs/tipjar.md`)
+# Tip Circle & Supporter Constellation System (`docs/tipjar.md`)
 
-This document serves as the canonical technical reference for the interactive **Glass Tip Jar** system on `oomfs.org`. It details the visual physics, the staggered banner crossing geometry, the 3-coin seed trinity, the alt account overwrite architecture, and creator support mechanics.
+This document serves as the canonical technical reference for the interactive **Tip Circle & Supporter Constellation** system on `oomfs.org`. It details the twin hero circle layout geometry, the organic physics-based circle packing engine, the autobalancing area slider sandbox, and the supporter modal architecture.
 
 ---
 
 ## 1. System Overview & Core Philosophy
 
-On traditional social and Linktree profiles, tipping is reduced to a sterile generic button or an awkward text counter (e.g., `0 tips`), which creates a cold-start psychological barrier where creators feel unpatronized and visitors hesitate to be the first to tip.
+On traditional social and Linktree profiles, creator funding is reduced to a generic link button or an awkward text counter (e.g. `0 tips`), generating a cold-start psychological barrier where visitors hesitate to be the first to tip.
 
-On `oomfs.org`, tipping is reimagined as a **physical, gamified glass jar** resting on the profile shelf:
+On `oomfs.org`, creator support is elevated into the profile's primary visual identity as a **Twin Hero Circle** anchored directly beside the profile avatar:
 
-1. **Physicality & Delight**: Tippers' avatars are immortalized as circular coins/cookies stacked inside a translucent glass jar with realistic light refractions.
-2. **The Barista Seed Tradition**: Baristas and buskers never leave their jar empty because social proof shows people avoid empty containers. Every jar on `oomfs.org` starts with a foundational **3-coin starter stack**, ensuring no creator ever displays an empty jar.
-3. **Alt Account Synergy**: Creators can overwrite default starter coins with their **secondary/alt accounts** (`@art_wip`, `@priv`), turning the jar into an instant portal for multi-account discovery without cluttering bio text.
+1. **Twin Hero Stature ($A \leftrightarrow B$)**:
+   * Circle 1 ($A$): The Creator's Profile Avatar.
+   * Circle 2 ($B$): The Community Supporter Constellation (`TipCircle.tsx`).
+   * Both share identical dimensions (`w-28 h-28 sm:w-36 sm:h-36`) and banner-crossing offset (`-mt-16 sm:-mt-20`).
+2. **Transparent, Borderless Cluster**:
+   * The container of the Tip Circle is completely transparent and borderless. There is no enclosing white ring or background plate.
+   * Between the packed circular avatars, the **profile banner (top half)** and the **white profile shelf (bottom half)** show through naturally across the seam.
+3. **Scale-Driven Hierarchy Without Forced Centering**:
+   * Contribution amounts correlate directly to avatar area ($\text{Area} \propto \text{tip amount}$).
+   * Avatars are not artificially pinned to $(50, 50)$ (which creates an awkward "donut ring" that starves medium supporters). Instead, positions are emergent: large supporters establish the macro structure and smaller supporters nestle into the natural crevices between them.
+4. **Graceful Cold Start**:
+   * For profiles with zero tips, the circle displays the platform's golden cat mascot (`CatShushIcon`) with a subtle `+ Be 1st` encouragement pill.
 
 ```text
 ┌────────────────────────────────────────────────────────┐
-│                   Profile Header View                  │
-│   ├── Banner Crossing: Cork stopper crosses by ~18px   │
-│   ├── Glass Body: Rests on white profile shelf         │
-│   └── Base: 3-Coin Starter Stack (Gold, Silver, Bronze)│
-└───────────────────────────┬────────────────────────────┘
-                            │
-               Tap / Click Glass Tip Jar
-                            │
-                            ▼
+│                   MAIN PROFILE BANNER                  │
+│                                                        │
+│   ╭──────────────╮             ●    👑    ●            │
+└───│──────────────│───────────●─────────────────────────┘ (Banner bottom line)
+    │              │             ●    ●    ●      [ Ask! ]  [ Follow ]
+    │   CREATOR    │  (gap-3)       ●    ●
+    │    AVATAR    │
+    ╰──────────────╯          (Transparent Gaps)
+    Profile Avatar             Supporter Constellation
+     (w-28 / w-36)              (w-28 / w-36)
+            │                         │
+            └───────────┬─────────────┘
+                        │
+             Tap / Click Tip Circle
+                        │
+                        ▼
 ┌────────────────────────────────────────────────────────┐
 │                   Interactive Modal                    │
-│                 (TipJarModal.tsx)                      │
-│   ├── Enlarged Glass Jar Showcase                      │
-│   ├── Coin Selector: House Tip / Guilder / Lucky Penny │
-│   ├── Lore Details Card & Attribution                  │
-│   └── Primary Action: [ 🪙 Drop a Tip for @username ]   │
+│                 (SupporterModal.tsx)                   │
+│   ├── Expanded Celestial Orbit Arena                   │
+│   ├── Autobalancing Area Slider Sandbox                │
+│   ├── Scenario Presets Switchboard                     │
+│   ├── Supporter Inspector & Lore Notes Card            │
+│   └── Primary Action: [ 🪙 Send Tip & Join Orbit ]     │
 └────────────────────────────────────────────────────────┘
 ```
 
@@ -41,98 +58,83 @@ On `oomfs.org`, tipping is reimagined as a **physical, gamified glass jar** rest
 
 | File Path | Description |
 | :--- | :--- |
-| [`src/components/profile/TipJar.tsx`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/components/profile/TipJar.tsx) | Micro glass jar renderer with cork coin slot, glass glare highlights, and 3-coin starter cluster. |
-| [`src/components/profile/TipJarModal.tsx`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/components/profile/TipJarModal.tsx) | Interactive enlarged jar inspection modal with coin selector, lore details card, and drop tip portal. |
-| [`src/components/profile/ProfileView.tsx`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/components/profile/ProfileView.tsx) | Avatar row integration, staggered banner crossing geometry, and modal lifecycle state. |
-| [`docs/profile-page.md`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/docs/profile-page.md) | Profile architecture reference documenting the removal of raw text counters in favor of the Tip Jar. |
+| [`src/components/profile/TipCircle.tsx`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/components/profile/TipCircle.tsx) | Twin circle component on the profile header, rendering the borderless, transparent constellation of packed supporter avatars. |
+| [`src/components/profile/SupporterModal.tsx`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/components/profile/SupporterModal.tsx) | Interactive modal featuring the expanded constellation arena, autobalancing area sliders, scenario switcher, and tip form. |
+| [`src/lib/circlePacking.ts`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/lib/circlePacking.ts) | Organic circle packing engine: greedy tangential pocket placement, physics collision relaxation, and edge expansion. |
+| [`src/lib/supporterPresets.ts`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/lib/supporterPresets.ts) | Registry of realistic avatar placeholders (`AVATAR_POOL`) and 6 preset test distributions. |
+| [`src/lib/mockData.ts`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/lib/mockData.ts) | `Supporter` data model, per-user mock clusters, and resolver helpers. |
+| [`src/components/profile/ProfileView.tsx`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/components/profile/ProfileView.tsx) | Header integration, avatar row flex wrapping geometry, and modal lifecycle state. |
 
 ---
 
-## 3. Staggered Banner Crossing Geometry
+## 3. The Organic Circle-Packing Engine (`circlePacking.ts`)
 
-To make the profile header feel like a physical desk or shelf, items in the identity row use a **staggered vertical depth hierarchy**:
+The layout of avatars inside both the profile circle and modal arena is computed by a deterministic, physics-based circle packing engine:
 
-```text
-┌────────────────────────────────────────────────────────┐
-│                      MAIN BANNER                       │
-│                   ╭───╮ (Cork/Lid crosses by ~16-20px) │
-└───────────────────│───│────────────────────────────────┘ (Banner bottom line)
-  ╭──────────╮      │ 🏺│
-  │  AVATAR  │      │   │            [ Ask! ]  [ Follow ]
-  ╰──────────╯      ╰───╯
-  (Crosses 64px)  (Crosses 18px)     (Baseline 0px)
-```
+### 3.1 Mathematical Area Model
+* A circular disk has area $A = \pi R^2$. In 2D space, the maximum theoretical circle-packing limit is $\approx 83\%$ area density.
+* Target radius for any avatar with relative area share $p_i \in (0, 100]$:
+  $$r_i = \sqrt{\frac{p_i}{100} \cdot 0.83} \cdot R_{\text{container}}$$
+* When an avatar's diameter doubles, its area increases by $4\times$ ($r^2$), visually reflecting generous patronage.
 
-### 3.1 Mathematical Clearance
-* **Avatar Overlap**: High overlap (`-mt-16 sm:-mt-20` $\approx 64\text{px}$–$80\text{px}$ crossing), serving as the anchor hero element.
-* **Tip Jar Overlap**: Subtle overlap (`-mt-4 sm:-mt-5` $\approx 16\text{px}$–$20\text{px}$ crossing). The cork stopper and coin slot rest on the banner, while the curved glass base rests on the white profile background.
-* **Action Buttons**: Flush with the bottom baseline ($0\text{px}$ overlap, `mb-2`).
+### 3.2 Four-Stage Packing Pipeline
 
-### 3.2 Responsive Sizing
-* **Mobile ($375\text{px}$–$414\text{px}$)**: Width `w-10` ($40\text{px}$), Height `h-14` ($56\text{px}$). Fits comfortably beside the avatar without squeezing `"Ask!"` and `"Follow"` buttons.
-* **Desktop ($600\text{px}$ center column)**: Width `sm:w-12` ($48\text{px}$), Height `sm:h-16` ($64\text{px}$).
-
----
-
-## 4. The 3-Coin Starter Trinity Stack
-
-Assuming a user does not have an alt account configured on Day 1, the jar automatically renders the **Default Metallic Trinity (Gold, Silver, Copper)**:
-
-```text
-       ┌───────────┐
-       │   CORK    │
-   ┌───┴───────────┴───┐
-   │                   │
-   │    (Open Glass    │  <-- Clear space for incoming
-   │    for Tippers)   │      supporter avatars
-   │                   │
-   │     ╭───────╮     │
-   │     │ 🐱 1  │     │  <-- Coin 1: The House Tip (Gold)
-   │ ╭───┴───╮ ╭─┴───╮ │
-   │ │ 🤝 2  │ │ ★ 3 │ │  <-- Coin 2: Mutual Guilder (Silver) & Coin 3: Lucky Penny (Copper)
-   └──┴──────┴─┴─────┴─┘
-```
-
-### 4.1 Coin 1: The "House Tip" (Gold) — *Platform Lore*
-* **Visual**: Polished yellow gold coin with engraved `oomfs.org` Shushing Cat mascot face (`CatShushIcon`) and `✦` sparkles.
-* **The Lore**: Every new citizen of `oomfs.org` receives a \$1 house tip to guarantee they never face an empty jar.
-* **Message**:
-  > *"Here's $1 on the house to get your jar rolling. Every great citizen starts with a foundation coin from the house!"*
-
-### 4.2 Coin 2: The "Mutual Guilder" (Silver) — *Friendship Lore*
-* **Visual**: Gleaming silver coin embossed with bidirectional mutual arrows ($A \leftrightarrow B$) and `"OOMF"` micro-text.
-* **The Lore**: Minted in celebration of mutual followers and reciprocal friendship on X and `oomfs.org`.
-* **Message**:
-  > *"Minted in honor of OOMFs everywhere. Two accounts following each other create an unbreakable bond. Follow back to earn the badge!"*
-
-### 4.3 Coin 3: The "Lucky Penny" (Copper / Bronze) — *Folklore Anchor*
-* **Visual**: Warm antiqued copper coin with a milled border, stamped with retro star `★` and `1¢`.
-* **The Lore**: The ancient superstition (*"Find a penny, pick it up, all day long you'll have good luck"*).
-* **Message**:
-  > *"Find a penny, pick it up, all day long you'll have good luck. Never leave a jar empty—this penny ensures endless good fortune."*
+1. **Largest-First Sorting**:
+   Circles are sorted by size/amount descending. The largest circles are positioned first to establish the foundation.
+2. **Greedy Tangential Pocket Placement**:
+   For each incoming circle $C_i$, the engine tests all pairs of already-placed tangent circles $(C_j, C_k)$ and finds the candidate tangent pocket that:
+   - Produces zero overlap with any existing circle.
+   - Minimizes distance from the cluster center of mass.
+3. **Multi-Pass Physics Relaxation**:
+   Runs 65 iterations of separation physics:
+   - **Collision Separation**: If distance $d_{ij} < r_i + r_j + \text{gap}$, circles push apart proportionally to their relative sizes.
+   - **Soft Central Gravity**: Applies a subtle inward gravitational pull towards $(50, 50)$ to prevent drifting.
+   - **Boundary Confinement**: Clamps all circles to remain strictly within $R_{\text{container}}$.
+4. **Outward Edge Expansion Pass**:
+   The engine measures the maximum radial extent ($\max_i [d_i + r_i]$). If below $R_{\text{container}}$, it expands all coordinates and radii outward proportionally until the outermost circles are **literally tangent to the outer circle's edge**, maximizing space utilization.
 
 ---
 
-## 5. Alt Account Overwrite Architecture
+## 4. Layout & Geometry Parity
 
-In Twitter/X culture, creators frequently maintain secondary accounts (sketch accounts, private accounts, gaming alts). 
-
-### Overwrite Rules:
-1. Profile owners can link secondary handles in their profile settings.
-2. Linking an alt inserts that account's **400×400 HD avatar** into one of the 3 starter coin slots.
-3. Tapping an alt coin inside [`TipJarModal.tsx`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/components/profile/TipJarModal.tsx) displays:
-   * Alt display name & handle (`@username_alt`).
-   * Custom label (e.g., *"My Sketch Dump"* or *"Personal Alt"*).
-   * Direct 1-click navigation link to that profile.
+* **Dimensions**:
+  * Mobile ($375\text{px}$–$414\text{px}$): `w-28 h-28` ($112\text{px}$), `-mt-16` overlap into the header banner.
+  * Desktop ($600\text{px}$ center column): `sm:w-36 sm:h-36` ($144\text{px}$), `sm:-mt-20` overlap into the header banner.
+* **Seam Clearance**:
+  * The top half of the circle overlaps the header banner; the bottom half rests on the white profile shelf.
+* **Mobile Wrap Protection**:
+  * The identity container in `ProfileView.tsx` uses `flex flex-wrap sm:flex-nowrap justify-between items-end pb-3 gap-y-3`. On narrow viewports ($<390\text{px}$), the action buttons (`Ask!`, `Follow`) wrap gracefully beneath the dual circles without clipping or horizontal overflow.
+* **Zero Size Jumping**:
+  * Hovering or selecting individual avatars in either view does **not** enlarge or jump their size (`scale`).
+  * Instead, interactive focus is conveyed via a clean **Twitter Blue (`#1d9bf0`) outline ring**, preserving stable geometric alignment.
 
 ---
 
-## 6. Future Tipping Pipeline & Roadmap
+## 5. Interactive Modal Capabilities (`SupporterModal.tsx`)
 
-1. **Supporter Avatar Stacking**:
-   * As incoming tips arrive, supporters' avatars are drawn as circular coins dropped through the cork slot.
-   * Coin sizing scales with tip tiers:
-     * Small Tip (\$1–\$5): Standard $14\text{px}$ avatar coin.
-     * Large Tip (\$10+): $20\text{px}$ avatar coin with a shimmering gold border.
-2. **Payment Integrations**:
-   * Direct creator payout routing via Stripe Connect, Web3 / Solana wallets, or Lightning network.
+The modal offers two distinct operational modes via top-level tab controls:
+
+### 5.1 Autobalancing Area Slider Sandbox (`activeTab === 'sandbox'`)
+* Displays a flat, clean list of actual supporters with their PFP, display name, and handle (`@username`).
+* Each person has an interactive **Area Percentage Slider** ($1\%–75\%$).
+* **Proportional Autobalancing**: When any person's slider is moved, all other supporters' shares scale automatically so that the total area **always sums to exactly $100\%$**:
+  $$p_j^{\text{new}} = p_j^{\text{old}} \cdot \frac{100 - p_k^{\text{new}}}{100 - p_k^{\text{old}}}$$
+* Controls:
+  * `+ Add Person`: Injects the next contributor from `AVATAR_POOL` and rebalances space.
+  * `✕` Remove: Deletes a person and redistributes their area proportionally to the remaining group.
+  * `Equalize All`: Resets all sliders to equal share ($100 \div N\%$).
+  * Quick Count Pills: Instant presets for $3, 5, 8, 12,$ or $20$ supporters.
+* Live Profile Sync: Any slider movement updates the profile banner circle in real time via `onScenarioChange`.
+
+### 5.2 Scenario Presets Switchboard (`activeTab === 'presets'`)
+Provides instant, 1-click test scenarios:
+1. `🌱 Cold Start (0)`: Empty orbit with the golden cat mascot and `+ Be 1st` pill.
+2. `🐳 Solo Whale (1 x $100)`: Single large patron filling $99\%$ of the circle edge-to-edge.
+3. `⚖️ Balanced Orbit (6)`: Balanced distribution with 1 hero, 2 patrons, and 3 supporters.
+4. `👑 Whales + Outer Swarm (20)`: 2 prominent whale patrons surrounded by an 18-supporter micro-cloud.
+5. `🐝 Swarm of Small (25)`: High-density crowdfund swarm ($2–$5 tips) packed tightly.
+6. `🤝 OOMFS Mutuals Ring (10)`: 10 verified mutual followers ($A \leftrightarrow B$).
+
+### 5.3 Creator Support Form
+* Preset tier buttons ($5, $10, $25, $50) and custom message input field.
+* Submitting optimistically injects the visitor's avatar directly into the active orbit constellation with instant visual feedback.

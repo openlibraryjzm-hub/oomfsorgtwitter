@@ -154,6 +154,19 @@ export interface Collection {
   createdAt?: string;
 }
 
+export interface Supporter {
+  id: string;
+  username: string;
+  name: string;
+  avatar: string;
+  amount: number;
+  tier: 'hero' | 'patron' | 'supporter' | 'micro';
+  message?: string;
+  createdAt: string;
+  isMutual?: boolean;
+  customRadius?: number;
+}
+
 export const MOCK_USERS: Record<string, User> = {
   amberlyn: {
     id: 'usr_1',
@@ -1020,5 +1033,106 @@ export const MOCK_LINK_COLLECTIONS: Collection[] = [
     isPinned: false
   }
 ];
+
+export const MOCK_SUPPORTERS: Record<string, Supporter[]> = {
+  amberlyn: [
+    {
+      id: 'sup_1',
+      username: 'dev_kyle',
+      name: 'Kyle Vance',
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
+      amount: 50,
+      tier: 'hero',
+      message: 'Keep cooking! oomfs.org UI is looking pristine 🚀',
+      createdAt: '2 days ago',
+      isMutual: true,
+    },
+    {
+      id: 'sup_2',
+      username: 'sora_arts',
+      name: 'Sora 🎨',
+      avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=400&q=80',
+      amount: 25,
+      tier: 'patron',
+      message: 'Love the 3D moodboard collections, such an inspiration ✨',
+      createdAt: '5 days ago',
+      isMutual: true,
+    },
+    {
+      id: 'sup_3',
+      username: 'celeste',
+      name: 'Celeste 🌙',
+      avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=400&q=80',
+      amount: 15,
+      tier: 'supporter',
+      message: 'Proud mutual supporter! Next podcast episode shoutout.',
+      createdAt: '1 week ago',
+      isMutual: true,
+    },
+    {
+      id: 'sup_4',
+      username: 'marcus_v',
+      name: 'Marcus Vance',
+      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
+      amount: 10,
+      tier: 'supporter',
+      message: 'Twitter Light theme fidelity is insane.',
+      createdAt: '2 weeks ago',
+      isMutual: true,
+    },
+    {
+      id: 'sup_5',
+      username: 'elena_r',
+      name: 'Elena Rostova',
+      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=400&q=80',
+      amount: 5,
+      tier: 'micro',
+      message: 'Coffee fund on me ☕',
+      createdAt: '3 weeks ago',
+      isMutual: false,
+    },
+    {
+      id: 'sup_6',
+      username: 'liam_c',
+      name: 'Liam Chen',
+      avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=400&q=80',
+      amount: 5,
+      tier: 'micro',
+      message: 'Big fan of the carousel format!',
+      createdAt: '1 month ago',
+      isMutual: false,
+    },
+  ],
+  dev_kyle: [
+    {
+      id: 'sup_k1',
+      username: 'amberlyn',
+      name: 'amber lyn',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+      amount: 50,
+      tier: 'hero',
+      message: 'TypeScript wizardry at its finest! 🤝',
+      createdAt: '3 days ago',
+      isMutual: true,
+    },
+    {
+      id: 'sup_k2',
+      username: 'sora_arts',
+      name: 'Sora 🎨',
+      avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=400&q=80',
+      amount: 10,
+      tier: 'supporter',
+      message: 'Thanks for open sourcing the components!',
+      createdAt: '1 week ago',
+      isMutual: true,
+    },
+  ],
+  jack: [], // 0 supporters - tests cold start
+};
+
+export function getSupportersForUser(username: string): Supporter[] {
+  const normalized = (username || '').toLowerCase().replace('@', '');
+  return MOCK_SUPPORTERS[normalized] || [];
+}
 
 

@@ -40,8 +40,9 @@ import PostCard from '@/components/feed/PostCard';
 import CommentCard from '@/components/feed/CommentCard';
 import CanvasPreview from './CanvasPreview';
 import FullscreenMediaModal from './FullscreenMediaModal';
-import TipJar from './TipJar';
-import TipJarModal from './TipJarModal';
+import TipCircle from './TipCircle';
+import SupporterModal from './SupporterModal';
+import { getSupportersForUser, Supporter } from '@/lib/mockData';
 import PostComposer from '@/components/feed/PostComposer';
 import LinksPortal from '@/components/links/LinksPortal';
 import ReorderCollectionModal from '@/components/collections/ReorderCollectionModal';
@@ -348,7 +349,15 @@ export default function ProfileView({
   // Header Banner & Canvas Viewport Mode & Fullscreen Lightbox State
   const [headerMode, setHeaderMode] = useState<'banner' | 'canvas'>('banner');
   const [fullscreenMedia, setFullscreenMedia] = useState<'banner' | 'canvas' | null>(null);
-  const [tipJarModalOpen, setTipJarModalOpen] = useState(false);
+  const [supporterModalOpen, setSupporterModalOpen] = useState(false);
+  const [profileSupporters, setProfileSupporters] = useState<Supporter[]>(() =>
+    getSupportersForUser(userProfile.username)
+  );
+
+  // Sync profile supporters if userProfile changes
+  useEffect(() => {
+    setProfileSupporters(getSupportersForUser(userProfile.username));
+  }, [userProfile.username]);
 
   // Gesture detection for swiping/dragging between Banner and Canvas
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
@@ -1202,9 +1211,9 @@ export default function ProfileView({
       </div>
 
       {/* Avatar & Action Button Row */}
-      <div className="px-4 relative flex justify-between items-end pb-3">
-        {/* Avatar & Glass Tip Jar */}
-        <div className="flex items-end gap-2.5 sm:gap-3 min-w-0">
+      <div className="px-4 relative flex flex-wrap sm:flex-nowrap justify-between items-end pb-3 gap-y-3">
+        {/* Avatar & Tip Circle (Twin Hero Circles overlapping banner) */}
+        <div className="flex items-end gap-2.5 sm:gap-3 shrink-0">
           {/* Avatar (top half overlaps banner, bottom half in white area) */}
           <div className="relative -mt-16 sm:-mt-20 shrink-0">
             <img
@@ -1214,11 +1223,12 @@ export default function ProfileView({
             />
           </div>
 
-          {/* Glass Tip Jar (Subtly crosses banner edge by ~16-20px, less than avatar) */}
-          <TipJar
+          {/* Tip Circle (Twin Supporter Orbit, exact same diameter and banner overlap) */}
+          <TipCircle
             username={userProfile.username}
             name={userProfile.name}
-            onClick={() => setTipJarModalOpen(true)}
+            supporters={profileSupporters}
+            onClick={() => setSupporterModalOpen(true)}
           />
         </div>
 
@@ -2069,12 +2079,19 @@ export default function ProfileView({
         onClose={() => setFullscreenMedia(null)}
       />
 
-      {/* Glass Tip Jar Modal */}
-      <TipJarModal
-        isOpen={tipJarModalOpen}
+      {/* Supporter Orbit Modal */}
+      <SupporterModal
+        isOpen={supporterModalOpen}
         name={userProfile.name}
         username={userProfile.username}
-        onClose={() => setTipJarModalOpen(false)}
+        supporters={profileSupporters}
+        onClose={() => setSupporterModalOpen(false)}
+        onScenarioChange={(newSupporters) => {
+          setProfileSupporters(newSupporters);
+        }}
+        onAddTip={(newSupporter) => {
+          setProfileSupporters((prev) => [newSupporter, ...prev]);
+        }}
       />
     </div>
   );

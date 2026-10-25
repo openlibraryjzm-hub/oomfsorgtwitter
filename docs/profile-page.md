@@ -66,13 +66,13 @@ The profile header sits at the top of `ProfileView.tsx` and adheres strictly to 
      2. Dedicated top header toggle button (`Paintbrush` ↔ `Image`).
    - Lightbox Portal & Attribution: Tapping the main banner opens `FullscreenMediaModal.tsx`. In doodle mode, tapping individual doodles reveals author attribution (`Signed by @username • Verified Mutual OOMF`), with a prominent `[ 🖌️ Sign / Doodle on Banner ]` entry button.
 
-3. **Avatar & Glass Tip Jar**:
+3. **Avatar & Tip Circle (Twin Hero Circles)**:
    - Avatar: Circular avatar overlapping banner (`-mt-16 sm:-mt-20`). Always run through `formatTwitterAvatar()` to ensure 400×400 HD resolution instead of Twitter's pixelated default `_normal.jpg`.
-   - **Glass Tip Jar (`TipJar.tsx`)**: Realistic glass vessel with a wooden cork stopper that subtly crosses the banner edge (`-mt-4 sm:-mt-5`, $\sim 16\text{px}$–$20\text{px}$ overlap, distinctly less than the avatar). Contains the default 3-Coin Starter Trinity:
-     - 🥇 **The House Tip** (Gold, `@oomfsorg` cat mascot & sparkles)
-     - 🥈 **The Mutual Guilder** (Silver, bidirectional $A \leftrightarrow B$ arrows)
-     - 🥉 **The Lucky Penny** (Copper/Bronze, `★ 1¢` folklore anchor)
-   - Tapping the jar launches **`TipJarModal.tsx`**, presenting the jar, individual coin lore, and direct creator support actions. User alts can overwrite any starter coin.
+   - **Tip Circle (`TipCircle.tsx`)**: Twin hero circle positioned immediately to the right of the avatar, matching its exact size (`w-28 h-28 sm:w-36 sm:h-36`) and banner-crossing offset (`-mt-16 sm:-mt-20`). Features a borderless, transparent container where the banner and shelf show through the gaps between avatars:
+     - 🪐 **Organic Constellation**: Avatars pack naturally without forced center placement using greedy tangential pocket nesting (`circlePacking.ts`), maximizing area density up to $\sim 83\%$ without overlapping.
+     - 👑 **Scale-Driven Hierarchy**: Contribution amounts determine avatar area directly; high-tier patrons display subtle gold or blue accent borders.
+     - ✨ **Cold-Start Fallback**: Displays the `@oomfsorg` golden cat mascot (`CatShushIcon`) and `+ Be 1st` encouragement pill when 0 supporters exist.
+   - Tapping the circle launches **`SupporterModal.tsx`**, presenting the expanded celestial constellation, an autobalancing area slider sandbox for live sizing tuning, scenario presets, and a direct creator tip action.
 
 4. **Action Row & Native Edit Profile Modal**:
    - **`"Ask!"` Auxiliary Pill** (Viewing others' profiles only): Rendered immediately to the left of the primary action button with a custom monochrome shushing cat face (`CatShushIcon`). Hidden when viewing own profile.
