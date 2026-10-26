@@ -1,4 +1,4 @@
-import { Supporter } from './mockData';
+import { Supporter, DEFAULT_SUPPORTERS } from './mockData';
 
 // Reusable pool of high-quality avatar placeholders with verified Unsplash portraits
 export const AVATAR_POOL = [
@@ -41,12 +41,12 @@ export interface ScenarioPreset {
 
 export const SUPPORTER_SCENARIOS: ScenarioPreset[] = [
   {
-    id: 'empty',
-    name: 'Cold Start',
-    badge: '0 supporters',
-    description: 'Empty orbit with the @oomfsorg cat mascot & "+ Be 1st" invite pill.',
-    icon: '🌱',
-    getSupporters: () => [],
+    id: 'default_coins',
+    name: 'Default Orbit',
+    badge: '2 coins (50/50)',
+    description: 'Default twin coin orbit featuring Amb Coin (left) and My Coin (right).',
+    icon: '🪙',
+    getSupporters: () => DEFAULT_SUPPORTERS,
   },
   {
     id: 'solo_whale',

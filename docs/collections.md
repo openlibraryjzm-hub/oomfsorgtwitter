@@ -12,16 +12,18 @@ On traditional social networks and link-in-bio tools, user content is locked int
 
 The **Curated Collections & Presets System** introduces author-curated organization across user profiles:
 1. **Posts Collections ("Playlist" model)**: A filterable lens over the author's master timeline. Older high-signal posts, carousels, boards, link cards, and badges can be highlighted in custom order, while all posts remain part of the primary chronological feed.
-2. **The Dedicated Presets Tab**: The **Presets** tab functions as a unified channel directory and switchboard console. It features an "All Posts" master launcher alongside clickable cards for each curated Post Collection, allowing visitors and creators to browse and launch thematic feeds in-situ.
+2. **The Dedicated Presets Tab**: The **Presets** tab functions as a unified channel directory and switchboard console. It features clickable cards for each curated Post Collection, allowing visitors and creators to browse and launch thematic feeds in-situ.
 3. **Ultra-Clean Posts Feed & Breadcrumb**: The Posts tab remains 100% clean with zero secondary stadium bars or dropdown chevrons. When a collection preset is active, a minimalist, mobile-first 1-line breadcrumb appears above the feed:
    ```
    ← All posts    [Icon] [Collection Title]    [⇅ Reorder]
    ```
    Tapping `← All posts` immediately clears the lens and returns to the master timeline.
-4. **Dedicated Reordering Canvas**: Collection owners can visually arrange the exact post order within any preset via `ReorderCollectionModal.tsx` (supporting up to 100 items per collection).
+4. **Dedicated Reordering Workspaces**: Collection owners have dedicated visual tools for both levels of content arrangement:
+   - **Collection Level (`ReorderPresetsModal.tsx`)**: Rearranges the sequence of preset channels themselves on the Presets tab.
+   - **Item Level (`ReorderCollectionModal.tsx`)**: Rearranges the sequence of individual posts/blocks within a specific preset.
 5. **Two-Tiered Ordering Architecture**:
-   - **Collection Level**: Curated collections are ordered by the creator's defined sequence, with pinned collections highlighted.
-   - **Item Level (Posts)**: Each curated collection preserves its own author-defined item order (up to 100 items), managed via a dedicated visual reordering workspace.
+   - **Collection Level**: Curated collections are ordered by the creator's defined sequence, managed via the `⇅ Rearrange Presets` modal.
+   - **Item Level (Posts)**: Each curated collection preserves its own author-defined item order (up to 100 items), managed via the `⇅ Reorder` workspace launched from the active timeline breadcrumb.
 
 ---
 
@@ -35,6 +37,7 @@ src/components/profile/
 └── ProfileView.tsx             # Houses the Presets switchboard tab, breadcrumb, active preset filter state
 
 src/components/collections/
+├── ReorderPresetsModal.tsx     # Modal for rearranging preset collections order on the profile Presets tab
 ├── ReorderCollectionModal.tsx  # Visual 100-card post reordering workspace for collection owners
 ├── CreateCollectionModal.tsx   # Modal for creating presets with emoji picker and quick-pin toggle
 └── AddToCollectionModal.tsx    # Modal for assigning posts/links to presets with instant checkboxes
@@ -43,11 +46,12 @@ src/components/collections/
 ### Component Responsibilities
 
 1. **Presets Tab View (`ProfileView.tsx` & `src/app/[username]/presets/page.tsx`)**:
-   - **Master Timeline Card**: Full-width launcher card anchored at the top. Displays a layers icon, "All Posts (Master Timeline)", total post count badge, and a summary. Clicking it smoothly switches to the Posts tab with the complete unfiltered timeline.
    - **Curated Channels Grid**: Responsive 2-column grid (`grid-cols-1 sm:grid-cols-2 gap-3`) displaying all creator-defined collections.
      - Displays custom emoji icon, title, description snippet, post count pill, and optional `⭐ Pinned` status badge.
      - Clicking any channel card immediately transitions to the **Posts** tab with that collection active and the breadcrumb displayed.
-   - **Owner Controls**: Profile owners (`isSelf`) have a prominent `+ New` button to launch `CreateCollectionModal.tsx`.
+   - **Owner Controls**: Profile owners (`isSelf`) have left-aligned action controls:
+     - `+ New Collection`: Opens `CreateCollectionModal.tsx` to create a new preset.
+     - `⇅ Rearrange Presets`: Opens `ReorderPresetsModal.tsx` to drag/drop or use step arrows to arrange the visual sequence of preset channels.
 
 2. **Active Lens Breadcrumb (`ProfileView.tsx`)**:
    - Renders directly above the timeline on the **Posts** tab when `activeCollectionId` is set.
@@ -56,10 +60,16 @@ src/components/collections/
      - `[Icon] [Title]`: Centered/inline badge indicating the active collection preset.
      - `[⇅ Reorder]`: Visible only to the profile owner (`isSelf`), launching `ReorderCollectionModal.tsx`.
 
-3. **`ReorderCollectionModal.tsx`**:
+3. **`ReorderPresetsModal.tsx`**:
+   - Dedicated modal for rearranging the top-level sequence of curated post collections on the profile Presets tab.
+   - **Primary Access Point**: Launched via the **`[ ⇅ Rearrange Presets ]`** button on the Presets tab owner action bar.
+   - **Features**: Rank badges (`#1`, `#2`), emoji icons, titles, drag-and-drop handles (`GripVertical`), and step-arrows (`ChevronUp` / `ChevronDown`).
+   - **Persistence**: Dispatches ordered collection ID lists to `reorderCollections()`, updating `sort_order` in Supabase and local cache.
+
+4. **`ReorderCollectionModal.tsx`**:
    - Dedicated visual reordering workspace for collection owners (`isSelf`).
    - **Primary Access Point**: Launched via the prominent **`[ ⇅ Reorder ]`** button on the profile's active preset breadcrumb directly above the feed.
-   - **100-Card Visual Canvas**: Displays all posts within the collection in a responsive grid (`sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4`).
+   - **100-Card Visual Workspace Grid**: Displays all posts within the collection in a responsive grid (`sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4`).
    - **Item Controls**:
      - Visual position badges (`#1` to `#100`).
      - Post media thumbnails (photos, carousels, boards, link previews) or snippet text.
@@ -68,7 +78,7 @@ src/components/collections/
      - Removal button (`✕`) to unassign an item from the collection without deleting the underlying post.
    - **Real-time Persistence**: Dispatches reordered ID sequences via `onReorderCollectionItems`, synchronizing immediately with local state, `localStorage`, and Supabase.
 
-4. **`CreateCollectionModal.tsx`**:
+5. **`CreateCollectionModal.tsx`**:
    - Modal form for creating new collections with title, optional description, quick emoji picker, and a `Pin to quick-access` toggle.
    - Directly calls `createCollection` from `src/lib/collections.ts`. Enforces the 50-collection maximum cap across client and backend logic.
 

@@ -10,7 +10,7 @@ Just like on Twitter/X Web, users navigate their social connections through dedi
 
 ### Core Objectives:
 1. **1:1 X Web Parity**: Sticky top header with back navigation, target user identity, and an interconnected 3-tab bar.
-2. **Multi-Mode Visual Presentation**: Supports 4 distinct view modes (Compact, Cards, Canvas, Link Wall) toggled via an icon-only segmented pill in the header.
+2. **Multi-Mode Visual Presentation**: Supports 3 distinct view modes (Compact, Cards, Link Wall) toggled via an icon-only segmented pill in the header.
 3. **Internal Mutuals (OOMFS) Graph**: Highlight mutual relationships ($A \leftrightarrow B$) natively without external Twitter API firehose dependencies.
 4. **Unified Relationship Badge Hierarchy**: Distinct, non-competing badges (`OOMFS` vs `Follows you`) with authentic Twitter Light typography.
 
@@ -65,8 +65,7 @@ The top sticky header combines navigation, user identification, and a **4-option
 | :--- | :--- | :--- | :--- |
 | **Compact** (Default) | `List` | `'compact'` | 1:1 Twitter timeline row with circular 44px avatar on the left, display name, handle, single badge, bio snippet, and right-aligned follow button. |
 | **Cards** | `LayoutGrid` | `'cards'` | Taller 1:1 profile header cards with real header banner (`h-28 sm:h-32`), 80px circular avatar overlapping the banner (`-mt-10 sm:-mt-12`), name, handle, badge, bio, and follow button. *(Follower/following/oomfs count row is excluded to preserve card focus).* |
-| **Canvas** | `Palette` | `'canvas'` | Minimalist visual mode: wide rectangular banner tile (`h-28 sm:h-36`) with small avatar overlaid on the top left (`absolute top-3 left-3`). **Zero text**. |
-| **Link Wall** | `Layers` | `'link_wall'` | Identical wide rectangular banner tile with small top-left avatar and **zero text**. |
+| **Link Wall** | `Layers` | `'link_wall'` | Wide rectangular banner tile with small top-left avatar and **zero text**. |
 
 ---
 
@@ -118,4 +117,4 @@ When working on network lists or follow interactions:
 - [ ] **Tab URL Synchronization**: When switching tabs in [`UserNetworkView.tsx`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/components/network/UserNetworkView.tsx), use `window.history.replaceState(null, '', '/[username]/[tab]')` to maintain browser history without triggering full page reloads.
 - [ ] **UUID Validation**: Always run foreign keys through `isValidUuid()` before executing Supabase queries to prevent Postgres UUID syntax errors (`22P02`).
 - [ ] **Mock Fallbacks**: If testing with offline demo handles (e.g. `amberlyn`, `dev_kyle`), ensure mock profiles from `MOCK_USERS` gracefully populate the lists without throwing runtime exceptions.
-- [ ] **Banner Height Consistency & Neutral Fallback**: In `cards`, `canvas`, and `link_wall` view modes, ensure image containers use `object-cover` with Twitter Light neutral slate fallback (`#cfd9de` / `from-[#cfd9de] via-[#d5dde2] to-[#cfd9de]`) and `onError` suppression.
+- [ ] **Banner Height Consistency & Neutral Fallback**: In `cards` and `link_wall` view modes, ensure image containers use `object-cover` with Twitter Light neutral slate fallback (`#cfd9de` / `from-[#cfd9de] via-[#d5dde2] to-[#cfd9de]`) and `onError` suppression.

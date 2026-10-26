@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { Supporter } from '@/lib/mockData';
+import { Supporter, DEFAULT_SUPPORTERS } from '@/lib/mockData';
 import { formatTwitterAvatar } from '@/lib/utils';
 import { CatShushIcon } from './ProfileView';
 import { packSupporterCircles } from '@/lib/circlePacking';
@@ -21,38 +21,40 @@ export default function TipCircle({
   onClick,
   className = '',
 }: TipCircleProps) {
-  const hasSupporters = supporters.length > 0;
+  const effectiveSupporters = supporters && supporters.length > 0 ? supporters : DEFAULT_SUPPORTERS;
 
   // Dynamically pack supporter avatars with ZERO overlapping and maximum fullness (touching outer edge)
   const packedCircles = useMemo(
-    () => packSupporterCircles(supporters, { containerRadius: 49.5, minGap: 1.2, targetFillDensity: 0.84 }),
-    [supporters]
+    () => packSupporterCircles(effectiveSupporters, { containerRadius: 49.5, minGap: 1.2, targetFillDensity: 0.84 }),
+    [effectiveSupporters]
   );
 
   return (
     <button
       type="button"
       onClick={onClick}
-      title={`${name}'s Tip Circle (${supporters.length} supporter${supporters.length === 1 ? '' : 's'} • Tap to inspect scenarios)`}
+      title={`${name}'s Tip Circle (${effectiveSupporters.length} supporter${effectiveSupporters.length === 1 ? '' : 's'} • Tap to inspect scenarios)`}
       aria-label={`${name}'s Tip Circle`}
       className={`group relative -mt-16 sm:-mt-20 shrink-0 cursor-pointer select-none focus:outline-none z-10 ${className}`}
     >
       {/* Outer Circle Container: Borderless and transparent, avatars float seamlessly across banner shelf */}
       <div className="relative w-28 h-28 sm:w-36 sm:h-36 rounded-full overflow-hidden flex items-center justify-center bg-transparent">
-        {hasSupporters ? (
+        {effectiveSupporters.length > 0 ? (
           /* ============================================================== */
           /* POPULATED SUPPORTER ORBIT (Transparent Background, No Scale)    */
           /* ============================================================== */
           <div className="relative w-full h-full flex items-center justify-center">
             {/* Packed Supporter Avatars */}
             {packedCircles.map((pc, idx) => {
-              const isTopHero = idx === 0 && pc.item.amount >= 25;
-              const borderClass =
-                pc.item.amount >= 50
-                  ? 'border-2 border-amber-400 group-hover:border-[#1d9bf0]'
-                  : pc.item.amount >= 20
-                  ? 'border border-[#1d9bf0]'
-                  : 'border border-white group-hover:border-[#1d9bf0]/60';
+              const isCoin = pc.item.id.startsWith('coin_') || pc.item.avatar.includes('coin') || pc.item.avatar.includes('Coin');
+              const isTopHero = !isCoin && idx === 0 && pc.item.amount >= 25;
+              const borderClass = isCoin
+                ? 'border border-white/60 group-hover:border-[#1d9bf0]'
+                : pc.item.amount >= 50
+                ? 'border-2 border-amber-400 group-hover:border-[#1d9bf0]'
+                : pc.item.amount >= 20
+                ? 'border border-[#1d9bf0]'
+                : 'border border-white group-hover:border-[#1d9bf0]/60';
 
               return (
                 <div

@@ -20,8 +20,9 @@ On `oomfs.org`, creator support is elevated into the profile's primary visual id
 3. **Scale-Driven Hierarchy Without Forced Centering**:
    * Contribution amounts correlate directly to avatar area ($\text{Area} \propto \text{tip amount}$).
    * Avatars are not artificially pinned to $(50, 50)$ (which creates an awkward "donut ring" that starves medium supporters). Instead, positions are emergent: large supporters establish the macro structure and smaller supporters nestle into the natural crevices between them.
-4. **Graceful Cold Start**:
-   * For profiles with zero tips, the circle displays the platform's golden cat mascot (`CatShushIcon`) with a subtle `+ Be 1st` encouragement pill.
+4. **Default Orbit (Twin Coins)**:
+   * Across all profiles, the default orbit displays two coins at 50% size each: Amb Coin (`/ambcoin.png`) anchored on the left and My Coin (`/My_Coin (1).png`) anchored on the right.
+   * If a profile has zero custom tips, this balanced twin coin constellation renders seamlessly as the default visual signature.
 
 ```text
 ┌────────────────────────────────────────────────────────┐
@@ -29,7 +30,7 @@ On `oomfs.org`, creator support is elevated into the profile's primary visual id
 │                                                        │
 │   ╭──────────────╮             ●    👑    ●            │
 └───│──────────────│───────────●─────────────────────────┘ (Banner bottom line)
-    │              │             ●    ●    ●      [ Ask! ]  [ Follow ]
+    │              │             ●    ●    ●                [ Follow ]
     │   CREATOR    │  (gap-3)       ●    ●
     │    AVATAR    │
     ╰──────────────╯          (Transparent Gaps)
@@ -103,7 +104,7 @@ The layout of avatars inside both the profile circle and modal arena is computed
 * **Seam Clearance**:
   * The top half of the circle overlaps the header banner; the bottom half rests on the white profile shelf.
 * **Mobile Wrap Protection**:
-  * The identity container in `ProfileView.tsx` uses `flex flex-wrap sm:flex-nowrap justify-between items-end pb-3 gap-y-3`. On narrow viewports ($<390\text{px}$), the action buttons (`Ask!`, `Follow`) wrap gracefully beneath the dual circles without clipping or horizontal overflow.
+  * The identity container in `ProfileView.tsx` uses `flex flex-wrap sm:flex-nowrap justify-between items-end pb-3 gap-y-3`. On narrow viewports ($<390\text{px}$), the action button (`Follow` / `Edit profile`) wraps gracefully beneath the dual circles without clipping or horizontal overflow.
 * **Zero Size Jumping**:
   * Hovering or selecting individual avatars in either view does **not** enlarge or jump their size (`scale`).
   * Instead, interactive focus is conveyed via a clean **Twitter Blue (`#1d9bf0`) outline ring**, preserving stable geometric alignment.
@@ -115,7 +116,8 @@ The layout of avatars inside both the profile circle and modal arena is computed
 The modal offers two distinct operational modes via top-level tab controls:
 
 ### 5.1 Autobalancing Area Slider Sandbox (`activeTab === 'sandbox'`)
-* Displays a flat, clean list of actual supporters with their PFP, display name, and handle (`@username`).
+* **State Initialization**: Dynamically populates directly from the active profile supporters (`DEFAULT_SUPPORTERS`), defaulting to the twin coin pair (**Amb Coin** and **My Coin**) with sliders preset to an exact **50% area share** each. This guarantees 1:1 visual parity between the profile circle and the sandbox workspace.
+* Displays a flat, clean list of active supporters with their avatar, display name, and handle (`@username`).
 * Each person has an interactive **Area Percentage Slider** ($1\%–75\%$).
 * **Proportional Autobalancing**: When any person's slider is moved, all other supporters' shares scale automatically so that the total area **always sums to exactly $100\%$**:
   $$p_j^{\text{new}} = p_j^{\text{old}} \cdot \frac{100 - p_k^{\text{new}}}{100 - p_k^{\text{old}}}$$
@@ -124,11 +126,12 @@ The modal offers two distinct operational modes via top-level tab controls:
   * `✕` Remove: Deletes a person and redistributes their area proportionally to the remaining group.
   * `Equalize All`: Resets all sliders to equal share ($100 \div N\%$).
   * Quick Count Pills: Instant presets for $3, 5, 8, 12,$ or $20$ supporters.
-* Live Profile Sync: Any slider movement updates the profile banner circle in real time via `onScenarioChange`.
+  * **Custom Temporary Image Upload**: Clicking any avatar in the slider list opens a file picker to upload a custom image for testing layouts in real-time (session-only, non-persisted).
+* **Live Profile Sync**: Any slider movement updates the profile banner circle in real time via `onScenarioChange`. The packing engine computes twin radii as $r = \sqrt{0.5 \cdot 0.83} \cdot 49.2 \approx 31.69\%$, producing symmetrical centers at $x = 32.5\%$ and $x = 67.5\%$ on the $y = 50\%$ horizontal axis with natural soft-bubble overlap.
 
 ### 5.2 Scenario Presets Switchboard (`activeTab === 'presets'`)
 Provides instant, 1-click test scenarios:
-1. `🌱 Cold Start (0)`: Empty orbit with the golden cat mascot and `+ Be 1st` pill.
+1. `🪙 Default Orbit (2)`: Default twin coin orbit featuring Amb Coin (left) and My Coin (right) at 50% area share each.
 2. `🐳 Solo Whale (1 x $100)`: Single large patron filling $99\%$ of the circle edge-to-edge.
 3. `⚖️ Balanced Orbit (6)`: Balanced distribution with 1 hero, 2 patrons, and 3 supporters.
 4. `👑 Whales + Outer Swarm (20)`: 2 prominent whale patrons surrounded by an 18-supporter micro-cloud.

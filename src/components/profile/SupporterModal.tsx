@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
-import { X, Sparkles, Heart, Coins, ArrowRight, ExternalLink, Check, SlidersHorizontal, Info, Calculator, Plus, Trash2, RotateCcw, Users } from 'lucide-react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
+import { X, Sparkles, Heart, Coins, ArrowRight, ExternalLink, Check, SlidersHorizontal, Info, Calculator, Plus, Trash2, RotateCcw, Users, Camera } from 'lucide-react';
 import Link from 'next/link';
-import { Supporter } from '@/lib/mockData';
-import { formatTwitterAvatar } from '@/lib/utils';
+import { Supporter, DEFAULT_SUPPORTERS } from '@/lib/mockData';
+import { formatTwitterAvatar, compressImageFile } from '@/lib/utils';
 import { CatShushIcon } from './ProfileView';
 import { SUPPORTER_SCENARIOS, ScenarioPreset, AVATAR_POOL } from '@/lib/supporterPresets';
 import { packSupporterCircles } from '@/lib/circlePacking';
@@ -38,24 +38,34 @@ export default function SupporterModal({
 }: SupporterModalProps) {
   // Mode: Presets vs Custom Math Sandbox
   const [activeTab, setActiveTab] = useState<'presets' | 'sandbox'>('sandbox');
-  const [activeScenarioId, setActiveScenarioId] = useState<string>('balanced');
+  const [activeScenarioId, setActiveScenarioId] = useState<string>('default_coins');
   const [selectedSupporterId, setSelectedSupporterId] = useState<string | null>(null);
+
+  // Helper to convert incoming supporters list to SandboxPerson[]
+  const initPeopleFromSupporters = (source: Supporter[]): SandboxPerson[] => {
+    const list = source && source.length > 0 ? source : DEFAULT_SUPPORTERS;
+    const count = list.length;
+    const share = 100 / count;
+    return list.map((s, i) => ({
+      id: s.id || `person_${i}`,
+      name: s.name,
+      username: s.username,
+      avatar: s.avatar,
+      areaShare: share,
+    }));
+  };
 
   // Math Sandbox State: Flat list of people with autobalancing area shares
   const [people, setPeople] = useState<SandboxPerson[]>(() => {
-    // Initial 6 people with varied area distribution
-    const initialShares = [35, 20, 15, 12, 10, 8];
-    return initialShares.map((share, i) => {
-      const p = AVATAR_POOL[i % AVATAR_POOL.length];
-      return {
-        id: `person_${i}`,
-        name: p.name,
-        username: p.username,
-        avatar: p.avatar,
-        areaShare: share,
-      };
-    });
+    return initPeopleFromSupporters(supporters);
   });
+
+  // Re-sync people whenever modal opens with current profile supporters
+  useEffect(() => {
+    if (isOpen) {
+      setPeople(initPeopleFromSupporters(supporters));
+    }
+  }, [isOpen]);
 
   // Interactive Tip Form State
   const [tipTier, setTipTier] = useState<number>(10);
@@ -249,6 +259,44 @@ export default function SupporterModal({
     syncPeopleToSupporters(list);
   };
 
+  // Temporary Sandbox Custom Avatar Upload (Session-only, zero persistence)
+  const avatarFileInputRef = useRef<HTMLInputElement>(null);
+  const targetAvatarPersonIdRef = useRef<string | null>(null);
+
+  const handleAvatarClick = (personId: string) => {
+    targetAvatarPersonIdRef.current = personId;
+    avatarFileInputRef.current?.click();
+  };
+
+  const handleAvatarFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const personId = targetAvatarPersonIdRef.current;
+    if (!file || !personId) return;
+
+    try {
+      let dataUrl: string;
+      try {
+        dataUrl = await compressImageFile(file, 400, 0.9);
+      } catch {
+        dataUrl = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (loadEvt) => resolve(loadEvt.target?.result as string);
+          reader.readAsDataURL(file);
+        });
+      }
+
+      if (dataUrl) {
+        const updated = people.map((p) => (p.id === personId ? { ...p, avatar: dataUrl } : p));
+        setPeople(updated);
+        syncPeopleToSupporters(updated);
+      }
+    } catch (err) {
+      console.warn('Failed to load avatar image:', err);
+    } finally {
+      e.target.value = '';
+    }
+  };
+
   // Preset Scenario switch handler
   const handleSelectScenario = (scenario: ScenarioPreset) => {
     setActiveScenarioId(scenario.id);
@@ -309,6 +357,15 @@ export default function SupporterModal({
         className="w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden border border-[#eff3f4] flex flex-col max-h-[92vh] animate-scaleUp"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Hidden file input for temporary custom sandbox avatar uploads */}
+        <input
+          ref={avatarFileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleAvatarFileSelect}
+        />
+
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#eff3f4] bg-[#f7f9f9]">
           <div className="flex items-center gap-2.5">
@@ -409,11 +466,21 @@ export default function SupporterModal({
                     key={p.id}
                     className="flex items-center gap-2.5 bg-white px-2.5 py-1.5 rounded-lg border border-[#cfd9de] shadow-2xs"
                   >
-                    <img
-                      src={formatTwitterAvatar(p.avatar)}
-                      alt={p.name}
-                      className="w-7 h-7 rounded-full object-cover shrink-0 border border-[#cfd9de]"
-                    />
+                    <button
+                      type="button"
+                      onClick={() => handleAvatarClick(p.id)}
+                      title="Click to upload custom image"
+                      className="relative w-7 h-7 rounded-full shrink-0 group/avatar cursor-pointer"
+                    >
+                      <img
+                        src={formatTwitterAvatar(p.avatar)}
+                        alt={p.name}
+                        className="w-full h-full rounded-full object-cover border border-[#cfd9de] group-hover/avatar:opacity-60 transition-opacity"
+                      />
+                      <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity">
+                        <Camera className="w-3.5 h-3.5 text-white" />
+                      </div>
+                    </button>
                     <div className="w-24 shrink-0">
                       <p className="font-bold text-xs text-[#0f1419] truncate leading-tight">{p.name}</p>
                       <p className="text-[10px] text-[#536471] truncate leading-none">@{p.username}</p>
@@ -527,13 +594,15 @@ export default function SupporterModal({
               <div className="relative w-full h-full flex items-center justify-center">
                 {packedModalCircles.map((pc, idx) => {
                   const isSelected = selectedSupporterId === pc.item.id;
-                  const isTopHero = idx === 0 && pc.item.amount >= 25;
-                  const borderClass =
-                    pc.item.amount >= 50
-                      ? 'border-2 border-amber-400'
-                      : pc.item.amount >= 20
-                      ? 'border-2 border-[#1d9bf0]'
-                      : 'border-2 border-white';
+                  const isCoin = pc.item.id.startsWith('coin_') || pc.item.avatar.includes('coin') || pc.item.avatar.includes('Coin');
+                  const isTopHero = !isCoin && idx === 0 && pc.item.amount >= 25;
+                  const borderClass = isCoin
+                    ? 'border-2 border-white/70'
+                    : pc.item.amount >= 50
+                    ? 'border-2 border-amber-400'
+                    : pc.item.amount >= 20
+                    ? 'border-2 border-[#1d9bf0]'
+                    : 'border-2 border-white';
 
                   return (
                     <button

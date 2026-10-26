@@ -6,7 +6,6 @@ import {
   Trash2, 
   Globe, 
   X, 
-  Sparkles,
   ArrowUp,
   ArrowDown,
   ArrowLeft,
@@ -1295,33 +1294,19 @@ export default function LinksPortal({ user, isSelf }: LinksPortalProps) {
         className="hidden"
       />
 
-      {/* Portal Header */}
-      <div className="px-4 py-3.5 bg-[#f7f9f9]/80 border-b border-[#eff3f4] flex items-center justify-between">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 rounded-full bg-[#1d9bf0]/10 text-[#1d9bf0] flex items-center justify-center shrink-0">
-            <Sparkles className="w-4 h-4" />
-          </div>
-          <div className="min-w-0">
-            <h3 className="font-extrabold text-[#0f1419] text-sm sm:text-base leading-tight truncate">
-              Link Portal
-            </h3>
-            <p className="text-xs text-[#536471] truncate">
-              Official accounts & social hubs by @{user.username}
-            </p>
-          </div>
-        </div>
-
-        {isSelf && (
+      {/* Portal Owner Action Bar (Only visible on own profile) */}
+      {isSelf && (
+        <div className="px-4 py-3 border-b border-[#eff3f4] flex items-center justify-start">
           <button
             type="button"
             onClick={openAddModal}
-            className="text-xs font-bold text-white bg-[#1d9bf0] hover:bg-[#1a8cd8] px-3.5 py-1.5 rounded-full transition-colors cursor-pointer flex items-center gap-1 shadow-2xs shrink-0"
+            className="text-xs font-bold text-white bg-[#1d9bf0] hover:bg-[#1a8cd8] px-3.5 py-1.5 rounded-full transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs shrink-0"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Add Link</span>
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Vertical Linktree-Style Card Stack */}
       <div className="w-full max-w-xl mx-auto px-4 py-6 flex flex-col gap-3">

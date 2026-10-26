@@ -5,14 +5,12 @@ import Link from 'next/link';
 import { 
   ArrowLeft, 
   CheckCircle2, 
-  ExternalLink, 
   Sparkles, 
   Plus, 
   X,
   LogIn,
   Filter,
   Search,
-  Paintbrush,
   DollarSign,
   MoreHorizontal,
   FolderPlus,
@@ -38,7 +36,6 @@ import {
 } from '@/lib/mockData';
 import PostCard from '@/components/feed/PostCard';
 import CommentCard from '@/components/feed/CommentCard';
-import CanvasPreview from './CanvasPreview';
 import FullscreenMediaModal from './FullscreenMediaModal';
 import TipCircle from './TipCircle';
 import SupporterModal from './SupporterModal';
@@ -46,6 +43,7 @@ import { getSupportersForUser, Supporter } from '@/lib/mockData';
 import PostComposer from '@/components/feed/PostComposer';
 import LinksPortal from '@/components/links/LinksPortal';
 import ReorderCollectionModal from '@/components/collections/ReorderCollectionModal';
+import ReorderPresetsModal from '@/components/collections/ReorderPresetsModal';
 import CreateCollectionModal from '@/components/collections/CreateCollectionModal';
 import AddToCollectionModal from '@/components/collections/AddToCollectionModal';
 import BannerCropModal from '@/components/profile/BannerCropModal';
@@ -148,6 +146,7 @@ export default function ProfileView({
   });
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
   const [reorderTargetCollection, setReorderTargetCollection] = useState<Collection | null>(null);
+  const [reorderPresetsModalOpen, setReorderPresetsModalOpen] = useState(false);
 
   // Item assignment & collection creation modals
   const [manageItem, setManageItem] = useState<{
@@ -346,9 +345,8 @@ export default function ProfileView({
   const bannerFileInputRef = useRef<HTMLInputElement>(null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
-  // Header Banner & Canvas Viewport Mode & Fullscreen Lightbox State
-  const [headerMode, setHeaderMode] = useState<'banner' | 'canvas'>('banner');
-  const [fullscreenMedia, setFullscreenMedia] = useState<'banner' | 'canvas' | null>(null);
+  // Header Banner Lightbox & Supporter Orbit Modal State
+  const [bannerLightboxOpen, setBannerLightboxOpen] = useState(false);
   const [supporterModalOpen, setSupporterModalOpen] = useState(false);
   const [profileSupporters, setProfileSupporters] = useState<Supporter[]>(() =>
     getSupportersForUser(userProfile.username)
@@ -359,78 +357,8 @@ export default function ProfileView({
     setProfileSupporters(getSupportersForUser(userProfile.username));
   }, [userProfile.username]);
 
-  // Gesture detection for swiping/dragging between Banner and Canvas
-  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
-  const isSwipingRef = useRef(false);
-  const mouseStartRef = useRef<{ x: number; y: number } | null>(null);
-  const mouseDraggedRef = useRef(false);
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
-    isSwipingRef.current = false;
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!touchStartRef.current) return;
-    const touch = e.touches[0];
-    const deltaX = touch.clientX - touchStartRef.current.x;
-    const deltaY = touch.clientY - touchStartRef.current.y;
-    if (Math.abs(deltaX) > 15 && Math.abs(deltaX) > Math.abs(deltaY)) {
-      isSwipingRef.current = true;
-    }
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (!touchStartRef.current) return;
-    const touch = e.changedTouches[0];
-    const deltaX = touch.clientX - touchStartRef.current.x;
-    const deltaY = touch.clientY - touchStartRef.current.y;
-    const duration = Date.now() - touchStartRef.current.time;
-
-    // Trigger swap if swipe exceeds 40px horizontally and was fast
-    if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY) && duration < 800) {
-      setHeaderMode((prev) => (prev === 'banner' ? 'canvas' : 'banner'));
-    }
-
-    touchStartRef.current = null;
-    setTimeout(() => {
-      isSwipingRef.current = false;
-    }, 100);
-  };
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    mouseStartRef.current = { x: e.clientX, y: e.clientY };
-    mouseDraggedRef.current = false;
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!mouseStartRef.current) return;
-    const deltaX = e.clientX - mouseStartRef.current.x;
-    if (Math.abs(deltaX) > 10) {
-      mouseDraggedRef.current = true;
-    }
-  };
-
-  const handleMouseUp = (e: React.MouseEvent) => {
-    if (!mouseStartRef.current) return;
-    const deltaX = e.clientX - mouseStartRef.current.x;
-    if (Math.abs(deltaX) > 50) {
-      setHeaderMode((prev) => (prev === 'banner' ? 'canvas' : 'banner'));
-    }
-    mouseStartRef.current = null;
-    setTimeout(() => {
-      mouseDraggedRef.current = false;
-    }, 100);
-  };
-
   const handleMainBannerClick = () => {
-    if (isSwipingRef.current || mouseDraggedRef.current) return;
-    setFullscreenMedia(headerMode);
-  };
-
-  const handleToggleHeaderMode = () => {
-    setHeaderMode((prev) => (prev === 'banner' ? 'canvas' : 'banner'));
+    setBannerLightboxOpen(true);
   };
 
   // Banner file selection and crop handlers
@@ -1150,19 +1078,6 @@ export default function ProfileView({
                 </button>
                 <button
                   type="button"
-                  onClick={handleToggleHeaderMode}
-                  aria-label={headerMode === 'banner' ? 'Show OOMF Doodles' : 'Show Clean Banner'}
-                  title={headerMode === 'banner' ? 'Show OOMF Doodles' : 'Show Clean Banner'}
-                  className="p-2 hover:bg-[#0f1419]/10 rounded-full text-[#0f1419] transition-colors cursor-pointer"
-                >
-                  {headerMode === 'banner' ? (
-                    <Paintbrush className="w-5 h-5 text-[#1d9bf0]" />
-                  ) : (
-                    <ImageIcon className="w-5 h-5 text-[#1d9bf0]" />
-                  )}
-                </button>
-                <button
-                  type="button"
                   aria-label="Search"
                   title="Search"
                   className="p-2 hover:bg-[#0f1419]/10 rounded-full text-[#0f1419] transition-colors cursor-pointer"
@@ -1175,38 +1090,23 @@ export default function ProfileView({
         </div>
       </header>
 
-      {/* Banner & Doodle Viewport: 1:1 X Standard 3:1 Aspect Ratio (1500x500) */}
+      {/* Banner Viewport: 1:1 X Standard 3:1 Aspect Ratio (1500x500) */}
       <div 
         onClick={handleMainBannerClick}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        title={headerMode === 'banner' ? 'Tap to view banner (Swipe/drag to view OOMF Doodles)' : 'Tap to sign banner (Swipe/drag to view Clean Banner)'}
-        className="w-full aspect-[3/1] bg-[#cfd9de] relative overflow-hidden select-none cursor-pointer transition-opacity duration-300"
+        title="Tap to view header banner"
+        className="w-full aspect-[3/1] bg-[#cfd9de] relative overflow-hidden select-none cursor-pointer"
       >
-        {headerMode === 'banner' ? (
-          userProfile.banner ? (
-            <img
-              src={userProfile.banner}
-              alt={`${userProfile.name}'s banner`}
-              className="w-full h-full object-cover pointer-events-none"
-              onError={(e) => {
-                (e.currentTarget as HTMLImageElement).style.display = 'none';
-              }}
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-r from-[#cfd9de] via-[#d5dde2] to-[#cfd9de]" />
-          )
-        ) : (
-          <CanvasPreview 
-            username={userProfile.username} 
-            bannerUrl={userProfile.banner}
-            mode="main" 
-            className="w-full h-full pointer-events-none" 
+        {userProfile.banner ? (
+          <img
+            src={userProfile.banner}
+            alt={`${userProfile.name}'s banner`}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.display = 'none';
+            }}
           />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-r from-[#cfd9de] via-[#d5dde2] to-[#cfd9de]" />
         )}
       </div>
 
@@ -1234,18 +1134,6 @@ export default function ProfileView({
 
         {/* Action buttons */}
         <div ref={followButtonRef} className="flex items-center gap-1.5 sm:gap-2 mb-2 shrink-0">
-          {/* Ask! button (only visible when viewing another user's profile) */}
-          {!isSelf && (
-            <button
-              type="button"
-              className="border border-[#cfd9de] hover:bg-[#0f1419]/5 text-[#0f1419] font-bold text-xs sm:text-sm px-3 sm:px-4 py-2 rounded-full transition-colors flex items-center gap-1.5 cursor-pointer"
-              title={`Ask @${userProfile.username}`}
-            >
-              <CatShushIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#0f1419]" />
-              <span>Ask!</span>
-            </button>
-          )}
-
           {isSelf ? (
             <button 
               onClick={() => {
@@ -1538,87 +1426,35 @@ export default function ProfileView({
         {/* 2. PRESETS TAB */}
         {activeTab === 'presets' && (
           <div className="flex flex-col">
-            {/* Presets Header */}
-            <div className="px-4 py-3.5 bg-[#f7f9f9]/80 border-b border-[#eff3f4] flex items-center justify-between">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-full bg-[#1d9bf0]/10 text-[#1d9bf0] flex items-center justify-center shrink-0">
-                  <Sparkles className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="font-extrabold text-[#0f1419] text-sm sm:text-base leading-tight truncate">
-                    Presets & Collections
-                  </h3>
-                  <p className="text-xs text-[#536471] truncate">
-                    Curated channels and post collections by @{userProfile.username}
-                  </p>
-                </div>
+            {/* Presets Owner Action Bar (Only on own profile) */}
+            {isSelf && (
+              <div className="px-4 py-3 border-b border-[#eff3f4] flex items-center justify-start gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCreateCollectionTab('posts')}
+                  className="text-xs font-bold text-white bg-[#1d9bf0] hover:bg-[#1a8cd8] px-3 py-1.5 rounded-full transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>New Collection</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReorderPresetsModalOpen(true)}
+                  disabled={collections.length < 2}
+                  title={collections.length < 2 ? 'Need at least 2 presets to rearrange' : 'Rearrange presets order'}
+                  className="text-xs font-bold border border-[#cfd9de] text-[#0f1419] hover:bg-[#0f1419]/5 disabled:opacity-40 disabled:hover:bg-transparent px-3 py-1.5 rounded-full transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                >
+                  <ArrowUpDown className="w-3.5 h-3.5 text-[#536471]" />
+                  <span>Rearrange Presets</span>
+                </button>
               </div>
+            )}
 
-              <div className="flex items-center gap-2 shrink-0">
-                {isSelf && (
-                  <button
-                    type="button"
-                    onClick={() => setCreateCollectionTab('posts')}
-                    className="text-xs font-bold text-white bg-[#1d9bf0] hover:bg-[#1a8cd8] px-3 py-1.5 rounded-full transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>New Collection</span>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div className="p-4 flex flex-col gap-4">
-              {/* Master Feed Launcher Card */}
-              <button
-                type="button"
-                onClick={() => {
-                  handleSelectPostCollection(null);
-                  setActiveTab('posts');
-                  if (typeof window !== 'undefined') {
-                    window.history.replaceState(null, '', `/${userProfile.username}`);
-                  }
-                }}
-                className="w-full text-left bg-gradient-to-r from-blue-50/70 via-white to-blue-50/30 border border-blue-100 hover:border-[#1d9bf0] hover:shadow-xs rounded-2xl p-4 transition-all cursor-pointer group flex items-center justify-between"
-              >
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-11 h-11 rounded-2xl bg-[#1d9bf0] text-white flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
-                    <Layers className="w-5 h-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-extrabold text-[#0f1419] text-sm sm:text-base group-hover:text-[#1d9bf0] transition-colors truncate">
-                        All Posts (Master Timeline)
-                      </h4>
-                      <span className="text-[11px] font-bold text-[#1d9bf0] bg-blue-100/60 px-2 py-0.5 rounded-full shrink-0">
-                        {allTimelinePosts.length} posts
-                      </span>
-                    </div>
-                    <p className="text-xs text-[#536471] mt-0.5 line-clamp-1">
-                      View the complete chronological timeline featuring all posts, photo carousels, boards, and link cards.
-                    </p>
-                  </div>
-                </div>
-                <div className="text-[#1d9bf0] font-bold text-xs flex items-center gap-1 shrink-0 ml-3 group-hover:translate-x-1 transition-transform">
-                  <span className="hidden sm:inline">Open Feed</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </div>
-              </button>
-
+            <div className="p-4">
               {/* Collections Presets Grid */}
               {collections.length > 0 ? (
-                <div>
-                  <div className="flex items-center justify-between mb-2.5 px-0.5">
-                    <span className="text-xs font-extrabold text-[#536471] uppercase tracking-wider">
-                      Curated Presets ({collections.length})
-                    </span>
-                    <span className="text-[11px] text-[#536471]">
-                      Click any preset to view posts
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {collections.map((col) => (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {collections.map((col) => (
                       <div
                         key={col.id}
                         className="bg-white border border-[#eff3f4] hover:border-[#1d9bf0]/60 hover:shadow-xs rounded-2xl p-4 transition-all flex flex-col justify-between group"
@@ -1705,7 +1541,6 @@ export default function ProfileView({
                         </div>
                       </div>
                     ))}
-                  </div>
                 </div>
               ) : (
                 <div className="text-center py-12 px-4 border border-dashed border-gray-200 rounded-2xl">
@@ -2069,14 +1904,21 @@ export default function ProfileView({
         />
       )}
 
-      {/* Fullscreen Banner / Canvas Lightbox Modal */}
+      {/* Rearrange Presets Modal */}
+      <ReorderPresetsModal
+        isOpen={reorderPresetsModalOpen}
+        onClose={() => setReorderPresetsModalOpen(false)}
+        collections={collections}
+        onReorder={handleReorderCollections}
+      />
+
+      {/* Fullscreen Banner Lightbox Modal */}
       <FullscreenMediaModal
-        isOpen={Boolean(fullscreenMedia)}
-        type={fullscreenMedia}
+        isOpen={bannerLightboxOpen}
         bannerUrl={userProfile.banner}
         name={userProfile.name}
         username={userProfile.username}
-        onClose={() => setFullscreenMedia(null)}
+        onClose={() => setBannerLightboxOpen(false)}
       />
 
       {/* Supporter Orbit Modal */}

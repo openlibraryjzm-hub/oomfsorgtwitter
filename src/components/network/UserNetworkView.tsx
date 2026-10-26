@@ -10,7 +10,6 @@ import {
   Users, 
   List, 
   LayoutGrid,
-  Palette,
   Layers
 } from 'lucide-react';
 import { User, MOCK_USERS } from '@/lib/mockData';
@@ -26,7 +25,7 @@ import {
 } from '@/lib/follows';
 
 export type NetworkTab = 'oomfs' | 'following' | 'followers';
-export type ViewMode = 'compact' | 'cards' | 'canvas' | 'link_wall';
+export type ViewMode = 'compact' | 'cards' | 'link_wall';
 
 interface UserNetworkViewProps {
   targetUser: User;
@@ -252,19 +251,6 @@ export default function UserNetworkView({ targetUser, initialTab = 'oomfs' }: Us
             }`}
           >
             <LayoutGrid className="w-4 h-4" />
-          </button>
-
-          <button
-            onClick={() => setViewMode('canvas')}
-            title="Canvas"
-            aria-label="Canvas view"
-            className={`p-1.5 rounded-full transition-all cursor-pointer flex items-center justify-center ${
-              viewMode === 'canvas'
-                ? 'bg-white text-[#0f1419] shadow-xs'
-                : 'text-[#536471] hover:text-[#0f1419]'
-            }`}
-          >
-            <Palette className="w-4 h-4" />
           </button>
 
           <button
@@ -572,7 +558,7 @@ export default function UserNetworkView({ targetUser, initialTab = 'oomfs' }: Us
           })}
         </div>
       ) : (
-        /* 3 & 4. CANVAS AND LINK WALL PRESENTATION (Wide rectangle banner + small top-left avatar, zero text) */
+        /* 3. LINK WALL PRESENTATION (Wide rectangle banner + small top-left avatar, zero text) */
         <div className="divide-y divide-[#eff3f4]">
           {profiles.map((p) => (
             <Link

@@ -31,6 +31,7 @@ src/components/profile/
 └── BannerCropModal.tsx          # 1:1 X 1500x500 banner crop viewfinder, zoom slider, & wheel zoom
 
 src/components/collections/
+├── ReorderPresetsModal.tsx      # Modal for rearranging preset collections order on the profile Presets tab
 ├── ReorderCollectionModal.tsx   # Visual 100-card post reordering workspace for collection owners
 ├── CreateCollectionModal.tsx    # Modal for creating presets with emoji picker and quick-pin toggle
 └── AddToCollectionModal.tsx     # Modal for assigning posts/links to presets with instant checkboxes
@@ -54,28 +55,23 @@ The profile header sits at the top of `ProfileView.tsx` and adheres strictly to 
    - Back button (`←`), user display name, verified checkmark, and active post count.
    - **Top Actions & Dynamic Scroll Swap**:
      - **Persistent "Back to X" Link**: A clean pill button (`View @username on 𝕏`) linking directly to `https://x.com/[username]` in a new tab, clarifying that `oomfs.org` is a complementary profile layer.
-     - **Header Action Icons**: Native circular icon buttons: **`More`** (three dots), **`Canvas / Banner Toggle`** (`Paintbrush` when showing banner, `ImageIcon` when showing canvas; swaps the active header viewport), and **`Search`** (magnifier, furthest to the right).
+     - **Header Action Icons**: Native circular icon buttons: **`More`** (three dots) and **`Search`** (magnifier, furthest to the right).
      - **Dynamic Follow Swap**: When scrolling down past the profile's primary Follow/Following button, the sticky header dynamically swaps the action icon buttons into a compact **`Follow` / `Following`** action pill (when viewing another profile while authenticated). Scrolling back up restores the icon buttons.
      - On own profile (`isSelf`) or when logged out, the action icons persist alongside the X link without swapping.
 
-2. **Banner & Living Doodle Viewport**:
-   - Main Viewport: Height responsive, 3:1 aspect ratio (`1500×500px`), 100% clean and unobstructed (no dots or overlays).
-   - Dual-Mode: Displays either the user's **Clean Header Banner** or the **Living Doodle Layer** (`CanvasPreview.tsx`), where mutual OOMFs sign, doodle, and place pixel stamps directly over the underlying banner image.
-   - 2 Ways to Swap:
-     1. Horizontal swipe/drag across the main banner (touch-thresholded to protect vertical scroll).
-     2. Dedicated top header toggle button (`Paintbrush` ↔ `Image`).
-   - Lightbox Portal & Attribution: Tapping the main banner opens `FullscreenMediaModal.tsx`. In doodle mode, tapping individual doodles reveals author attribution (`Signed by @username • Verified Mutual OOMF`), with a prominent `[ 🖌️ Sign / Doodle on Banner ]` entry button.
+2. **Banner Viewport**:
+   - Main Viewport: Height responsive, 3:1 aspect ratio (`1500×500px`), 100% clean and unobstructed (no dots or overlays), displaying the user's authentic header banner.
+   - Lightbox Portal: Tapping the banner opens `FullscreenMediaModal.tsx` for full-resolution inspection and link sharing.
 
 3. **Avatar & Tip Circle (Twin Hero Circles)**:
    - Avatar: Circular avatar overlapping banner (`-mt-16 sm:-mt-20`). Always run through `formatTwitterAvatar()` to ensure 400×400 HD resolution instead of Twitter's pixelated default `_normal.jpg`.
    - **Tip Circle (`TipCircle.tsx`)**: Twin hero circle positioned immediately to the right of the avatar, matching its exact size (`w-28 h-28 sm:w-36 sm:h-36`) and banner-crossing offset (`-mt-16 sm:-mt-20`). Features a borderless, transparent container where the banner and shelf show through the gaps between avatars:
      - 🪐 **Organic Constellation**: Avatars pack naturally without forced center placement using greedy tangential pocket nesting (`circlePacking.ts`), maximizing area density up to $\sim 83\%$ without overlapping.
      - 👑 **Scale-Driven Hierarchy**: Contribution amounts determine avatar area directly; high-tier patrons display subtle gold or blue accent borders.
-     - ✨ **Cold-Start Fallback**: Displays the `@oomfsorg` golden cat mascot (`CatShushIcon`) and `+ Be 1st` encouragement pill when 0 supporters exist.
+     - 🪙 **Default Twin Coins**: Default constellation renders Amb Coin (`/ambcoin.png`, left) and My Coin (`/My_Coin (1).png`, right) at 50% size each.
    - Tapping the circle launches **`SupporterModal.tsx`**, presenting the expanded celestial constellation, an autobalancing area slider sandbox for live sizing tuning, scenario presets, and a direct creator tip action.
 
 4. **Action Row & Native Edit Profile Modal**:
-   - **`"Ask!"` Auxiliary Pill** (Viewing others' profiles only): Rendered immediately to the left of the primary action button with a custom monochrome shushing cat face (`CatShushIcon`). Hidden when viewing own profile.
    - **Contextual Action Button**:
      - Viewing own profile: **`"Edit profile"`** opens the native 1:1 X edit modal with header banner upload/remove, overlapping avatar, and interactive 1500×500 zoom & pan crop modal (`BannerCropModal.tsx`).
      - Viewing another profile (logged out): **`"Connect X"`** triggers Twitter OAuth 2.0 PKCE.
@@ -114,23 +110,23 @@ Tabs are ordered left-to-right to optimize content discovery and render with cle
 - **Thread Navigation**: Clicking any post card in this feed navigates directly to `/[username]/status/[id]` to open its dedicated thread view.
 
 ### 2. Presets (Second from Left)
-- **Role**: Dedicated in-situ switchboard channel directory and master feed launcher, replacing the former Pokédex modal with a native tab.
-- **Master Feed Card**: Full-width top banner card allowing visitors to switch to the complete chronological master feed (`All Posts`) with dynamic post count badge.
+- **Role**: Dedicated in-situ switchboard channel directory, replacing the former Pokédex modal with a native tab.
 - **Curated Channels Grid**: 2-column interactive grid (`grid-cols-1 sm:grid-cols-2 gap-3`) displaying each of the creator's curated Post Collections (e.g., `💼 Work Links`, `🎨 Moodboards`, `📝 Articles`, `🎧 Music`).
   - Displays collection icon, title, description, post count pill, and optional `⭐ Pinned` status badge.
 - **1-Click Launching**: Clicking any channel card immediately transitions to the **Posts** tab with that collection filter active and the breadcrumb indicator displayed.
-- **Owner Controls**: Profile owners (`isSelf`) can create new collections via the `+ New` button (`CreateCollectionModal.tsx`).
+- **Owner Controls**: Profile owners (`isSelf`) have left-aligned controls: creating new collections via `+ New Collection` (`CreateCollectionModal.tsx`) and visually rearranging preset display order via `⇅ Rearrange Presets` (`ReorderPresetsModal.tsx`).
 
 ### 3. Links (Third from Left)
 - **Role**: Linktree-style external accounts and destination portal (`LinksPortal.tsx`) for the creator's personal accounts and communities (Discord, Twitch, Steam, X, YouTube, GitHub, Spotify, etc.).
 - **Conceptual Boundary**: `Links` is for *your personal accounts and destinations*, while `Posts`/`Presets` are for *content posts and curated feed playlists*.
 - **Branded Platform Registry**: Built-in 35+ platform registry across Gaming, Streaming, Social, Music, Art, Support, and Dev with authentic vector SVG brand icons, distinct brand color accents, and automatic URL detection.
 - **Custom Logo & Image Support**: Supports uploading custom photos/icons (via client-side data URLs) either directly from the platform picker or as a dynamic replacement for standard brand logos.
-- **Owner Management**: Profile owners (`isSelf`) have inline action tools:
-  - `+ Add Link`: 2-step modal to pick a platform/custom logo and enter destination details.
-  - Inline Reorder: Step arrows (`↑` / `↓`) to arrange card order.
-  - Edit: Pencil button to update destination URL, title, subtitle, or action pill.
-  - Delete: `✕` button to remove links.
+- **Owner Management**:
+  - **Left-Aligned Action Bar**: Profile owners (`isSelf`) see a compact `+ Add Link` button anchored directly above the vertical stack. Visitors (`!isSelf`) see exclusively the clean vertical stack with zero title or banner prompts.
+  - **Inline Item Controls**: Profile owners have direct controls on each card:
+    - Inline Reorder: Step arrows (`↑` / `↓`) to arrange card order.
+    - Edit: Pencil button to update destination URL, title, subtitle, or action pill.
+    - Delete: `✕` button to remove links.
 - *Complete technical specifications for the Links portal are in [Links Context Doc](links.md).*
 
 ### 4. Comments (Fourth from Left)

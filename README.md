@@ -30,8 +30,8 @@
 4. **The 5 Distinct Profile Tabs:**  
    User profiles organize content across 5 clean tabs ordered left-to-right:
    1. **Posts** (default): Master chronological timeline displaying actual posts (Standard, Carousel, Board, Bio Link Card, Avatars & Links Grid). Preserves clean 1:1 Twitter view without secondary stadium bars. When filtered by an active preset, displays a clean single-line breadcrumb (`← All posts` / `[Icon] [Title]` / `Reorder`) without heavy toolbars.
-   2. **Presets**: Dedicated in-situ switchboard channel directory and master feed launcher. Houses the author's curated post collections/playlists in a responsive 2-column grid. Clicking any preset launches the Posts tab filtered to that collection.
-   3. **Links**: Linktree-style external accounts and destination portal (`LinksPortal.tsx`) for the creator's personal accounts (Discord, Twitch, Steam, X, YouTube, GitHub, Spotify, etc.). Features a 35+ platform vector icon registry, custom logo uploads, domain auto-detection, and inline reordering.
+   2. **Presets**: Dedicated in-situ switchboard channel directory housing the author's curated post collections/playlists in a responsive 2-column grid. Clicking any preset launches the Posts tab filtered to that collection. Features left-aligned owner controls for creating new collections and rearranging preset display order.
+   3. **Links**: Linktree-style external accounts and destination portal (`LinksPortal.tsx`) for the creator's personal accounts (Discord, Twitch, Steam, X, YouTube, GitHub, Spotify, etc.). Features a 35+ platform vector icon registry, custom logo uploads, domain auto-detection, left-aligned owner creation controls, and inline reordering.
    4. **Comments**: 1:1 X/Twitter-native profile guestbook and conversational threads with up to 4 image attachments, "Replying to @username" context, and interactive Twitter cards.
    5. **Likes**: Dedicated feed of posts liked by the user.
 
@@ -74,7 +74,7 @@
 │   ├── collections.md                  # Curated collections & preset lenses architecture and data models
 │   ├── comments.md                     # Profile comments guestbook, 1-4 photo grid, and cross-profile RLS
 │   ├── composer.md                     # Post composer architecture, flush builders, & media compression
-│   ├── followerlist.md                 # Network directory architecture (OOMFs, Following, Followers) & 4 view modes
+│   ├── followerlist.md                 # Network directory architecture (OOMFs, Following, Followers) & 3 view modes
 │   ├── links.md                        # Linktree-style external accounts portal, 35+ platform registry, & custom logos
 │   ├── navigation.md                   # Global shell geometry, left sidebar registry (7 items), & responsive layout
 │   ├── post-types.md                   # Specification for active post formats & creation guide
@@ -118,6 +118,7 @@
 │   │   │   ├── ProfileView.tsx         # Core profile view, 5 tabs, Edit Profile modal, composer, Badge Wall
 │   │   │   └── BannerCropModal.tsx     # 1:1 X 1500x500 banner crop viewfinder, zoom slider, & wheel zoom
 │   │   ├── collections/
+│   │   │   ├── ReorderPresetsModal.tsx # Modal for rearranging preset collections order on the profile Presets tab
 │   │   │   ├── ReorderCollectionModal.tsx # Visual 100-card post reordering workspace for collection owners
 │   │   │   ├── CreateCollectionModal.tsx # Modal to create custom post preset collections
 │   │   │   └── AddToCollectionModal.tsx # Modal to assign existing blocks/posts to curated presets
@@ -125,7 +126,7 @@
 │   │   │   └── LinksPortal.tsx         # Linktree-style vertical stack for external user accounts (35+ platforms, custom logos)
 │   │   ├── network/
 │   │   │   ├── FollowButton.tsx        # Dynamic optimistic Follow/Unfollow action pill
-│   │   │   └── UserNetworkView.tsx     # 1:1 network directory (OOMFs, Following, Followers) & 4 display modes
+│   │   │   └── UserNetworkView.tsx     # 1:1 network directory (OOMFs, Following, Followers) & 3 display modes
 │   │   └── feed/
 │   │       ├── PostCard.tsx            # 1:1 timeline post rendering (Standard, Carousel, Board, Bio Link Card, Grid)
 │   │       ├── CommentCard.tsx         # Flat guestbook comment card (non-threaded)

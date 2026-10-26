@@ -114,7 +114,7 @@ Typing or pasting a destination URL in Step 2 automatically parses the domain:
 
 When viewing one's own profile (`isSelf === true`):
 
-1. **Header Action**: Prominent **`+ Add Link`** button at the top of the Links tab.
+1. **Header Action Bar**: Left-aligned **`+ Add Link`** action button anchored directly above the vertical stack, matching the minimal geometry of the Presets tab owner bar. (For visitors, the tab renders directly into the link card stack with zero header prompt clutter).
 2. **Card Reordering**: Each link card displays step arrows (`↑` / `↓`) to instantly move cards up or down in the vertical stack.
 3. **Card Editing**: A pencil icon button opens the modal directly into Step 2 with existing values pre-populated.
 4. **Card Deletion**: A delete button (`✕`) immediately removes the link card with optimistic UI update.
