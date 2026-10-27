@@ -80,7 +80,7 @@ The navigation sidebar automatically adapts between mobile, tablet, and desktop 
 
 ### 4.1 Global "Post" Composer Trigger
 - Clicking the primary blue **Post** button in the sidebar triggers the `onOpenComposer` callback supplied by [`MainLayout.tsx`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/components/layout/MainLayout.tsx).
-- Opens the global post drafting modal overlay, allowing users to draft and publish `standard`, `carousel`, or `board` blocks from any page.
+- Opens the global post drafting modal overlay, allowing users to draft and publish `standard` posts (with 1–4 attachments) or `board` blocks from any page.
 
 ### 4.2 Account Drawer & Authentication State
 Located at the bottom of `LeftSidebar.tsx`:

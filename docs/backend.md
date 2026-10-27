@@ -20,7 +20,7 @@ This document serves as the canonical technical reference for the backend, datab
 ┌────────────────────────────────────────────────────────┐
 │                 Supabase PostgreSQL 15+                │
 │  ├── public.profiles   (Synced Twitter metadata)       │
-│  ├── public.blocks     (Posts, Carousels, Boards, etc.)│
+│  ├── public.blocks     (Posts, Boards, Comments)       │
 │  ├── public.follows    (Directed follow graph)         │
 │  └── Stored Procedures (RPC stats & mutual OOMFs)      │
 └────────────────────────────────────────────────────────┘
@@ -56,14 +56,14 @@ Stores user profile information synced from Twitter OAuth or edited directly on 
 ---
 
 ### 2.2 `public.blocks`
-Stores modular profile content formats (Standard posts, Carousels, Pinterest-style Boards, Link Cards, Avatars & Links Grids, and Guestbook Comments).
+Stores modular profile content formats (Standard posts with 1–4 attachments, Pinterest-style Boards, and Guestbook Comments).
 
 | Column | Type | Constraints | Description |
 | :--- | :--- | :--- | :--- |
 | `id` | `uuid` | Primary Key, Default `gen_random_uuid()` | Unique block identifier |
 | `user_id` | `uuid` | Not Null, `references public.profiles(id) on delete cascade` | Creator / author user profile ID |
 | `target_user_id` | `uuid` | Nullable, `references public.profiles(id) on delete cascade` | Recipient profile ID (for comments) |
-| `type` | `text` | Not Null, Check `in ('standard', 'carousel', 'board', 'link_card', 'comment', 'grid')` | Post format identifier |
+| `type` | `text` | Not Null, Check `in ('standard', 'board', 'comment')` | Post format identifier |
 | `content` | `jsonb` | Not Null, Default `'{}'::jsonb` | Format-specific structured JSON payload |
 | `created_at` | `timestamptz` | Not Null, Default `timezone('utc', now())` | Publication timestamp |
 
@@ -72,6 +72,40 @@ Stores modular profile content formats (Standard posts, Carousels, Pinterest-sty
 * `INSERT`: Authenticated users where `auth.uid() = user_id`.
 * `UPDATE`: Authenticated users where `auth.uid() = user_id`.
 * `DELETE`: Authenticated users where `auth.uid() = user_id` OR (`type = 'comment'` and `auth.uid() = target_user_id`).
+
+#### `content` JSONB Schema Patterns
+The `content` column holds structured JSON payloads depending on `blocks.type`:
+
+* **Standard Post (`type: 'standard'`)**:
+  ```json
+  {
+    "text": "What is happening?!",
+    "attachments": [
+      { "type": "image", "url": "data:image/jpeg;base64,..." },
+      { "type": "user", "username": "sora_arts", "name": "Sora", "avatar": "https://..." }
+    ],
+    "images": ["data:image/jpeg;base64,..."]
+  }
+  ```
+* **Curated Board (`type: 'board'`)**:
+  ```json
+  {
+    "text": "Brutalist architecture moodboard",
+    "boardData": {
+      "images": [
+        { "id": "b1", "type": "image", "url": "https://...", "caption": "Concrete & oak" },
+        { "id": "b2", "type": "user", "url": "/sora_arts", "username": "sora_arts", "name": "Sora", "avatar": "https://...", "caption": "Collaborator" }
+      ]
+    }
+  }
+  ```
+* **Guestbook Comment (`type: 'comment'`)**:
+  ```json
+  {
+    "text": "Love the portfolio updates!",
+    "images": ["https://..."]
+  }
+  ```
 
 ---
 

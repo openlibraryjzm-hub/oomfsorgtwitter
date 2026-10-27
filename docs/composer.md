@@ -6,21 +6,15 @@ This document details the architecture, design principles, media compression pip
 
 ## 1. Overview & Core Philosophy
 
-The unified composer ([`src/components/feed/PostComposer.tsx`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/components/feed/PostComposer.tsx)) allows users to draft native 1:1 X/Twitter text posts alongside specialized visual and bio-link content blocks:
+The unified composer ([`src/components/feed/PostComposer.tsx`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/components/feed/PostComposer.tsx)) allows users to draft native 1:1 X/Twitter posts with unified attachment capabilities, alongside specialized visual boards:
 
-* **Standard Post (`standard`)**: Native text post with character input (`"What is happening?!"`).
-* **Photo Carousel (`carousel`)**: Uncapped horizontal photo dump with slide ordering and bottom captions.
-* **Curated Board (`board`)**: Pinterest-style visual curation boards ($3+$ images).
-* **Bio Link Card (`link_card`)**: Outbound destination card for Linktree replacement.
-* **Avatars & Links Grid (`grid`)**: 4 or 5 column matrix combining circular avatars and square generic links with dotted-outline slot builder.
+* **Standard Post (`standard`)**: Native text post with character input (`"What is happening?!"`) and support for **1–4 attachments** (photos and/or mutual/user circular avatars) following authentic Twitter media grid rules.
+* **Curated Board (`board`)**: Pinterest-style visual curation boards ($3+$ items: images and/or mutual/user avatar circles).
 
 ### Universal Post Commentary
 Every post type presents as an authentic timeline post with a top commentary/caption textarea, allowing creators to add thoughts or commentary above any visual format:
 - **Standard**: `"What is happening?!"`
-- **Carousel**: `"Add thoughts or a caption for your carousel... (optional)"`
 - **Board**: `"Add thoughts or a caption for your board... (optional)"`
-- **Bio Link Card**: `"Add thoughts or a caption for your link... (optional)"`
-- **Avatars & Links Grid**: `"Add thoughts or a caption for your grid... (optional)"`
 
 ---
 
@@ -39,26 +33,28 @@ Post creation can be initiated from two primary surfaces:
 
 ---
 
-## 3. Format Selection & Direct In-Situ Drafting
+## 3. Format Selection & Attachment Bar
 
-Post format switching is controlled directly via the **bottom icon action bar** mirroring Twitter's native compose chrome:
+Post format switching and attachments are controlled directly via the **bottom icon action bar** mirroring Twitter's native compose chrome:
 
-| Icon | Lucide Component | Format | Click Behavior |
+| Icon | Lucide Component | Format / Action | Click Behavior |
 | :--- | :--- | :--- | :--- |
-| 🖼️ | `ImageIcon` | Image Upload | Triggers file picker; promotes `'standard'` to `'carousel'` |
-| 🎞️ | `Layers` | Carousel | Toggles between `'carousel'` and `'standard'` (5 blank slide slots) |
-| 📌 | `LayoutGrid` | Board | Toggles between `'board'` and `'standard'` (5 blank board image slots) |
-| 🔗 | `Link2` | Bio Link | Toggles between `'link_card'` and `'standard'` (in-situ card editing) |
-| ⊞ | `Grid2X2` | Avatars & Links Grid | Toggles between `'grid'` and `'standard'` (dotted outline matrix) |
+| 🖼️ | `ImageIcon` | Attach Photos | Triggers file picker; attaches 1–4 photos to standard post, or uploads photos to Board |
+| 👥 | `Users` | Attach Mutual Avatar | Opens `SelectOomfModal` to attach a friend/user avatar chip (to standard post or Board) |
+| 📌 | `LayoutGrid` | Board | Toggles between `'board'` and `'standard'` (5 blank board item slots) |
 
-### Streamlined In-Situ Drafting Principles:
-1. **Photo Carousel**: Pre-fills 5 blank image slots with upload placeholders and faint suggestion placeholders (`Post — 01` through `Post — 05`), removing title input clutter in favor of the universal post commentary.
-2. **Curated Board**: Pre-fills 5 blank image slots with upload placeholders and faint suggestion placeholders (`Board — 01` through `Board — 05`), without thumbnail preview clutter.
-3. **Bio Link Card**: Directly editable in-situ inside the card template itself (click right half to upload cover image, click left half to edit title, subtitle, destination URL, or select quick icon) with zero redundant form fields below.
-4. **Avatars & Links Grid**: Interactive dotted-outline matrix (4 or 5 columns) with modal slot builder for circular avatars or square generic links.
+### Unified Attachments System & Board Avatars
+Both standard posts and visual boards treat **image uploads** and **mutual/user avatars** as unified interchangeable items sharing consistent layout constraints and rules:
+1. **Standard Posts (1–4 items)**: Up to 4 total attachments per standard post (any combination of photos and user avatars) previewed inline with individual `X` delete badges.
+2. **Visual Boards (3+ items)**: Pre-fills 5 blank item slots where creators can choose either **"Image"** (file upload) or **"Avatar"** (picking a mutual friend via `SelectOomfModal`). In addition, bottom action buttons allow adding photos or mutual avatars to the board dynamically.
+3. **Geometry**:
+   - 1 item: full-width responsive card.
+   - 2 items: 2 equal side-by-side columns (`grid-cols-2`).
+   - 3 items: 50% left column, two 25% stacked right column cells.
+   - 4 items: 2x2 grid (`grid-cols-2 grid-rows-2`).
 
 ### Toggle-to-Standard Mechanics
-Clicking an active format icon a second time smoothly toggles the composer back to `'standard'` text mode and clears format-specific errors, providing a frictionless reset without needing a separate cancel button.
+Clicking the active `LayoutGrid` icon a second time smoothly toggles the composer back to `'standard'` text mode and clears format-specific errors, providing a frictionless reset.
 
 ---
 
@@ -79,23 +75,11 @@ async function compressImageFile(
 2. **Aspect Ratio Preservation**: Calculates proportional width and height, scaling the largest dimension to $1080\text{px}$ while never forcing square crops.
 3. **Canvas Rasterization**: Renders the image onto an HTML5 `<canvas>`.
 4. **JPEG Encoding**: Exports a base64 Data URL at `0.82` compression quality, drastically reducing payload size while retaining crisp mobile and desktop HD clarity.
-### Avatars & Links Grid Pipeline
-For grid posts (`type: 'grid'`), creators populate a 4 or 5 column matrix with two item archetypes:
-1. **OOMF & Mutuals Avatar Selection (`SelectOomfModal.tsx`)**:
-   - For `kind: 'avatar'`, clicking an empty slot or selecting Avatar launches the mutual picker.
-   - Searches the user's active following graph and mutual OOMFs.
-   - Selecting a friend automatically populates their avatar image, name, and profile URL (`/[username]`).
-2. **Generic Link Slot Media**:
-   - For `kind: 'link'`, creators can upload a custom square graphic (compressed via `compressImageFile(file, 400, 0.85)`), or choose a preset color gradient with an emoji or icon.
-3. **Micro-Labels & Tooltips**:
-   - Slots support an optional underneath micro-label (`showLabel`), while desktop hover tooltips always reveal the title and target destination.
 
-### Bio Link Card Image Pipeline (`handleLinkImageChange`)
-For bio link cards (`type: 'link_card'`), creators can upload an optional cover image for the card's flush right half:
-1. **Canvas Compression**: Uses `compressImageFile(file, 900, 0.85)` to scale and compress the graphic client-side into a lightweight base64 JPEG data URL.
-2. **URL Paste Fallback**: Alternatively allows direct pasting of an external image URL.
-3. **Optional Nature**: If omitted, the card renders a graceful neutral gradient with watermark icon, ensuring link cards can be drafted quickly with or without imagery.
-4. **Live Interactive In-Situ Editing**: The card preview is editable in-place, allowing direct adjustments to title, subtitle, URL, icon, and flush right-half cover image.
+### OOMF & Mutuals Avatar Selection (`SelectOomfModal.tsx`)
+- Clicking the `Users` icon in the bottom action bar (or clicking "Avatar" inside a board slot) launches the mutual picker.
+- Searches the user's active following graph and mutual OOMFs.
+- Selecting a friend attaches their circular avatar, name, handle, and profile link (`/[username]`) directly into the standard post's attachment tray or into the board slot.
 
 ---
 
@@ -108,11 +92,8 @@ When the user taps **"Post"**:
        │
        ▼
 1. Validation Check (`canSubmit()`)
-   - standard:  text.trim().length > 0
-   - carousel:  mediaItems.length >= 1
-   - board:     mediaItems.length >= 3
-   - link_card: linkTitle && linkUrl
-   - grid:      gridItems.length >= 1
+   - standard:  text.trim().length > 0 || attachments.length > 0
+   - board:     mediaItems.filter(m => m.url.trim().length > 0).length >= 3
        │
        ▼
 2. Supabase Persistence (`public.blocks`)
@@ -132,18 +113,27 @@ When the user taps **"Post"**:
        │
        ▼
 5. Collection Assignment (`addItemToCollection`)
-   - If an existing post collection was chosen from the "Add to collection" dropdown, the new post or link ID is immediately assigned to that collection in `public.collection_items` and local storage.
+   - If an existing post collection was chosen from the "Add to collection" dropdown, the new post ID is immediately assigned to that collection in `public.collection_items` and local storage.
 ```
 
 ### Collection Assignment During Drafting
 Above the composer submit chrome, a collection selector dropdown displays all available post collections (`userPostCols`):
-- All post types (`standard`, `carousel`, `board`, `link_card`, `grid`) can be added directly to any Post Collection playlist.
-- Creators can publish directly into a specific collection (e.g. `[ 💼 Work Links ]` or `[ 🎨 Moodboards ]`) in a single click without needing a secondary sorting step after publishing.
+- All post types (`standard`, `board`) can be added directly to any Post Collection playlist.
+- Creators can publish directly into a specific collection (e.g. `[ 🎨 Moodboards ]` or `[ 💻 Dev Notes ]`) in a single click without needing a secondary sorting step after publishing.
 
 ---
 
-## 6. Testing & Prototyping Utilities
+## 6. Fresh Agent Onboarding Checklist & Critical Composer Rules
 
-To accelerate testing, the composer includes built-in preset loaders:
-* **"Load 5 Sample Slides"**: Immediately populates a 5-slide photo carousel with Unsplash test images and captions.
-* **"Load 5 Sample Board Images"**: Immediately populates a 5-image curated architecture/design board.
+When modifying composer state, media handling, or UI controls:
+
+- [ ] **Unified Action Bar Behavior**:
+  - `ImageIcon`: Triggers file upload. In standard mode, adds photos to `attachments` (up to 4 total). In board mode, uploads photos to fill empty slots or append new slots.
+  - `Users`: Triggers `SelectOomfModal`. In standard mode, adds a user avatar chip to `attachments` (up to 4 total). In board mode, fills a target slot or appends an avatar item to the board.
+  - `LayoutGrid`: Toggles between `'board'` and `'standard'` modes cleanly.
+- [ ] **Dual Slot Choices in Board Builder**:
+  Empty board slots provide distinct buttons for **"Image"** (uploading a photo) and **"Avatar"** (selecting an OOMF mutual or followed user), guaranteeing consistent media and link behavior.
+- [ ] **Inline Tray Parity**:
+  The composer's inline attachment preview tray uses the exact same geometry (1-item responsive card, 2-item 50/50 columns, 3-item left 50% / right stacked 25%, 4-item 2x2 grid) as timeline cards rendered via `TwitterMediaGrid.tsx`.
+- [ ] **Submitting to Collections**:
+  Always ensure `addItemToCollection(targetCollection, newPostId, authorUser.id)` runs if a collection was selected, and include `collectionId: targetCollection` in the `oomfs:post-created` custom event payload.

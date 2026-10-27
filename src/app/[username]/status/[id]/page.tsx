@@ -12,9 +12,9 @@ interface ThreadPageProps {
 
 export async function generateStaticParams() {
   return [
-    { username: 'amberlyn', id: 'post_carousel_1' },
     { username: 'amberlyn', id: 'post_board_1' },
-    { username: 'amberlyn', id: 'post_1' },
+    { username: 'amberlyn', id: 'post_grid_1' },
+    { username: 'amberlyn', id: 'post_amber_ui' },
     { username: 'dev_kyle', id: 'post_kyle_1' },
     { username: 'sora_arts', id: 'post_sora_1' },
   ];
@@ -58,12 +58,10 @@ async function ThreadContent({ params }: { params: Promise<{ username: string; i
         type: dbBlock.type,
         text: dbBlock.content?.text || '',
         images: dbBlock.content?.images || [],
+        attachments: dbBlock.content?.attachments || [],
         targetUsername: dbBlock.content?.targetUsername || null,
         targetUserId: dbBlock.target_user_id || null,
-        carouselData: dbBlock.content?.carouselData,
         boardData: dbBlock.content?.boardData,
-        linkData: dbBlock.content?.linkData,
-        gridData: dbBlock.content?.gridData,
         badgeData: dbBlock.content?.badgeData,
         likesCount: dbBlock.content?.likesCount || 0,
         repostsCount: dbBlock.content?.repostsCount || 0,

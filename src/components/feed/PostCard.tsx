@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
@@ -12,13 +12,12 @@ import {
   ExternalLink,
   CheckCircle2,
   MoreHorizontal,
-  ChevronLeft,
   ChevronRight,
-  Layers,
   LayoutGrid,
   FolderPlus
 } from 'lucide-react';
-import { Post } from '@/lib/mockData';
+import { Post, BoardItem } from '@/lib/mockData';
+import { formatTwitterAvatar } from '@/lib/utils';
 import TwitterMediaGrid from './TwitterMediaGrid';
 
 interface PostCardProps {
@@ -30,7 +29,6 @@ interface PostCardProps {
 
 export default function PostCard({ post, onDelete, onManageCollections, isThreadView = false }: PostCardProps) {
   const router = useRouter();
-  const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const [liked, setLiked] = useState(post.isLiked || false);
   const [likesCount, setLikesCount] = useState(post.likesCount);
@@ -66,103 +64,75 @@ export default function PostCard({ post, onDelete, onManageCollections, isThread
     router.push(`/${post.author.username}/status/${post.id}`);
   };
 
-  const scrollCarousel = (e: React.MouseEvent, direction: 'left' | 'right') => {
-    e.stopPropagation();
-    if (!scrollRef.current) return;
-    const scrollAmount = 260;
-    scrollRef.current.scrollBy({
-      left: direction === 'left' ? -scrollAmount : scrollAmount,
-      behavior: 'smooth'
-    });
-  };
-
-  // Render Carousel Media Strip (Peeking Natural Aspect Ratio Slides + Bottom Caption Overlays)
-  const renderCarousel = () => {
-    if (post.type !== 'carousel' || !post.carouselData || post.carouselData.slides.length === 0) {
-      return null;
-    }
-
-    const { slides } = post.carouselData;
-
-    return (
-      <div className="mt-2.5 flex flex-col gap-2">
-        {/* Horizontal Peeking Scroll Strip */}
-        <div className="relative group/carousel">
-          {/* Desktop Scroll Left Button */}
-          <button
-            type="button"
-            onClick={(e) => scrollCarousel(e, 'left')}
-            aria-label="Scroll left"
-            className="hidden sm:flex absolute left-2 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 text-white items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-opacity cursor-pointer shadow-sm"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-
-          {/* Scrollable Track: fixed height so portrait images are thin & tall and landscape images are wide */}
-          <div
-            ref={scrollRef}
-            onClick={(e) => e.stopPropagation()}
-            className="flex items-stretch gap-2.5 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-1 pr-8"
-            style={{ scrollbarWidth: 'none' }}
-          >
-            {slides.map((slide, idx) => (
-              <div
-                key={slide.id || idx}
-                onClick={handleCardClick}
-                className={`relative shrink-0 snap-start rounded-2xl overflow-hidden border border-[#eff3f4] bg-[#f7f9f9] select-none cursor-pointer ${
-                  isThreadView ? 'h-80 sm:h-96' : 'h-64 sm:h-72'
-                }`}
-              >
-                <img
-                  src={slide.url}
-                  alt={slide.caption || `Slide ${idx + 1}`}
-                  className="h-full w-auto max-w-[80vw] sm:max-w-[420px] object-cover block"
-                  loading="lazy"
-                />
-
-                {/* Slide Index Pill (Top Right) */}
-                <div className="absolute top-2.5 right-2.5 bg-black/55 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-full pointer-events-none">
-                  {idx + 1}/{slides.length}
-                </div>
-
-                {/* Individual Bottom Caption Overlay */}
-                {slide.caption && (
-                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/45 to-transparent px-3 pt-8 pb-2.5 pointer-events-none">
-                    <p className="text-white text-xs font-medium leading-snug line-clamp-2 drop-shadow-xs">
-                      {slide.caption}
-                    </p>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* Desktop Scroll Right Button */}
-          <button
-            type="button"
-            onClick={(e) => scrollCarousel(e, 'right')}
-            aria-label="Scroll right"
-            className="hidden sm:flex absolute right-2 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 text-white items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-opacity cursor-pointer shadow-sm"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-    );
-  };
-
-  // Render Board Media (3-image split preview in timeline, 2-column Pinterest masonry in full thread view)
+  // Render Board Media (3-item split preview in timeline, 2-column Pinterest masonry in full thread view)
   const renderBoard = () => {
     if (post.type !== 'board' || !post.boardData || post.boardData.images.length === 0) {
       return null;
     }
 
-    const images = post.boardData.images;
+    const items: BoardItem[] = post.boardData.images;
 
-    // FULL THREAD VIEW: 2-Column Pinterest Style Masonry Grid showing all >3 images
+    // Helper for rendering a user card in Pinterest masonry mode
+    const renderMasonryItem = (item: BoardItem, key: string) => {
+      if (item.type === 'user') {
+        return (
+          <div
+            key={key}
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push(`/${item.username || item.url.replace(/^\//, '')}`);
+            }}
+            className="rounded-2xl overflow-hidden border border-[#eff3f4] bg-[#f7f9f9] hover:bg-blue-50/30 transition-colors cursor-pointer flex flex-col group/masonry-user select-none"
+          >
+            <div className="p-6 flex flex-col items-center justify-center text-center bg-gradient-to-br from-[#f7f9f9] to-[#eff3f4]">
+              <img
+                src={formatTwitterAvatar(item.avatar || item.url)}
+                alt={item.name || item.username || 'User'}
+                className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover ring-2 ring-black/10 group-hover/masonry-user:ring-[#1d9bf0] group-hover/masonry-user:scale-105 transition-all shadow-xs"
+              />
+              <div className="mt-3 min-w-0 max-w-full px-2">
+                <span className="font-bold text-sm sm:text-base text-[#0f1419] group-hover/masonry-user:text-[#1d9bf0] transition-colors truncate block">
+                  {item.name || item.username}
+                </span>
+                {item.username && (
+                  <span className="text-xs text-[#536471] truncate block">
+                    @{item.username}
+                  </span>
+                )}
+              </div>
+            </div>
+            {item.caption && (
+              <div className="px-3 py-2 bg-white text-xs text-[#0f1419] font-medium border-t border-[#eff3f4]">
+                {item.caption}
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      return (
+        <div
+          key={key}
+          className="rounded-2xl overflow-hidden border border-[#eff3f4] bg-[#f7f9f9] flex flex-col"
+        >
+          <img
+            src={item.url}
+            alt={item.caption || 'Board media'}
+            className="w-full h-auto object-cover block"
+          />
+          {item.caption && (
+            <div className="px-3 py-2 bg-white text-xs text-[#0f1419] font-medium border-t border-[#eff3f4]">
+              {item.caption}
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    // FULL THREAD VIEW: 2-Column Pinterest Style Masonry Grid showing all items (>3)
     if (isThreadView) {
-      const leftColumn = images.filter((_, idx) => idx % 2 === 0);
-      const rightColumn = images.filter((_, idx) => idx % 2 === 1);
+      const leftColumn = items.filter((_, idx) => idx % 2 === 0);
+      const rightColumn = items.filter((_, idx) => idx % 2 === 1);
 
       return (
         <div className="my-3 flex flex-col gap-2.5">
@@ -172,97 +142,143 @@ export default function PostCard({ post, onDelete, onManageCollections, isThread
               <span>Full Board View</span>
             </div>
             <span className="text-[11px] font-semibold text-[#536471]">
-              {images.length} items
+              {items.length} items
             </span>
           </div>
 
           <div className="grid grid-cols-2 gap-2.5 items-start">
             {/* Column 1 */}
             <div className="flex flex-col gap-2.5">
-              {leftColumn.map((img, i) => (
-                <div
-                  key={img.id || `left_${i}`}
-                  className="rounded-2xl overflow-hidden border border-[#eff3f4] bg-[#f7f9f9] flex flex-col"
-                >
-                  <img
-                    src={img.url}
-                    alt={img.caption || 'Board media'}
-                    className="w-full h-auto object-cover block"
-                  />
-                  {img.caption && (
-                    <div className="px-3 py-2 bg-white text-xs text-[#0f1419] font-medium border-t border-[#eff3f4]">
-                      {img.caption}
-                    </div>
-                  )}
-                </div>
-              ))}
+              {leftColumn.map((item, i) => renderMasonryItem(item, item.id || `left_${i}`))}
             </div>
 
             {/* Column 2 */}
             <div className="flex flex-col gap-2.5">
-              {rightColumn.map((img, i) => (
-                <div
-                  key={img.id || `right_${i}`}
-                  className="rounded-2xl overflow-hidden border border-[#eff3f4] bg-[#f7f9f9] flex flex-col"
-                >
-                  <img
-                    src={img.url}
-                    alt={img.caption || 'Board media'}
-                    className="w-full h-auto object-cover block"
-                  />
-                  {img.caption && (
-                    <div className="px-3 py-2 bg-white text-xs text-[#0f1419] font-medium border-t border-[#eff3f4]">
-                      {img.caption}
-                    </div>
-                  )}
-                </div>
-              ))}
+              {rightColumn.map((item, i) => renderMasonryItem(item, item.id || `right_${i}`))}
             </div>
           </div>
         </div>
       );
     }
 
-    // TIMELINE PREVIEW: 3-Image Split (Left half = 1st image, Right half = 2nd & 3rd stacked taking a quarter each)
-    const firstImg = images[0];
-    const secondImg = images[1] || images[0];
-    const thirdImg = images[2] || images[1] || images[0];
-    const extraCount = Math.max(0, images.length - 3);
+    // TIMELINE PREVIEW: 3-Item Split (Left half = 1st item, Right half = 2nd & 3rd stacked taking a quarter each)
+    const firstItem = items[0];
+    const secondItem = items[1] || items[0];
+    const thirdItem = items[2] || items[1] || items[0];
+    const extraCount = Math.max(0, items.length - 3);
 
     return (
       <div className="mt-2.5 flex flex-col gap-2">
         <div className="rounded-2xl overflow-hidden border border-[#eff3f4] h-72 sm:h-80 w-full grid grid-cols-2 gap-0.5 bg-[#eff3f4] relative group/board">
-          {/* Left Half: 1st Image (50% width, 100% height) */}
+          {/* Left Half: 1st Item (50% width, 100% height) */}
           <div className="relative w-full h-full overflow-hidden bg-[#f7f9f9]">
-            <img
-              src={firstImg.url}
-              alt={firstImg.caption || 'Board preview 1'}
-              className="w-full h-full object-cover group-hover/board:scale-[1.02] transition-transform duration-200"
-            />
+            {firstItem.type === 'user' ? (
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  router.push(`/${firstItem.username || firstItem.url.replace(/^\//, '')}`);
+                }}
+                className="relative w-full h-full bg-gradient-to-br from-[#f7f9f9] to-[#eff3f4] hover:bg-blue-50/40 p-4 flex flex-col items-center justify-center text-center cursor-pointer group/user-cell transition-colors select-none"
+              >
+                <img
+                  src={formatTwitterAvatar(firstItem.avatar || firstItem.url)}
+                  alt={firstItem.name || firstItem.username || 'User'}
+                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover ring-2 ring-black/10 group-hover/user-cell:ring-[#1d9bf0] group-hover/user-cell:scale-105 transition-all shadow-xs"
+                />
+                <div className="mt-2.5 min-w-0 max-w-full px-2">
+                  <span className="font-bold text-sm sm:text-base text-[#0f1419] group-hover/user-cell:text-[#1d9bf0] transition-colors truncate block">
+                    {firstItem.name || firstItem.username}
+                  </span>
+                  {firstItem.username && (
+                    <span className="text-xs text-[#536471] truncate block">
+                      @{firstItem.username}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <img
+                src={firstItem.url}
+                alt={firstItem.caption || 'Board preview 1'}
+                className="w-full h-full object-cover group-hover/board:scale-[1.02] transition-transform duration-200"
+              />
+            )}
           </div>
 
-          {/* Right Half: 2nd and 3rd Images (25% total area each) */}
+          {/* Right Half: 2nd and 3rd Items (25% total area each) */}
           <div className="grid grid-rows-2 gap-0.5 w-full h-full overflow-hidden">
-            {/* Top-Right Quarter: 2nd Image */}
+            {/* Top-Right Quarter: 2nd Item */}
             <div className="relative w-full h-full overflow-hidden bg-[#f7f9f9]">
-              <img
-                src={secondImg.url}
-                alt={secondImg.caption || 'Board preview 2'}
-                className="w-full h-full object-cover group-hover/board:scale-[1.02] transition-transform duration-200"
-              />
+              {secondItem.type === 'user' ? (
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(`/${secondItem.username || secondItem.url.replace(/^\//, '')}`);
+                  }}
+                  className="relative w-full h-full bg-gradient-to-br from-[#f7f9f9] to-[#eff3f4] hover:bg-blue-50/40 p-2 flex flex-col items-center justify-center text-center cursor-pointer group/user-cell transition-colors select-none overflow-hidden"
+                >
+                  <img
+                    src={formatTwitterAvatar(secondItem.avatar || secondItem.url)}
+                    alt={secondItem.name || secondItem.username || 'User'}
+                    className="w-11 h-11 sm:w-13 sm:h-13 rounded-full object-cover ring-2 ring-black/10 group-hover/user-cell:ring-[#1d9bf0] group-hover/user-cell:scale-105 transition-all shadow-xs"
+                  />
+                  <div className="mt-1 min-w-0 max-w-full px-1">
+                    <span className="font-bold text-xs sm:text-sm text-[#0f1419] group-hover/user-cell:text-[#1d9bf0] transition-colors truncate block">
+                      {secondItem.name || secondItem.username}
+                    </span>
+                    {secondItem.username && (
+                      <span className="text-[11px] text-[#536471] truncate block">
+                        @{secondItem.username}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <img
+                  src={secondItem.url}
+                  alt={secondItem.caption || 'Board preview 2'}
+                  className="w-full h-full object-cover group-hover/board:scale-[1.02] transition-transform duration-200"
+                />
+              )}
             </div>
 
-            {/* Bottom-Right Quarter: 3rd Image */}
+            {/* Bottom-Right Quarter: 3rd Item */}
             <div className="relative w-full h-full overflow-hidden bg-[#f7f9f9]">
-              <img
-                src={thirdImg.url}
-                alt={thirdImg.caption || 'Board preview 3'}
-                className="w-full h-full object-cover group-hover/board:scale-[1.02] transition-transform duration-200"
-              />
+              {thirdItem.type === 'user' ? (
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(`/${thirdItem.username || thirdItem.url.replace(/^\//, '')}`);
+                  }}
+                  className="relative w-full h-full bg-gradient-to-br from-[#f7f9f9] to-[#eff3f4] hover:bg-blue-50/40 p-2 flex flex-col items-center justify-center text-center cursor-pointer group/user-cell transition-colors select-none overflow-hidden"
+                >
+                  <img
+                    src={formatTwitterAvatar(thirdItem.avatar || thirdItem.url)}
+                    alt={thirdItem.name || thirdItem.username || 'User'}
+                    className="w-11 h-11 sm:w-13 sm:h-13 rounded-full object-cover ring-2 ring-black/10 group-hover/user-cell:ring-[#1d9bf0] group-hover/user-cell:scale-105 transition-all shadow-xs"
+                  />
+                  <div className="mt-1 min-w-0 max-w-full px-1">
+                    <span className="font-bold text-xs sm:text-sm text-[#0f1419] group-hover/user-cell:text-[#1d9bf0] transition-colors truncate block">
+                      {thirdItem.name || thirdItem.username}
+                    </span>
+                    {thirdItem.username && (
+                      <span className="text-[11px] text-[#536471] truncate block">
+                        @{thirdItem.username}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <img
+                  src={thirdItem.url}
+                  alt={thirdItem.caption || 'Board preview 3'}
+                  className="w-full h-full object-cover group-hover/board:scale-[1.02] transition-transform duration-200"
+                />
+              )}
 
               {/* Overlay Badge indicating Board & remaining count */}
-              <div className="absolute inset-0 bg-black/20 group-hover/board:bg-black/30 transition-colors flex items-end justify-end p-2.5">
-                <span className="bg-black/75 backdrop-blur-xs text-white text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-xs">
+              <div className="absolute inset-0 bg-black/20 group-hover/board:bg-black/30 pointer-events-none transition-colors flex items-end justify-end p-2.5">
+                <span className="bg-black/75 backdrop-blur-xs text-white text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-xs pointer-events-auto">
                   <LayoutGrid className="w-3 h-3 text-[#1d9bf0]" />
                   <span>{extraCount > 0 ? `+${extraCount} more` : 'View Board'}</span>
                 </span>
@@ -282,8 +298,8 @@ export default function PostCard({ post, onDelete, onManageCollections, isThread
             </div>
             <span className="text-xs font-bold text-[#0f1419] group-hover/board-banner:text-[#1d9bf0] transition-colors truncate">
               {extraCount > 0
-                ? `Click to view ${extraCount} more ${extraCount === 1 ? 'image' : 'images'} on this board`
-                : `Click to view full board (${images.length} images)`}
+                ? `Click to view ${extraCount} more ${extraCount === 1 ? 'item' : 'items'} on this board`
+                : `Click to view full board (${items.length} items)`}
             </span>
           </div>
 
@@ -296,181 +312,6 @@ export default function PostCard({ post, onDelete, onManageCollections, isThread
     );
   };
 
-  // Render Link Card
-  const renderLinkCard = () => {
-    if (post.type !== 'link_card' || !post.linkData) return null;
-    const l = post.linkData;
-    const subtitle = l.subtitle || l.description || post.text;
-
-    return (
-      <a
-        href={l.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={(e) => e.stopPropagation()}
-        className="mt-2.5 w-full h-28 sm:h-32 border border-[#eff3f4] rounded-2xl overflow-hidden hover:border-[#1d9bf0]/60 hover:shadow-xs transition-all bg-white flex flex-row group/link-card select-none"
-      >
-        {/* Left Half: Icon, Title, Subtitle, URL */}
-        <div className="w-1/2 p-3 sm:p-4 flex flex-col justify-between min-w-0 pr-3">
-          <div className="flex flex-col min-w-0">
-            <div className="flex items-center gap-2 min-w-0">
-              {l.icon && (
-                <span className="text-lg sm:text-xl shrink-0 select-none leading-none">
-                  {l.icon}
-                </span>
-              )}
-              <h4 className="font-bold text-[#0f1419] text-sm sm:text-base group-hover/link-card:text-[#1d9bf0] transition-colors truncate">
-                {l.title}
-              </h4>
-            </div>
-            {subtitle && (
-              <p className="text-xs text-[#536471] line-clamp-2 leading-relaxed mt-1">
-                {subtitle}
-              </p>
-            )}
-          </div>
-
-          <div className="flex items-center justify-between gap-1.5 min-w-0 pt-1">
-            <span className="text-[11px] text-[#1d9bf0] font-mono truncate flex items-center gap-1">
-              <ExternalLink className="w-3 h-3 shrink-0" />
-              {l.url.replace(/^https?:\/\//, '')}
-            </span>
-            <span className="text-xs font-semibold text-[#1d9bf0] shrink-0">
-              {l.buttonText || 'Visit ↗'}
-            </span>
-          </div>
-        </div>
-
-        {/* Right Half: Flush Image or Placeholder */}
-        <div className="w-1/2 h-full overflow-hidden shrink-0 border-l border-[#eff3f4] bg-gray-50 relative">
-          {l.image ? (
-            <img
-              src={l.image}
-              alt={l.title}
-              className="w-full h-full object-cover group-hover/link-card:scale-105 transition-transform duration-300 pointer-events-none"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#f7f9f9] to-[#eff3f4] text-[#cfd9de]">
-              {l.icon ? (
-                <span className="text-3xl opacity-40 select-none">{l.icon}</span>
-              ) : (
-                <ExternalLink className="w-7 h-7 opacity-30" />
-              )}
-            </div>
-          )}
-        </div>
-      </a>
-    );
-  };
-
-  // Render Unified Grid (Avatars & Generic Links in 4 or 5 columns)
-  const renderGrid = () => {
-    if (post.type !== 'grid' || !post.gridData || !post.gridData.items || post.gridData.items.length === 0) {
-      return null;
-    }
-
-    const columns = post.gridData.columns || 5;
-    const allItems = post.gridData.items;
-    const maxRows = 4;
-    const maxTimelineItems = columns * maxRows;
-    const isCapped = !isThreadView && allItems.length > maxTimelineItems;
-    const displayItems = isCapped ? allItems.slice(0, maxTimelineItems) : allItems;
-    const remainingCount = allItems.length - maxTimelineItems;
-
-    return (
-      <div className="mt-2.5 flex flex-col gap-2">
-        <div 
-          className={`p-3 sm:p-4 rounded-2xl bg-[#f7f9f9]/90 border border-[#eff3f4] grid gap-2.5 sm:gap-3.5 justify-items-center ${
-            columns === 4 ? 'grid-cols-4' : 'grid-cols-5'
-          }`}
-        >
-          {displayItems.map((item, idx) => {
-            const isExternal = item.url.startsWith('http');
-            const isAvatar = item.kind === 'avatar';
-            
-            return (
-              <div 
-                key={item.id || `gi_${idx}`}
-                className="flex flex-col items-center justify-start min-w-0 w-full"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <a
-                  href={item.url}
-                  target={isExternal ? '_blank' : undefined}
-                  rel={isExternal ? 'noopener noreferrer' : undefined}
-                  title={`${item.title}${item.subtitle ? ` · ${item.subtitle}` : ''} (${item.url})`}
-                  className={`group/grid-item block shrink-0 transition-all hover:scale-105 active:scale-95 ${
-                    columns === 4 
-                      ? 'w-16 h-16 sm:w-20 sm:h-20' 
-                      : 'w-12 h-12 sm:w-16 sm:h-16'
-                  } ${
-                    isAvatar 
-                      ? 'rounded-full ring-2 ring-black/10 shadow-xs hover:shadow-md bg-gray-100' 
-                      : 'rounded-2xl border border-black/10 shadow-xs hover:shadow-md bg-white'
-                  } overflow-hidden`}
-                >
-                  {isAvatar ? (
-                    item.imageUrl ? (
-                      <img
-                        src={item.imageUrl}
-                        alt={item.title}
-                        className="w-full h-full rounded-full object-cover block pointer-events-none"
-                      />
-                    ) : (
-                      <div className="w-full h-full rounded-full bg-gradient-to-br from-[#1d9bf0] to-[#8b5cf6] flex items-center justify-center text-white font-bold text-sm sm:text-base select-none">
-                        {item.title.slice(0, 1).toUpperCase()}
-                      </div>
-                    )
-                  ) : (
-                    item.imageUrl ? (
-                      <img
-                        src={item.imageUrl}
-                        alt={item.title}
-                        className="w-full h-full object-cover block pointer-events-none"
-                      />
-                    ) : (
-                      <div 
-                        className="w-full h-full flex flex-col items-center justify-center text-white p-1 text-center select-none"
-                        style={{
-                          background: item.bgColor || 'linear-gradient(135deg, #0f1419, #536471)'
-                        }}
-                      >
-                        {item.icon ? (
-                          <span className="text-lg sm:text-2xl leading-none">{item.icon}</span>
-                        ) : (
-                          <span className="font-bold text-xs sm:text-sm tracking-wider uppercase truncate max-w-full">
-                            {item.title.slice(0, 3)}
-                          </span>
-                        )}
-                      </div>
-                    )
-                  )}
-                </a>
-
-                {item.showLabel && (
-                  <span 
-                    title={item.title}
-                    className="text-[10px] sm:text-[11px] font-semibold text-[#0f1419] truncate max-w-full text-center mt-1 leading-tight px-0.5"
-                  >
-                    {item.title}
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {isCapped && remainingCount > 0 && (
-          <div className="flex justify-center -mt-1">
-            <span className="text-xs font-semibold text-[#1d9bf0] bg-[#1d9bf0]/10 hover:bg-[#1d9bf0]/20 px-3 py-1 rounded-full transition-colors flex items-center gap-1 cursor-pointer">
-              <span>+{remainingCount} more in thread view</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </span>
-          </div>
-        )}
-      </div>
-    );
-  };
 
   // THREAD / FOCAL TWEET EXPANDED VIEW
   if (isThreadView) {
@@ -558,12 +399,9 @@ export default function PostCard({ post, onDelete, onManageCollections, isThread
         )}
 
         {/* Custom Post Media Types */}
-        {renderCarousel()}
         {renderBoard()}
-        {renderLinkCard()}
-        {renderGrid()}
-        {post.images && post.images.length > 0 && (
-          <TwitterMediaGrid images={post.images} />
+        {((post.attachments && post.attachments.length > 0) || (post.images && post.images.length > 0)) && (
+          <TwitterMediaGrid attachments={post.attachments} images={post.images} />
         )}
 
         {/* Timestamp & Views */}
@@ -735,12 +573,9 @@ export default function PostCard({ post, onDelete, onManageCollections, isThread
         )}
 
         {/* Custom Post Media Types */}
-        {renderCarousel()}
         {renderBoard()}
-        {renderLinkCard()}
-        {renderGrid()}
-        {post.images && post.images.length > 0 && (
-          <TwitterMediaGrid images={post.images} />
+        {((post.attachments && post.attachments.length > 0) || (post.images && post.images.length > 0)) && (
+          <TwitterMediaGrid attachments={post.attachments} images={post.images} />
         )}
 
         {/* X Action Bar */}

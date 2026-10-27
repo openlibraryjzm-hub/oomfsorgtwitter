@@ -17,31 +17,26 @@ interface ReorderCollectionModalProps {
 
 function getPostThumbnail(post: Post): string | null {
   if (post.images && post.images.length > 0) return post.images[0];
-  if (post.carouselData?.slides && post.carouselData.slides.length > 0) {
-    return post.carouselData.slides[0].url || null;
+  if (post.attachments && post.attachments.length > 0) {
+    const first = post.attachments[0];
+    if (first.type === 'image') return first.url;
+    if (first.type === 'user') return first.avatar;
   }
   if (post.boardData?.images && post.boardData.images.length > 0) {
     return post.boardData.images[0].url || null;
   }
-  if (post.linkData?.image) return post.linkData.image;
   return null;
 }
 
 function getPostSnippet(post: Post): string {
   if (post.text && post.text.trim()) return post.text.trim();
-  if (post.carouselData?.header) return post.carouselData.header;
-  if (post.linkData?.title) return post.linkData.title;
   if (post.type === 'board') return 'Visual Board';
-  if (post.type === 'carousel') return 'Photo Carousel';
   return 'Post';
 }
 
 function getPostTypeLabel(type: string): string {
   switch (type) {
-    case 'carousel': return '🎞️ Carousel';
     case 'board': return '📌 Board';
-    case 'link_card': return '🔗 Link';
-    case 'grid': return '⊞ Grid';
     case 'badge': return '🏷️ Badge';
     default: return '📝 Post';
   }

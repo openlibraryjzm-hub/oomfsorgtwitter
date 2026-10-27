@@ -137,7 +137,7 @@ export const SUPPORTER_SCENARIOS: ScenarioPreset[] = [
         avatar: AVATAR_POOL[6].avatar,
         amount: 5,
         tier: 'micro',
-        message: 'Big fan of the carousel format!',
+        message: 'Big fan of the visual curation formats!',
         createdAt: '1 month ago',
         isMutual: false,
       },

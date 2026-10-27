@@ -11,7 +11,7 @@ On traditional social networks and link-in-bio tools, user content is locked int
 * **Collections** are typically hidden behind clunky secondary toolbars or deeply nested submenus.
 
 The **Curated Collections & Presets System** introduces author-curated organization across user profiles:
-1. **Posts Collections ("Playlist" model)**: A filterable lens over the author's master timeline. Older high-signal posts, carousels, boards, link cards, and badges can be highlighted in custom order, while all posts remain part of the primary chronological feed.
+1. **Posts Collections ("Playlist" model)**: A filterable lens over the author's master timeline. Older high-signal posts and visual boards can be highlighted in custom order, while all posts remain part of the primary chronological feed.
 2. **The Dedicated Presets Tab**: The **Presets** tab functions as a unified channel directory and switchboard console. It features clickable cards for each curated Post Collection, allowing visitors and creators to browse and launch thematic feeds in-situ.
 3. **Ultra-Clean Posts Feed & Breadcrumb**: The Posts tab remains 100% clean with zero secondary stadium bars or dropdown chevrons. When a collection preset is active, a minimalist, mobile-first 1-line breadcrumb appears above the feed:
    ```
@@ -72,7 +72,7 @@ src/components/collections/
    - **100-Card Visual Workspace Grid**: Displays all posts within the collection in a responsive grid (`sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4`).
    - **Item Controls**:
      - Visual position badges (`#1` to `#100`).
-     - Post media thumbnails (photos, carousels, boards, link previews) or snippet text.
+     - Post media thumbnails (photos, avatar chips, boards) or snippet text.
      - Native drag handles (`GripVertical`).
      - One-click step arrows (`↑` move up, `↓` move down).
      - Removal button (`✕`) to unassign an item from the collection without deleting the underlying post.

@@ -30,36 +30,32 @@ export interface User {
   links: BioLink[];
 }
 
-export interface CarouselSlide {
-  id: string;
-  url: string;
-  caption?: string;
-}
-
 export interface BoardImage {
   id: string;
+  type?: 'image' | 'user';
   url: string;
   caption?: string;
+  username?: string;
+  name?: string;
+  avatar?: string;
 }
 
-export type GridItemKind = 'avatar' | 'link';
+export type BoardItem = BoardImage;
 
-export interface GridItem {
-  id: string;
-  kind: GridItemKind; // 'avatar' (circle) | 'link' (square)
-  title: string;
+export interface ImageAttachment {
+  type: 'image';
   url: string;
-  subtitle?: string;
-  imageUrl?: string;
-  icon?: string;
-  bgColor?: string;
-  showLabel?: boolean;
 }
 
-export interface GridPostData {
-  columns: 4 | 5;
-  items: GridItem[];
+export interface UserAttachment {
+  type: 'user';
+  username: string;
+  name: string;
+  avatar: string;
+  id?: string;
 }
+
+export type PostAttachment = ImageAttachment | UserAttachment;
 
 export interface BadgeData {
   title: string;
@@ -80,29 +76,15 @@ export interface Post {
   id: string;
   author: User;
   createdAt: string;
-  type: 'standard' | 'carousel' | 'board' | 'link_card' | 'grid' | 'comment';
+  type: 'standard' | 'board' | 'comment';
   images?: string[];
+  attachments?: PostAttachment[];
   targetUsername?: string;
   targetUserId?: string;
   text: string;
-  carouselData?: {
-    header?: string;
-    slides: CarouselSlide[];
-  };
   boardData?: {
     images: BoardImage[];
   };
-  linkData?: {
-    title: string;
-    url: string;
-    subtitle?: string;
-    description?: string;
-    icon?: string;
-    image?: string;
-    buttonText?: string;
-    pageId?: string;
-  };
-  gridData?: GridPostData;
   badgeData?: BadgeData;
   likesCount: number;
   repostsCount: number;
@@ -372,53 +354,6 @@ export const MOCK_OOMFS: User[] = [
 
 export const MOCK_POSTS: Post[] = [
   {
-    id: 'post_carousel_1',
-    author: MOCK_USERS.amberlyn,
-    createdAt: '15m',
-    type: 'carousel',
-    text: 'October camera roll & studio moments. Swipe through the latest workspace setups and UI explorations ➡️',
-    carouselData: {
-      header: 'october studio & camera roll 📸',
-      slides: [
-        {
-          id: 's1',
-          url: 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=500&h=720&q=80',
-          caption: 'Morning light hitting the studio desk'
-        },
-        {
-          id: 's2',
-          url: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=800&h=560&q=80',
-          caption: 'Prototyping new oomfs.org layout tokens'
-        },
-        {
-          id: 's3',
-          url: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=480&h=720&q=80',
-          caption: 'Flat white #2 before shipping'
-        },
-        {
-          id: 's4',
-          url: 'https://images.unsplash.com/photo-1558655146-d09347e92766?auto=format&fit=crop&w=640&h=640&q=80',
-          caption: 'Typography & grid studies'
-        },
-        {
-          id: 's5',
-          url: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=820&h=540&q=80',
-          caption: 'Late night shader tests'
-        },
-        {
-          id: 's6',
-          url: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=520&h=740&q=80',
-          caption: 'Wrapping up the sprint ✨'
-        }
-      ]
-    },
-    likesCount: 124,
-    repostsCount: 19,
-    repliesCount: 14,
-    viewsCount: '2.8K',
-    isLiked: true
-  },
-  {
     id: 'post_board_1',
     author: MOCK_USERS.amberlyn,
     createdAt: '1h',
@@ -433,8 +368,12 @@ export const MOCK_POSTS: Post[] = [
         },
         {
           id: 'b2',
-          url: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=700&h=520&q=80',
-          caption: 'Nordic daylight studio'
+          type: 'user',
+          url: '/sora_arts',
+          username: 'sora_arts',
+          name: 'Sora',
+          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+          caption: '3D collaborator & sculptor'
         },
         {
           id: 'b3',
@@ -482,6 +421,10 @@ export const MOCK_POSTS: Post[] = [
     createdAt: '4h',
     type: 'standard',
     text: '35mm film scans from Shibuya & Shinjuku crossing. Late night rainy reflections and grain 🎞️☕',
+    images: [
+      'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=800&q=80'
+    ],
     likesCount: 89,
     repostsCount: 12,
     repliesCount: 6,
@@ -489,134 +432,25 @@ export const MOCK_POSTS: Post[] = [
     isLiked: false
   },
   {
-    id: 'post_1',
-    author: MOCK_USERS.amberlyn,
-    createdAt: '3h',
-    type: 'link_card',
-    text: 'Just updated my bio link portfolio! Added all recent client case studies and my new interactive UI library.',
-    linkData: {
-      title: 'Design Portfolio (2026)',
-      subtitle: 'Client case studies, interactive UI experiments & design systems',
-      description: 'Explore web apps, design systems, and product UI explorations created by Amber.',
-      icon: '🎨',
-      image: 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=600&q=80',
-      url: 'https://amberlyn.design',
-      buttonText: 'Visit Portfolio ↗'
-    },
-    likesCount: 84,
-    repostsCount: 12,
-    repliesCount: 9,
-    viewsCount: '1.4K',
-    isLiked: true
-  },
-  {
     id: 'post_grid_1',
     author: MOCK_USERS.amberlyn,
     createdAt: '3h',
-    type: 'grid',
-    text: 'favorite mutuals, open-source repos & creative tools this month ✦\n(circles link to mutual profiles, squares open sites directly)',
-    gridData: {
-      columns: 5,
-      items: [
-        {
-          id: 'gi_1',
-          kind: 'avatar',
-          title: 'Kyle Vance',
-          url: '/dev_kyle',
-          subtitle: '@dev_kyle',
-          imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
-          showLabel: true
-        },
-        {
-          id: 'gi_2',
-          kind: 'link',
-          title: 'GitHub',
-          url: 'https://github.com',
-          subtitle: 'github.com',
-          bgColor: '#0f1419',
-          icon: '💻',
-          showLabel: true
-        },
-        {
-          id: 'gi_3',
-          kind: 'avatar',
-          title: 'Sora',
-          url: '/sora_arts',
-          subtitle: '@sora_arts',
-          imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
-          showLabel: true
-        },
-        {
-          id: 'gi_4',
-          kind: 'link',
-          title: 'Figma',
-          url: 'https://figma.com',
-          subtitle: 'figma.com',
-          bgColor: 'linear-gradient(135deg, #8b5cf6, #ec4899)',
-          icon: '🎨',
-          showLabel: true
-        },
-        {
-          id: 'gi_5',
-          kind: 'avatar',
-          title: 'Jack',
-          url: '/jack',
-          subtitle: '@jack',
-          imageUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=400&q=80',
-          showLabel: true
-        },
-        {
-          id: 'gi_6',
-          kind: 'link',
-          title: 'Next.js',
-          url: 'https://nextjs.org',
-          subtitle: 'nextjs.org',
-          bgColor: '#000000',
-          icon: '▲',
-          showLabel: false
-        },
-        {
-          id: 'gi_7',
-          kind: 'link',
-          title: 'Spotify',
-          url: 'https://spotify.com',
-          subtitle: 'spotify.com',
-          bgColor: 'linear-gradient(135deg, #10b981, #06b6d4)',
-          icon: '🎧',
-          showLabel: false
-        },
-        {
-          id: 'gi_8',
-          kind: 'link',
-          title: 'Neocities',
-          url: 'https://neocities.org',
-          subtitle: 'neocities.org',
-          bgColor: '#e06800',
-          icon: '👾',
-          showLabel: false
-        },
-        {
-          id: 'gi_9',
-          kind: 'link',
-          title: 'Substack',
-          url: 'https://substack.com',
-          subtitle: 'substack.com',
-          bgColor: '#f97316',
-          icon: '📡',
-          showLabel: false
-        },
-        {
-          id: 'gi_10',
-          kind: 'link',
-          title: 'Tailwind',
-          url: 'https://tailwindcss.com',
-          subtitle: 'tailwindcss.com',
-          bgColor: 'linear-gradient(135deg, #06b6d4, #1d9bf0)',
-          icon: '🌊',
-          showLabel: false
-        }
-      ]
-    },
+    type: 'standard',
+    text: 'Shoutout to my top mutuals & creative partners shipping with me this sprint ✦\nTap any card to visit their profile!',
+    attachments: [
+      {
+        type: 'user',
+        username: 'dev_kyle',
+        name: 'Kyle Vance',
+        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80'
+      },
+      {
+        type: 'user',
+        username: 'sora_arts',
+        name: 'Sora',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'
+      }
+    ],
     likesCount: 54,
     repostsCount: 12,
     repliesCount: 4,
@@ -627,11 +461,10 @@ export const MOCK_POSTS: Post[] = [
     id: 'post_kyle_1',
     author: MOCK_USERS.dev_kyle,
     createdAt: '2h',
-    type: 'carousel',
-    text: ' Shipping our new mechanical keyboard & desk hardware builds this weekend:',
-    carouselData: {
-      header: 'weekend hardware builds 🛠️',
-      slides: [
+    type: 'board',
+    text: 'Shipping our new mechanical keyboard & desk hardware builds this weekend. Tap to view the full 5-image build gallery 🛠️👇',
+    boardData: {
+      images: [
         {
           id: 'ks1',
           url: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=800&h=550&q=80',
@@ -749,18 +582,6 @@ export const MOCK_COMMENTS: Record<string, Comment[]> = {
 };
 
 export const MOCK_THREAD_REPLIES: Record<string, ThreadReply[]> = {
-  post_carousel_1: [
-    {
-      id: 'reply_c1',
-      author: MOCK_USERS.dev_kyle,
-      createdAt: '10m',
-      text: 'Slide 2 & 5 go crazy! Love how the portrait and landscape shots flow together in the carousel.',
-      likesCount: 14,
-      repliesCount: 1,
-      repostsCount: 0,
-      isLiked: true
-    }
-  ],
   post_board_1: [
     {
       id: 'reply_b1',
@@ -771,28 +592,6 @@ export const MOCK_THREAD_REPLIES: Record<string, ThreadReply[]> = {
       repliesCount: 0,
       repostsCount: 1,
       isLiked: true
-    }
-  ],
-  post_1: [
-    {
-      id: 'reply_1',
-      author: MOCK_USERS.dev_kyle,
-      createdAt: '8m',
-      text: 'Just checked out the design system case study, the motion curves are butter smooth!',
-      likesCount: 12,
-      repliesCount: 1,
-      repostsCount: 0,
-      isLiked: true
-    },
-    {
-      id: 'reply_2',
-      author: MOCK_USERS.celeste,
-      createdAt: '5m',
-      text: 'Subscribed to the Substack right away! Cant wait for the deep dive on OOMF culture.',
-      likesCount: 6,
-      repliesCount: 0,
-      repostsCount: 0,
-      isLiked: false
     }
   ],
   post_sora_1: [
@@ -811,11 +610,11 @@ export const MOCK_THREAD_REPLIES: Record<string, ThreadReply[]> = {
 
 export const MOCK_LIKED_POSTS: Record<string, Post[]> = {
   amberlyn: [
-    { ...MOCK_POSTS[4], isLiked: true }, // Sora's board post
-    { ...MOCK_POSTS[3], isLiked: true }  // Kyle's carousel post
+    { ...MOCK_POSTS[5], isLiked: true }, // Sora's board post
+    { ...MOCK_POSTS[4], isLiked: true }  // Kyle's board post
   ],
   dev_kyle: [
-    { ...MOCK_POSTS[0], isLiked: true }  // Amber's carousel post
+    { ...MOCK_POSTS[0], isLiked: true }  // Amber's board post
   ]
 };
 
@@ -826,7 +625,7 @@ export const MOCK_COLLECTIONS: Collection[] = [
     icon: '⭐',
     tabType: 'posts',
     description: 'Flagship launches, top design threads, and studio archives',
-    itemIds: ['post_carousel_1', 'post_amber_ui', 'post_board_1'],
+    itemIds: ['post_amber_ui', 'post_board_1'],
     isPinned: true
   },
   {
@@ -844,7 +643,7 @@ export const MOCK_COLLECTIONS: Collection[] = [
     icon: '📸',
     tabType: 'posts',
     description: 'Street photography, camera scans, and neon night walks',
-    itemIds: ['post_amber_film', 'post_carousel_1'],
+    itemIds: ['post_amber_film'],
     isPinned: true
   },
   {
@@ -853,7 +652,7 @@ export const MOCK_COLLECTIONS: Collection[] = [
     icon: '🌿',
     tabType: 'posts',
     description: 'Concrete pavilions, geometric facade studies, and minimalism',
-    itemIds: ['post_board_1', 'post_carousel_1'],
+    itemIds: ['post_board_1'],
     isPinned: true
   },
   {
@@ -862,7 +661,7 @@ export const MOCK_COLLECTIONS: Collection[] = [
     icon: '⚡',
     tabType: 'posts',
     description: 'Interactive canvas shaders and kinetic typography experiments',
-    itemIds: ['post_carousel_1', 'post_amber_ui'],
+    itemIds: ['post_amber_ui'],
     isPinned: false
   },
   {
@@ -880,7 +679,7 @@ export const MOCK_COLLECTIONS: Collection[] = [
     icon: '☕',
     tabType: 'posts',
     description: 'Minimal workspaces, cable management, and daily tools',
-    itemIds: ['post_carousel_1', 'post_board_1'],
+    itemIds: ['post_board_1'],
     isPinned: false
   },
   {
@@ -889,7 +688,7 @@ export const MOCK_COLLECTIONS: Collection[] = [
     icon: '🚀',
     tabType: 'posts',
     description: 'Sprint retrospectives, v1 release notes, and product roadmap',
-    itemIds: ['post_amber_ui', 'post_carousel_1', 'post_board_1'],
+    itemIds: ['post_amber_ui', 'post_board_1'],
     isPinned: false
   },
   {
@@ -898,7 +697,7 @@ export const MOCK_COLLECTIONS: Collection[] = [
     icon: '🎧',
     tabType: 'posts',
     description: 'Ambient electronic, lo-fi beats, and coding mixes',
-    itemIds: ['post_amber_film', 'post_carousel_1'],
+    itemIds: ['post_amber_film'],
     isPinned: false
   },
   {
@@ -916,7 +715,7 @@ export const MOCK_COLLECTIONS: Collection[] = [
     icon: '🎯',
     tabType: 'posts',
     description: 'Annual retrospective of favorite creations and milestones',
-    itemIds: ['post_board_1', 'post_amber_ui', 'post_carousel_1'],
+    itemIds: ['post_board_1', 'post_amber_ui'],
     isPinned: false
   },
   {
@@ -940,7 +739,7 @@ export const MOCK_LINK_COLLECTIONS: Collection[] = [
     isDefault: true,
     isPinned: true,
     description: 'Primary bio links, core socials, and featured badges',
-    itemIds: ['post_badge_1', 'post_badge_oomf_1', 'post_badge_2', 'post_badge_3', 'post_badge_4', 'l1', 'l2', 'l3', 'post_1']
+    itemIds: ['post_badge_1', 'post_badge_oomf_1', 'post_badge_2', 'post_badge_3', 'post_badge_4', 'l1', 'l2', 'l3']
   },
   {
     id: 'col_link_work',
@@ -949,7 +748,7 @@ export const MOCK_LINK_COLLECTIONS: Collection[] = [
     slug: 'work',
     tabType: 'links',
     description: 'Client case studies, Figma design systems, and advisory',
-    itemIds: ['post_badge_6', 'l1', 'post_1', 'l4_figma', 'l6_cal'],
+    itemIds: ['post_badge_6', 'l1', 'l4_figma', 'l6_cal'],
     isPinned: true
   },
   {
@@ -1019,7 +818,7 @@ export const MOCK_LINK_COLLECTIONS: Collection[] = [
     slug: 'reading',
     tabType: 'links',
     description: 'Curated articles, book recommendations, and philosophy notes',
-    itemIds: ['l2', 'post_1'],
+    itemIds: ['l2'],
     isPinned: false
   },
   {

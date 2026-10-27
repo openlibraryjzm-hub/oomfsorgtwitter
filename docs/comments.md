@@ -51,7 +51,7 @@ Comments are stored within the core `public.blocks` table in Supabase PostgreSQL
 | `id` | `uuid` | Primary Key, `default gen_random_uuid()` | Unique comment identifier |
 | `user_id` | `uuid` | Not Null, `references public.profiles(id) on delete cascade` | Comment author's user profile ID |
 | `target_user_id` | `uuid` | Nullable, `references public.profiles(id) on delete cascade` | Target profile recipient ID (where comment lives) |
-| `type` | `text` | Not Null, Check `in ('standard', 'carousel', 'board', 'link_card', 'comment', 'badge')` | Set to `'comment'` |
+| `type` | `text` | Not Null, Check `in ('standard', 'board', 'badge', 'comment')` | Set to `'comment'` |
 | `content` | `jsonb` | Not Null, Default `'{}'::jsonb` | Structured comment payload (text, images, author snapshot) |
 | `created_at` | `timestamptz` | Not Null, Default `timezone('utc', now())` | Creation timestamp |
 
@@ -269,9 +269,10 @@ export interface Post {
   id: string;
   author: User;
   createdAt: string;
-  type: 'standard' | 'carousel' | 'board' | 'link_card' | 'badge' | 'comment';
+  type: 'standard' | 'board' | 'badge' | 'comment';
   text: string;
   images?: string[];
+  attachments?: PostAttachment[];
   targetUsername?: string;
   targetUserId?: string;
   likesCount: number;
@@ -281,9 +282,7 @@ export interface Post {
   isLiked?: boolean;
   isReposted?: boolean;
   // Format-specific payloads
-  carouselData?: CarouselData;
   boardData?: BoardData;
-  linkData?: LinkData;
   badgeData?: BadgeData;
 }
 ```

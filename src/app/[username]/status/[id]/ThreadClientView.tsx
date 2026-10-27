@@ -36,11 +36,10 @@ export default function ThreadClientView({ initialPost, username }: ThreadClient
       return;
     }
 
-    const isFallback = initialPost.text === `Post #${initialPost.id} on oomfs.org` &&
-      !initialPost.carouselData &&
+    const isFallback = initialPost.text === `Post #${initialPost.id} on oomfsorg` &&
       !initialPost.boardData &&
-      !initialPost.linkData &&
-      !initialPost.gridData;
+      !(initialPost.attachments && initialPost.attachments.length > 0) &&
+      !(initialPost.images && initialPost.images.length > 0);
 
     if (isFallback) {
       const fetchFromSupabase = async () => {
@@ -72,12 +71,10 @@ export default function ThreadClientView({ initialPost, username }: ThreadClient
               type: dbBlock.type,
               text: dbBlock.content?.text || '',
               images: dbBlock.content?.images || [],
+              attachments: dbBlock.content?.attachments || [],
               targetUsername: dbBlock.content?.targetUsername || null,
               targetUserId: dbBlock.target_user_id || null,
-              carouselData: dbBlock.content?.carouselData,
               boardData: dbBlock.content?.boardData,
-              linkData: dbBlock.content?.linkData,
-              gridData: dbBlock.content?.gridData,
               badgeData: dbBlock.content?.badgeData,
               likesCount: dbBlock.content?.likesCount || 0,
               repostsCount: dbBlock.content?.repostsCount || 0,

@@ -40,9 +40,9 @@ src/components/links/
 └── LinksPortal.tsx              # Linktree-style vertical stack for external user accounts (35+ platforms, custom logos)
 
 src/components/feed/
-├── PostCard.tsx                 # Timeline post renderer (Standard, Carousel, Board, Link Card, Web Badge)
+├── PostCard.tsx                 # Timeline post renderer (Standard with 1-4 attachments, Board with images/avatars)
 ├── CommentCard.tsx              # Flat comment renderer (no threading, no replies, no quotes)
-└── PostComposer.tsx             # Unified post creation component (Dual-Tab Post/Link)
+└── PostComposer.tsx             # Unified post creation component (Standard with 1-4 attachments & Board builder)
 ```
 
 ---
@@ -98,7 +98,7 @@ Tabs are ordered left-to-right to optimize content discovery and render with cle
 ```
 
 ### 1. Posts (Leftmost & Default)
-- **Role**: Primary unified content timeline displaying all posts created by the user: Standard text, Carousels, Curated Boards, Bio Link Cards, and Web Badges.
+- **Role**: Primary unified content timeline displaying all posts created by the user: Standard posts (with 1–4 photo or mutual avatar attachments) and Curated Boards (images and/or mutual avatars).
 - **Direct Feed Alignment**: Feed items render cleanly beneath the tab bar, preserving strict 1:1 parity with Twitter/X web profile timelines with no secondary stadium toolbars or dropdown chevrons.
 - **Active Preset Breadcrumb**:
   - When viewing an author-curated collection preset (selected from the **Presets** tab or via URL query parameter), a clean, single-line breadcrumb is displayed directly above the feed:

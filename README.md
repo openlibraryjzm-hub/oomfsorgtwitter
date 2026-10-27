@@ -18,18 +18,15 @@
 
 3. **Specialized Post & Block Types (Beyond Tweets):**  
    Profiles showcase rich, modular content formats tailored to creative work and visual curation:
-   * 📝 **Standard Post (`standard`)**: Native 1:1 timeline tweet text post. Threadable, likeable, repostable.
-   * 🎞️ **Carousel (`carousel`)**: Uncapped horizontal photo strip (`>4` slides) with natural portrait/landscape aspect ratio preservation (no forced square crops), desktop chevrons, individual bottom overlay captions, and top commentary.
-   * 📌 **Board (`board`)**: Pinterest-style visual curation boards (`3+` images). Renders as a 3-image preview on the profile timeline (`50%` left half, two `25%` stacked right images with a `+N` badge) with a dedicated exploration mini banner between the media and action metrics, expanding into a full **2-column Pinterest masonry grid** in the dedicated thread view (`/[username]/status/[id]`).
-   * 🔗 **Bio Link Card (`link_card`)**: High-visibility link showcase button with in-situ editable title, subtitle, clean domain, and flush right-half cover image. Can be embedded directly within the timeline as a post card.
-   * ⊞ **Avatars & Links Grid (`grid`)**: Unified 4 or 5 column curation matrix presenting as a standard timeline post with circular user avatars (linking to profiles) and square generic links (with cover images/icons and external URLs). Max 4 rows preview on timeline with thread expansion.
+   * 📝 **Standard Post (`standard`)**: Native 1:1 timeline tweet post with optional native Twitter media attachments (1–4 items: images or mutual/user avatars). Threadable, likeable, repostable.
+   * 📌 **Board (`board`)**: Pinterest-style visual curation boards (`3+` items: images and/or mutual user avatars). Renders as a 3-item preview on the profile timeline (`50%` left half, two `25%` stacked right quarter cells with a `+N` badge) with a dedicated exploration mini banner between the media and action metrics, expanding into a full **2-column Pinterest masonry grid** in the dedicated thread view (`/[username]/status/[id]`).
    * 💬 **Profile Comments (`comment`)**: 1:1 X/Twitter-native guestbook comments supporting attached images (up to 4 photos), rich interaction suite (Reply, Repost, Like, Share), and full thread navigation (`/[author]/status/[id]`).
 
    *Detailed post format specifications and extension guides are available in [Post Types Context Doc](docs/post-types.md) and [Composer Context Doc](docs/composer.md).*
 
 4. **The 5 Distinct Profile Tabs:**  
    User profiles organize content across 5 clean tabs ordered left-to-right:
-   1. **Posts** (default): Master chronological timeline displaying actual posts (Standard, Carousel, Board, Bio Link Card, Avatars & Links Grid). Preserves clean 1:1 Twitter view without secondary stadium bars. When filtered by an active preset, displays a clean single-line breadcrumb (`← All posts` / `[Icon] [Title]` / `Reorder`) without heavy toolbars.
+   1. **Posts** (default): Master chronological timeline displaying actual posts (Standard and Board). Preserves clean 1:1 Twitter view without secondary stadium bars. When filtered by an active preset, displays a clean single-line breadcrumb (`← All posts` / `[Icon] [Title]` / `Reorder`) without heavy toolbars.
    2. **Presets**: Dedicated in-situ switchboard channel directory housing the author's curated post collections/playlists in a responsive 2-column grid. Clicking any preset launches the Posts tab filtered to that collection. Features left-aligned owner controls for creating new collections and rearranging preset display order.
    3. **Links**: Linktree-style external accounts and destination portal (`LinksPortal.tsx`) for the creator's personal accounts (Discord, Twitch, Steam, X, YouTube, GitHub, Spotify, etc.). Features a 35+ platform vector icon registry, custom logo uploads, domain auto-detection, left-aligned owner creation controls, and inline reordering.
    4. **Comments**: 1:1 X/Twitter-native profile guestbook and conversational threads with up to 4 image attachments, "Replying to @username" context, and interactive Twitter cards.
@@ -128,7 +125,7 @@
 │   │   │   ├── FollowButton.tsx        # Dynamic optimistic Follow/Unfollow action pill
 │   │   │   └── UserNetworkView.tsx     # 1:1 network directory (OOMFs, Following, Followers) & 3 display modes
 │   │   └── feed/
-│   │       ├── PostCard.tsx            # 1:1 timeline post rendering (Standard, Carousel, Board, Bio Link Card, Grid)
+│   │       ├── PostCard.tsx            # 1:1 timeline post rendering (Standard, Board)
 │   │       ├── CommentCard.tsx         # Flat guestbook comment card (non-threaded)
 │   │       └── PostComposer.tsx        # Unified post composer with bottom icon toggles & in-situ templates
 │   │
@@ -163,11 +160,11 @@ Stores user profile information synced from Twitter or edited on `oomfs.org`:
 * `created_at` (`timestamptz`)
 
 ### 2. `public.blocks`
-Stores custom profile content blocks (posts, carousels, boards, link cards, grids, comments):
+Stores custom profile content blocks (posts, boards, comments):
 * `id` (`uuid`, primary key, `default gen_random_uuid()`)
 * `user_id` (`uuid`, references `public.profiles.id` on delete cascade)
-* `type` (`text`: `'standard' | 'carousel' | 'board' | 'link_card' | 'grid' | 'comment'`)
-* `content` (`jsonb`, post payload such as `text`, `carouselData`, `boardData`, `linkData`, `gridData`, or `author`)
+* `type` (`text`: `'standard' | 'board' | 'comment'`)
+* `content` (`jsonb`, post payload such as `text`, `boardData`, `attachments`, `images`, or `author`)
 * `created_at` (`timestamptz`)
 
 ### 3. `public.follows`
@@ -255,7 +252,7 @@ npm run build
 * [x] Twitter bio extraction and native "Edit profile" modal persistence
 * [x] 5 Distinct Profile Tabs: Posts, Presets, Links (Linktree portal), Comments (flat guestbook), Likes
 * [x] Thread route (`/[username]/status/[id]`) with replies composer
-* [x] Custom Post Formats: Uncapped Photo Carousel & Pinterest-style Board
+* [x] Custom Post Formats: Pinterest-style Visual Board & Standard 1–4 Attachments (Images & User Avatars)
 * [x] Board Timeline 3-image preview + Thread 2-column masonry grid expansion
 * [x] Unified Post Composer with local file upload compression & sample presets
 * [x] Follow / Unfollow button wired to `public.follows`
