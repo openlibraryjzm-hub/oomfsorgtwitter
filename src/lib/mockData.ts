@@ -852,7 +852,7 @@ export const DEFAULT_SUPPORTERS: Supporter[] = [
     id: 'coin_my',
     username: 'mycoin',
     name: 'My Coin',
-    avatar: '/My_Coin%20(1).png',
+    avatar: '/My_Coin (1).png',
     amount: 50,
     tier: 'supporter',
     message: 'Official Community Coin in orbit',

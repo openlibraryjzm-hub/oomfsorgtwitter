@@ -65,11 +65,12 @@ The profile header sits at the top of `ProfileView.tsx` and adheres strictly to 
 
 3. **Avatar & Tip Circle (Twin Hero Circles)**:
    - Avatar: Circular avatar overlapping banner (`-mt-16 sm:-mt-20`). Always run through `formatTwitterAvatar()` to ensure 400×400 HD resolution instead of Twitter's pixelated default `_normal.jpg`.
-   - **Tip Circle (`TipCircle.tsx`)**: Twin hero circle positioned immediately to the right of the avatar, matching its exact size (`w-28 h-28 sm:w-36 sm:h-36`) and banner-crossing offset (`-mt-16 sm:-mt-20`). Features a borderless, transparent container where the banner and shelf show through the gaps between avatars:
-     - 🪐 **Organic Constellation**: Avatars pack naturally without forced center placement using greedy tangential pocket nesting (`circlePacking.ts`), maximizing area density up to $\sim 83\%$ without overlapping.
-     - 👑 **Scale-Driven Hierarchy**: Contribution amounts determine avatar area directly; high-tier patrons display subtle gold or blue accent borders.
-     - 🪙 **Default Twin Coins**: Default constellation renders Amb Coin (`/ambcoin.png`, left) and My Coin (`/My_Coin (1).png`, right) at 50% size each.
-   - Tapping the circle launches **`SupporterModal.tsx`**, presenting the expanded celestial constellation, an autobalancing area slider sandbox for live sizing tuning, scenario presets, and a direct creator tip action.
+   - **Tip Circle (`TipCircle.tsx`)**: Twin hero circle positioned immediately to the right of the avatar, matching its exact size (`w-28 h-28 sm:w-36 sm:h-36`) and banner-crossing offset (`-mt-16 sm:-mt-20`). Features a borderless, transparent container where the banner and shelf show through:
+     - 🪙 **Permanent Twin Coins**: Symmetrical dual-coin format (~63.4% diameter each).
+     - 📐 **Left-Over-Right Layering**: The Left Coin (`x = 32.2%`, `z-index: 20`) strictly overlaps on top of the Right Coin (`x = 88.0%`, `z-index: 10`) with a subtle ~7.6% overlap.
+     - 🖤 **Permanent Black Outlines**: Both coins feature crisp permanent black outlines (`outline outline-1 outline-black`) with no hover state changes.
+     - 🪙 **Default Coin Assets**: Left = Amb Coin (`/ambcoin.png`), Right = My Coin (`/My_Coin (1).png`).
+   - Tapping the circle launches **`SupporterModal.tsx`**, presenting the expanded twin coin preview arena and temporary image uploader controls for live style testing.
 
 4. **Action Row & Native Edit Profile Modal**:
    - **Contextual Action Button**:

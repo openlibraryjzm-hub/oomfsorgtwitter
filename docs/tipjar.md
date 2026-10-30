@@ -1,6 +1,6 @@
-# Tip Circle & Supporter Constellation System (`docs/tipjar.md`)
+# Twin Coin System (`docs/tipjar.md`)
 
-This document serves as the canonical technical reference for the interactive **Tip Circle & Supporter Constellation** system on `oomfs.org`. It details the twin hero circle layout geometry, the organic physics-based circle packing engine, the autobalancing area slider sandbox, and the supporter modal architecture.
+This document serves as the canonical technical reference for the permanent **Twin Coin** system on `oomfs.org`. It details the twin hero circle layout geometry, the fixed left-over-right layering specification, the borderless transparent container, and the temporary style testing modal architecture.
 
 ---
 
@@ -12,44 +12,44 @@ On `oomfs.org`, creator support is elevated into the profile's primary visual id
 
 1. **Twin Hero Stature ($A \leftrightarrow B$)**:
    * Circle 1 ($A$): The Creator's Profile Avatar.
-   * Circle 2 ($B$): The Community Supporter Constellation (`TipCircle.tsx`).
+   * Circle 2 ($B$): The Twin Coin Orbit (`TipCircle.tsx`).
    * Both share identical dimensions (`w-28 h-28 sm:w-36 sm:h-36`) and banner-crossing offset (`-mt-16 sm:-mt-20`).
 2. **Transparent, Borderless Cluster**:
-   * The container of the Tip Circle is completely transparent and borderless. There is no enclosing white ring or background plate.
-   * Between the packed circular avatars, the **profile banner (top half)** and the **white profile shelf (bottom half)** show through naturally across the seam.
-3. **Scale-Driven Hierarchy Without Forced Centering**:
-   * Contribution amounts correlate directly to avatar area ($\text{Area} \propto \text{tip amount}$).
-   * Avatars are not artificially pinned to $(50, 50)$ (which creates an awkward "donut ring" that starves medium supporters). Instead, positions are emergent: large supporters establish the macro structure and smaller supporters nestle into the natural crevices between them.
-4. **Default Orbit (Twin Coins)**:
-   * Across all profiles, the default orbit displays two coins at 50% size each: Amb Coin (`/ambcoin.png`) anchored on the left and My Coin (`/My_Coin (1).png`) anchored on the right.
-   * If a profile has zero custom tips, this balanced twin coin constellation renders seamlessly as the default visual signature.
+   * The container of the Twin Coin circle is completely transparent and borderless. There is no enclosing white background plate or artificial outer ring.
+   * Between and around the two circular coins, the **profile banner (top half)** and the **white profile shelf (bottom half)** show through naturally across the seam.
+3. **Permanent Foundation**:
+   * All profiles feature the **Twin Coin format** as their core visual identity foundation.
+   * Profiles render the clean, balanced twin coin signature as their visual creator currency.
+4. **Default Coin Assets**:
+   * **Left Coin (Slot 1)**: Amb Coin (`/ambcoin.png`)
+   * **Right Coin (Slot 2)**: My Coin (`/My_Coin (1).png`)
 
 ```text
 ┌────────────────────────────────────────────────────────┐
 │                   MAIN PROFILE BANNER                  │
 │                                                        │
-│   ╭──────────────╮             ●    👑    ●            │
-└───│──────────────│───────────●─────────────────────────┘ (Banner bottom line)
-    │              │             ●    ●    ●                [ Follow ]
-    │   CREATOR    │  (gap-3)       ●    ●
-    │    AVATAR    │
-    ╰──────────────╯          (Transparent Gaps)
-    Profile Avatar             Supporter Constellation
-     (w-28 / w-36)              (w-28 / w-36)
-            │                         │
-            └───────────┬─────────────┘
-                        │
-             Tap / Click Tip Circle
-                        │
-                        ▼
+│   ╭──────────────╮               ╭─────╮               │
+└───│──────────────│───────────────│─╮   │───────────────┘ (Banner bottom line)
+    │              │               │ │ 🪙│                  [ Follow ]
+    │   CREATOR    │  (gap-3)      ╰─│───╯
+    │    AVATAR    │                 ╰───╯
+    ╰──────────────╯          (Left Overlaps Right)
+    Profile Avatar               Twin Coin Orbit
+     (w-28 / w-36)                (w-28 / w-36)
+            │                           │
+            └─────────────┬─────────────┘
+                          │
+               Tap / Click Twin Coins
+                          │
+                          ▼
 ┌────────────────────────────────────────────────────────┐
 │                   Interactive Modal                    │
 │                 (SupporterModal.tsx)                   │
-│   ├── Expanded Celestial Orbit Arena                   │
-│   ├── Autobalancing Area Slider Sandbox                │
-│   ├── Scenario Presets Switchboard                     │
-│   ├── Supporter Inspector & Lore Notes Card            │
-│   └── Primary Action: [ 🪙 Send Tip & Join Orbit ]     │
+│   ├── Expanded Twin Coin Preview Arena                 │
+│   ├── Layer Hierarchy Indicator (Left Overlaps Right)   │
+│   ├── Slot 1 (Left Coin): Temp Image Uploader & Reset  │
+│   ├── Slot 2 (Right Coin): Temp Image Uploader & Reset │
+│   └── Session Style Testing (Zero Persistence)         │
 └────────────────────────────────────────────────────────┘
 ```
 
@@ -59,40 +59,40 @@ On `oomfs.org`, creator support is elevated into the profile's primary visual id
 
 | File Path | Description |
 | :--- | :--- |
-| [`src/components/profile/TipCircle.tsx`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/components/profile/TipCircle.tsx) | Twin circle component on the profile header, rendering the borderless, transparent constellation of packed supporter avatars. |
-| [`src/components/profile/SupporterModal.tsx`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/components/profile/SupporterModal.tsx) | Interactive modal featuring the expanded constellation arena, autobalancing area sliders, scenario switcher, and tip form. |
-| [`src/lib/circlePacking.ts`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/lib/circlePacking.ts) | Organic circle packing engine: greedy tangential pocket placement, physics collision relaxation, and edge expansion. |
-| [`src/lib/supporterPresets.ts`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/lib/supporterPresets.ts) | Registry of realistic avatar placeholders (`AVATAR_POOL`) and 6 preset test distributions. |
-| [`src/lib/mockData.ts`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/lib/mockData.ts) | `Supporter` data model, per-user mock clusters, and resolver helpers. |
+| [`src/components/profile/TipCircle.tsx`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/components/profile/TipCircle.tsx) | Twin circle component on the profile header, rendering the borderless, transparent twin coins with left-over-right layering. |
+| [`src/components/profile/SupporterModal.tsx`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/components/profile/SupporterModal.tsx) | Interactive testing studio featuring the expanded preview arena and dual coin slot temporary image uploaders. |
+| [`src/lib/mockData.ts`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/lib/mockData.ts) | Canonical `DEFAULT_SUPPORTERS` pair (Amb Coin & My Coin) and profile supporter resolvers. |
 | [`src/components/profile/ProfileView.tsx`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/components/profile/ProfileView.tsx) | Header integration, avatar row flex wrapping geometry, and modal lifecycle state. |
 
 ---
 
-## 3. The Organic Circle-Packing Engine (`circlePacking.ts`)
+## 3. Twin Coin Geometry & Layering Rules
 
-The layout of avatars inside both the profile circle and modal arena is computed by a deterministic, physics-based circle packing engine:
+The Twin Coin layout is mathematically precise, stable, and deterministic:
 
-### 3.1 Mathematical Area Model
-* A circular disk has area $A = \pi R^2$. In 2D space, the maximum theoretical circle-packing limit is $\approx 83\%$ area density.
-* Target radius for any avatar with relative area share $p_i \in (0, 100]$:
-  $$r_i = \sqrt{\frac{p_i}{100} \cdot 0.83} \cdot R_{\text{container}}$$
-* When an avatar's diameter doubles, its area increases by $4\times$ ($r^2$), visually reflecting generous patronage.
+### 3.1 Mathematical Positioning & Diameter
+* Container diameter: $100\%$ width and height of the circle component (`w-28 h-28 sm:w-36 sm:h-36`).
+* Each coin has a diameter of **`63.4%`** relative to the container width.
+* **Left Coin (Slot 1)**:
+  * Horizontal Center ($x$): **`32.2%`**
+  * Vertical Center ($y$): **`50.0%`**
+  * Left Edge: $32.2\% - 31.7\% = 0.5\%$ (touching the outer left perimeter)
+  * Right Edge: $32.2\% + 31.7\% = 63.9\%$
+  * **Z-Index**: **`z-20` (Top Layer)**
+* **Right Coin (Slot 2)**:
+  * Horizontal Center ($x$): **`88.0%`** (shifted rightwards for a subtle overlap)
+  * Vertical Center ($y$): **`50.0%`**
+  * Left Edge: $88.0\% - 31.7\% = 56.3\%$
+  * Right Edge: $88.0\% + 31.7\% = 119.7\%$
+  * **Z-Index**: **`z-10` (Base Layer)**
 
-### 3.2 Four-Stage Packing Pipeline
-
-1. **Largest-First Sorting**:
-   Circles are sorted by size/amount descending. The largest circles are positioned first to establish the foundation.
-2. **Greedy Tangential Pocket Placement**:
-   For each incoming circle $C_i$, the engine tests all pairs of already-placed tangent circles $(C_j, C_k)$ and finds the candidate tangent pocket that:
-   - Produces zero overlap with any existing circle.
-   - Minimizes distance from the cluster center of mass.
-3. **Multi-Pass Physics Relaxation**:
-   Runs 65 iterations of separation physics:
-   - **Collision Separation**: If distance $d_{ij} < r_i + r_j + \text{gap}$, circles push apart proportionally to their relative sizes.
-   - **Soft Central Gravity**: Applies a subtle inward gravitational pull towards $(50, 50)$ to prevent drifting.
-   - **Boundary Confinement**: Clamps all circles to remain strictly within $R_{\text{container}}$.
-4. **Outward Edge Expansion Pass**:
-   The engine measures the maximum radial extent ($\max_i [d_i + r_i]$). If below $R_{\text{container}}$, it expands all coordinates and radii outward proportionally until the outermost circles are **literally tangent to the outer circle's edge**, maximizing space utilization.
+### 3.2 Overlap Direction (Left Over Right, Very Slight Overlap)
+* The distance between coin centers is $88.0\% - 32.2\% = 55.8\%$.
+* Because the sum of both radii is $31.7\% + 31.7\% = 63.4\%$, there is a **subtle $7.6\%$ horizontal overlap zone** ($56.3\%$ to $63.9\%$), representing approximately $\sim 12\%$ of coin diameter.
+* **Strict Rule**: The **Left Coin overlaps on top of the Right Coin**.
+  * The Left Coin's circular boundary and subtle cast shadow (`shadow-sm`, `z-20`) rest cleanly on top of the Right Coin (`z-10`).
+  * The Right Coin's leftmost rim is gently tucked underneath the Left Coin.
+  * The outer circle container uses `overflow-visible` to allow the right coin to render fully without clipping.
 
 ---
 
@@ -104,40 +104,26 @@ The layout of avatars inside both the profile circle and modal arena is computed
 * **Seam Clearance**:
   * The top half of the circle overlaps the header banner; the bottom half rests on the white profile shelf.
 * **Mobile Wrap Protection**:
-  * The identity container in `ProfileView.tsx` uses `flex flex-wrap sm:flex-nowrap justify-between items-end pb-3 gap-y-3`. On narrow viewports ($<390\text{px}$), the action button (`Follow` / `Edit profile`) wraps gracefully beneath the dual circles without clipping or horizontal overflow.
-* **Zero Size Jumping**:
-  * Hovering or selecting individual avatars in either view does **not** enlarge or jump their size (`scale`).
-  * Instead, interactive focus is conveyed via a clean **Twitter Blue (`#1d9bf0`) outline ring**, preserving stable geometric alignment.
+  * The identity container in `ProfileView.tsx` uses `flex flex-wrap sm:flex-nowrap justify-between items-end pb-3 gap-y-3`. On narrow viewports ($<390\text{px}$), the action button wraps gracefully beneath the dual circles without clipping or horizontal overflow.
+* **Permanent Black Outline**:
+  * Both coins permanently display a clean black outline (`outline outline-1 outline-black`).
+  * No secondary outline or color change on hover, maintaining stable 1:1 graphical presence.
 
 ---
 
-## 5. Interactive Modal Capabilities (`SupporterModal.tsx`)
+## 5. Style Testing Modal (`SupporterModal.tsx`)
 
-The modal offers two distinct operational modes via top-level tab controls:
+Tapping the profile Twin Coins launches the streamlined **Twin Coin Customizer** modal:
 
-### 5.1 Autobalancing Area Slider Sandbox (`activeTab === 'sandbox'`)
-* **State Initialization**: Dynamically populates directly from the active profile supporters (`DEFAULT_SUPPORTERS`), defaulting to the twin coin pair (**Amb Coin** and **My Coin**) with sliders preset to an exact **50% area share** each. This guarantees 1:1 visual parity between the profile circle and the sandbox workspace.
-* Displays a flat, clean list of active supporters with their avatar, display name, and handle (`@username`).
-* Each person has an interactive **Area Percentage Slider** ($1\%–75\%$).
-* **Proportional Autobalancing**: When any person's slider is moved, all other supporters' shares scale automatically so that the total area **always sums to exactly $100\%$**:
-  $$p_j^{\text{new}} = p_j^{\text{old}} \cdot \frac{100 - p_k^{\text{new}}}{100 - p_k^{\text{old}}}$$
-* Controls:
-  * `+ Add Person`: Injects the next contributor from `AVATAR_POOL` and rebalances space.
-  * `✕` Remove: Deletes a person and redistributes their area proportionally to the remaining group.
-  * `Equalize All`: Resets all sliders to equal share ($100 \div N\%$).
-  * Quick Count Pills: Instant presets for $3, 5, 8, 12,$ or $20$ supporters.
-  * **Custom Temporary Image Upload**: Clicking any avatar in the slider list opens a file picker to upload a custom image for testing layouts in real-time (session-only, non-persisted).
-* **Live Profile Sync**: Any slider movement updates the profile banner circle in real time via `onScenarioChange`. The packing engine computes twin radii as $r = \sqrt{0.5 \cdot 0.83} \cdot 49.2 \approx 31.69\%$, producing symmetrical centers at $x = 32.5\%$ and $x = 67.5\%$ on the $y = 50\%$ horizontal axis with natural soft-bubble overlap.
-
-### 5.2 Scenario Presets Switchboard (`activeTab === 'presets'`)
-Provides instant, 1-click test scenarios:
-1. `🪙 Default Orbit (2)`: Default twin coin orbit featuring Amb Coin (left) and My Coin (right) at 50% area share each.
-2. `🐳 Solo Whale (1 x $100)`: Single large patron filling $99\%$ of the circle edge-to-edge.
-3. `⚖️ Balanced Orbit (6)`: Balanced distribution with 1 hero, 2 patrons, and 3 supporters.
-4. `👑 Whales + Outer Swarm (20)`: 2 prominent whale patrons surrounded by an 18-supporter micro-cloud.
-5. `🐝 Swarm of Small (25)`: High-density crowdfund swarm ($2–$5 tips) packed tightly.
-6. `🤝 OOMFS Mutuals Ring (10)`: 10 verified mutual followers ($A \leftrightarrow B$).
-
-### 5.3 Creator Support Form
-* Preset tier buttons ($5, $10, $25, $50) and custom message input field.
-* Submitting optimistically injects the visitor's avatar directly into the active orbit constellation with instant visual feedback.
+1. **Expanded Preview Arena**:
+   * A large celestial orbit circle (`w-56 h-56 sm:w-64 sm:h-64`) rendering the exact left-over-right overlap with the permanent black outline.
+   * Clicking either coin in the arena immediately opens the temporary file uploader for that slot.
+2. **Dual Coin Slot Controls**:
+   * **Slot 1 (Left Coin - Top Layer)**: Thumbnail preview, `TOP LAYER (z-20)` badge, upload button, and reset to Amb Coin action.
+   * **Slot 2 (Right Coin - Base Layer)**: Thumbnail preview, `BASE LAYER (z-10)` badge, upload button, and reset to My Coin action.
+3. **Session-Only Image Testing**:
+   * Uploading a file (JPEG, PNG, SVG, WebP) converts the image client-side to a lightweight data URL via `compressImageFile()`.
+   * **Live Profile Synchronization**: Updates the profile header twin coins immediately via `onScenarioChange([updatedLeft, updatedRight])`.
+   * **Zero Persistence**: No database writes are made; the tester can freely experiment with iconography and visuals during design iterations.
+4. **Reset Controls**:
+   * Individual slot reset buttons and a global "Reset Both to Defaults" action to instantly restore the original Amb Coin and My Coin pair.
