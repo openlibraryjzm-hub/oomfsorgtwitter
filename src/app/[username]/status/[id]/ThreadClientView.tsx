@@ -3,13 +3,15 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, MessageCircle, Heart, Repeat2, Share, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Heart, Repeat2, Share, CheckCircle2, Image as ImageIcon, Pencil, X } from 'lucide-react';
 import PostCard from '@/components/feed/PostCard';
+import TwitterMediaGrid from '@/components/feed/TwitterMediaGrid';
+import DoodleModal from '@/components/feed/DoodleModal';
 import { Post, ThreadReply, MOCK_THREAD_REPLIES, CURRENT_USER } from '@/lib/mockData';
 import { getSessionPost, deleteSessionPost, markPostAsDeleted } from '@/lib/postStore';
 import { useAuth } from '@/context/AuthContext';
 import { createClient } from '@/lib/supabase/client';
-import { formatTwitterAvatar } from '@/lib/utils';
+import { formatTwitterAvatar, compressImageFile } from '@/lib/utils';
 
 interface ThreadClientViewProps {
   initialPost: Post;
@@ -28,6 +30,70 @@ export default function ThreadClientView({ initialPost, username }: ThreadClient
     return MOCK_THREAD_REPLIES[initialPost.id] || [];
   });
   const [replyText, setReplyText] = useState('');
+  const [replyImages, setReplyImages] = useState<string[]>([]);
+  const [isUploadingReplyImage, setIsUploadingReplyImage] = useState(false);
+  const [isDoodleModalOpen, setIsDoodleModalOpen] = useState(false);
+  const [doodleEditingIndex, setDoodleEditingIndex] = useState<number | null>(null);
+  const [doodleInitialImage, setDoodleInitialImage] = useState<string | null>(null);
+  const replyFileInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  const handleOpenDoodlerForImage = (imgSrc: string, index: number) => {
+    setDoodleInitialImage(imgSrc);
+    setDoodleEditingIndex(index);
+    setIsDoodleModalOpen(true);
+  };
+
+  const handleOpenBlankDoodler = () => {
+    setDoodleInitialImage(null);
+    setDoodleEditingIndex(null);
+    setIsDoodleModalOpen(true);
+  };
+
+  const handleAttachDoodle = (doodleDataUrl: string) => {
+    if (doodleEditingIndex !== null) {
+      setReplyImages((prev) => {
+        const copy = [...prev];
+        copy[doodleEditingIndex] = doodleDataUrl;
+        return copy;
+      });
+    } else {
+      setReplyImages((prev) => {
+        if (prev.length >= 4) return prev;
+        return [...prev, doodleDataUrl];
+      });
+    }
+    setDoodleEditingIndex(null);
+    setDoodleInitialImage(null);
+  };
+
+  const handleReplyImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const availableSlots = 4 - replyImages.length;
+    if (availableSlots <= 0) return;
+
+    const filesToProcess = Array.from(files).slice(0, availableSlots);
+    setIsUploadingReplyImage(true);
+
+    try {
+      const compressedUrls = await Promise.all(
+        filesToProcess.map((f) => compressImageFile(f, 1200, 0.85))
+      );
+      setReplyImages((prev) => [...prev, ...compressedUrls].slice(0, 4));
+    } catch (err) {
+      console.error('Error compressing reply image:', err);
+    } finally {
+      setIsUploadingReplyImage(false);
+      if (replyFileInputRef.current) {
+        replyFileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemoveReplyImage = (index: number) => {
+    setReplyImages((prev) => prev.filter((_, idx) => idx !== index));
+  };
 
   // Ensure client-side resolution from session store or Supabase if server returned fallback
   useEffect(() => {
@@ -99,7 +165,7 @@ export default function ThreadClientView({ initialPost, username }: ThreadClient
 
   const handleAddReply = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!replyText.trim()) return;
+    if (!replyText.trim() && replyImages.length === 0) return;
 
     const newReply: ThreadReply = {
       id: `reply_${Date.now()}`,
@@ -118,6 +184,7 @@ export default function ThreadClientView({ initialPost, username }: ThreadClient
       },
       createdAt: 'Just now',
       text: replyText.trim(),
+      images: replyImages.length > 0 ? replyImages : undefined,
       likesCount: 0,
       repliesCount: 0,
       repostsCount: 0,
@@ -126,6 +193,7 @@ export default function ThreadClientView({ initialPost, username }: ThreadClient
 
     setReplies([...replies, newReply]);
     setReplyText('');
+    setReplyImages([]);
   };
 
   const router = useRouter();
@@ -179,10 +247,6 @@ export default function ThreadClientView({ initialPost, username }: ThreadClient
 
       {/* Reply Composer */}
       <div className="p-4 border-b border-[#eff3f4] bg-white">
-        <div className="text-xs text-[#536471] mb-2 pl-12">
-          Replying to <span className="text-[#1d9bf0]">@{post.author.username}</span>
-        </div>
-
         <form onSubmit={handleAddReply} className="flex gap-3">
           <img
             src={currentUserAvatar}
@@ -194,13 +258,92 @@ export default function ThreadClientView({ initialPost, username }: ThreadClient
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
               placeholder="Post your reply"
-              rows={2}
+              rows={replyImages.length > 0 ? 2 : 2}
               className="w-full text-base text-[#0f1419] placeholder-[#536471] outline-none resize-none bg-transparent"
             />
-            <div className="flex justify-end pt-1">
+
+            {/* Previews of attached images/doodles */}
+            {replyImages.length > 0 && (
+              <div className={`grid gap-2 mb-1 ${
+                replyImages.length === 1 ? 'grid-cols-1 max-w-sm' : 'grid-cols-2 sm:grid-cols-4'
+              }`}>
+                {replyImages.map((img, idx) => (
+                  <div key={idx} className="relative group/preview rounded-xl overflow-hidden border border-[#eff3f4] bg-[#f7f9f9] aspect-square">
+                    <img src={img} alt={`Attached ${idx + 1}`} className="w-full h-full object-cover" />
+                    
+                    {/* Doodle on this image button */}
+                    <button
+                      type="button"
+                      onClick={() => handleOpenDoodlerForImage(img, idx)}
+                      className="absolute bottom-1.5 right-1.5 px-2 py-1 bg-black/75 hover:bg-[#1d9bf0] text-white rounded-full text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 shadow-xs"
+                      title="Doodle on this photo"
+                    >
+                      <Pencil className="w-3 h-3" />
+                      <span>Doodle</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveReplyImage(idx)}
+                      className="absolute top-1.5 right-1.5 p-1 bg-black/70 hover:bg-black text-white rounded-full transition-colors cursor-pointer"
+                      title="Remove image"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Hidden File Input */}
+            <input
+              type="file"
+              ref={replyFileInputRef}
+              onChange={handleReplyImageSelect}
+              multiple
+              accept="image/*"
+              className="hidden"
+            />
+
+            {/* Reply Actions Toolbar */}
+            <div className="flex items-center justify-between pt-2 border-t border-[#eff3f4]">
+              <div className="flex items-center gap-1 sm:gap-2">
+                <button
+                  type="button"
+                  disabled={replyImages.length >= 4 || isUploadingReplyImage}
+                  onClick={() => replyFileInputRef.current?.click()}
+                  title={replyImages.length >= 4 ? "Maximum 4 images allowed" : "Add photos (up to 4)"}
+                  className="p-2 text-[#1d9bf0] hover:bg-[#1d9bf0]/10 disabled:opacity-40 disabled:hover:bg-transparent rounded-full transition-colors cursor-pointer flex items-center gap-1"
+                >
+                  <ImageIcon className="w-4 h-4" />
+                  {replyImages.length > 0 && (
+                    <span className="text-[11px] font-bold text-[#1d9bf0]">
+                      {replyImages.length}/4
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  disabled={replyImages.length >= 4 || isUploadingReplyImage}
+                  onClick={handleOpenBlankDoodler}
+                  title={replyImages.length >= 4 ? "Maximum 4 attachments allowed" : "Draw a doodle"}
+                  className="px-2.5 py-1 text-[#1d9bf0] hover:bg-[#1d9bf0]/10 disabled:opacity-40 disabled:hover:bg-transparent rounded-full transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-bold"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  <span>Doodle</span>
+                </button>
+
+                {isUploadingReplyImage && (
+                  <span className="text-xs text-[#536471] animate-pulse">
+                    Compressing photo...
+                  </span>
+                )}
+              </div>
+
               <button
                 type="submit"
-                disabled={!replyText.trim()}
+                disabled={(!replyText.trim() && replyImages.length === 0) || isUploadingReplyImage}
                 className="bg-[#1d9bf0] hover:bg-[#1a8cd8] disabled:opacity-50 text-white font-bold text-sm px-4 py-1.5 rounded-full transition-colors cursor-pointer"
               >
                 Reply
@@ -234,9 +377,16 @@ export default function ThreadClientView({ initialPost, username }: ThreadClient
                   <span className="text-[#536471]">·</span>
                   <span className="text-[#536471]">{reply.createdAt}</span>
                 </div>
-                <p className="text-[#0f1419] text-[15px] leading-relaxed whitespace-pre-line">
-                  {reply.text}
-                </p>
+                {reply.text && (
+                  <p className="text-[#0f1419] text-[15px] leading-relaxed whitespace-pre-line">
+                    {reply.text}
+                  </p>
+                )}
+                {reply.images && reply.images.length > 0 && (
+                  <div className="mt-1">
+                    <TwitterMediaGrid images={reply.images} />
+                  </div>
+                )}
                 <div className="flex items-center gap-6 text-xs text-[#536471] pt-1">
                   <button type="button" className="flex items-center gap-1.5 hover:text-[#1d9bf0] transition-colors cursor-pointer">
                     <MessageCircle className="w-4 h-4" />
@@ -263,6 +413,18 @@ export default function ThreadClientView({ initialPost, username }: ThreadClient
           </div>
         )}
       </div>
+
+      {/* Strawpage Doodler Modal */}
+      <DoodleModal
+        isOpen={isDoodleModalOpen}
+        onClose={() => {
+          setIsDoodleModalOpen(false);
+          setDoodleEditingIndex(null);
+          setDoodleInitialImage(null);
+        }}
+        onSave={handleAttachDoodle}
+        initialImage={doodleInitialImage}
+      />
     </div>
   );
 }

@@ -20,7 +20,8 @@ import {
   Camera,
   Layers,
   Image as ImageIcon,
-  Link2
+  Link2,
+  Pencil
 } from 'lucide-react';
 import { 
   User, 
@@ -38,6 +39,7 @@ import PostCard from '@/components/feed/PostCard';
 import BoardGridCard from '@/components/feed/BoardGridCard';
 import BoardPresetsBar from '@/components/feed/BoardPresetsBar';
 import CommentCard from '@/components/feed/CommentCard';
+import DoodleModal from '@/components/feed/DoodleModal';
 import FullscreenMediaModal from './FullscreenMediaModal';
 import TipCircle from './TipCircle';
 import SupporterModal from './SupporterModal';
@@ -301,7 +303,39 @@ export default function ProfileView({
   const [commentImages, setCommentImages] = useState<string[]>([]);
   const [isUploadingCommentImage, setIsUploadingCommentImage] = useState(false);
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [isDoodleModalOpen, setIsDoodleModalOpen] = useState(false);
+  const [doodleEditingIndex, setDoodleEditingIndex] = useState<number | null>(null);
+  const [doodleInitialImage, setDoodleInitialImage] = useState<string | null>(null);
   const commentFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleOpenDoodlerForImage = (imgSrc: string, index: number) => {
+    setDoodleInitialImage(imgSrc);
+    setDoodleEditingIndex(index);
+    setIsDoodleModalOpen(true);
+  };
+
+  const handleOpenBlankDoodler = () => {
+    setDoodleInitialImage(null);
+    setDoodleEditingIndex(null);
+    setIsDoodleModalOpen(true);
+  };
+
+  const handleAttachDoodle = (doodleDataUrl: string) => {
+    if (doodleEditingIndex !== null) {
+      setCommentImages((prev) => {
+        const copy = [...prev];
+        copy[doodleEditingIndex] = doodleDataUrl;
+        return copy;
+      });
+    } else {
+      setCommentImages((prev) => {
+        if (prev.length >= 4) return prev;
+        return [...prev, doodleDataUrl];
+      });
+    }
+    setDoodleEditingIndex(null);
+    setDoodleInitialImage(null);
+  };
 
   const handleCommentImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -1461,12 +1495,6 @@ export default function ProfileView({
                 className="w-10 h-10 rounded-full object-cover border border-gray-200 shrink-0"
               />
               <form onSubmit={handleAddComment} className="flex-1 flex flex-col gap-2 min-w-0">
-                {/* Replying context indicator */}
-                <div className="text-xs text-[#536471] flex items-center gap-1">
-                  <span>Replying to</span>
-                  <span className="text-[#1d9bf0] font-medium">@{userProfile.username}</span>
-                </div>
-
                 <textarea
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
@@ -1483,6 +1511,18 @@ export default function ProfileView({
                     {commentImages.map((img, idx) => (
                       <div key={idx} className="relative group/preview rounded-xl overflow-hidden border border-[#eff3f4] bg-[#f7f9f9] aspect-square">
                         <img src={img} alt={`Attached ${idx + 1}`} className="w-full h-full object-cover" />
+                        
+                        {/* Doodle on this image button */}
+                        <button
+                          type="button"
+                          onClick={() => handleOpenDoodlerForImage(img, idx)}
+                          className="absolute bottom-1.5 right-1.5 px-2 py-1 bg-black/75 hover:bg-[#1d9bf0] text-white rounded-full text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 shadow-xs"
+                          title="Doodle on this photo"
+                        >
+                          <Pencil className="w-3 h-3" />
+                          <span>Doodle</span>
+                        </button>
+
                         <button
                           type="button"
                           onClick={() => handleRemoveCommentImage(idx)}
@@ -1522,6 +1562,17 @@ export default function ProfileView({
                           {commentImages.length}/4
                         </span>
                       )}
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={commentImages.length >= 4 || isUploadingCommentImage}
+                      onClick={handleOpenBlankDoodler}
+                      title={commentImages.length >= 4 ? "Maximum 4 attachments allowed" : "Draw a doodle"}
+                      className="px-2.5 py-1 text-[#1d9bf0] hover:bg-[#1d9bf0]/10 disabled:opacity-40 disabled:hover:bg-transparent rounded-full transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-bold"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                      <span>Doodle</span>
                     </button>
                     {isUploadingCommentImage && (
                       <span className="text-xs text-[#536471] animate-pulse">
@@ -1818,6 +1869,18 @@ export default function ProfileView({
         onAddTip={(newSupporter) => {
           setProfileSupporters((prev) => [newSupporter, ...prev]);
         }}
+      />
+
+      {/* Strawpage Doodler Modal */}
+      <DoodleModal
+        isOpen={isDoodleModalOpen}
+        onClose={() => {
+          setIsDoodleModalOpen(false);
+          setDoodleEditingIndex(null);
+          setDoodleInitialImage(null);
+        }}
+        onSave={handleAttachDoodle}
+        initialImage={doodleInitialImage}
       />
     </div>
   );

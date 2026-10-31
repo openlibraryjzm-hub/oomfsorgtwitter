@@ -124,7 +124,7 @@ Tabs are ordered left-to-right with clean typography without parentheses counter
 
 ### 3. Comments (Third from Left)
 * **Role**: 1:1 X/Twitter-native profile guestbook and conversation hub.
-* **Design & Behavior**: Inline comment composer with *"Replying to @username"* context, text area, and client-compressed image attachments supporting up to 4 photos (`TwitterMediaGrid`).
+* **Design & Behavior**: Clean inline comment composer with text area, multi-image attachments supporting up to 4 photos (`TwitterMediaGrid`), and an integrated StrawPage-style doodler (`DoodleModal.tsx`) with brush, flood fill bucket, eraser, and photo background overlay tools.
 * **Cross-Profile Scoping**: Comments store `user_id` (the commenter) and `target_user_id` (the recipient profile). Comments display exclusively on the target profile's Comments tab while remaining indexed under the author.
 
 ### 4. Hashtags (Fourth leftmost)

@@ -120,6 +120,7 @@ export interface ThreadReply {
   repliesCount: number;
   repostsCount: number;
   isLiked?: boolean;
+  images?: string[];
 }
 
 export interface Collection {

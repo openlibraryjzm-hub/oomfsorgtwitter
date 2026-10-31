@@ -378,19 +378,6 @@ export default function PostCard({ post, onDelete, onManageCollections, isThread
           </div>
         </div>
 
-        {post.targetUsername && (
-          <div className="text-sm text-[#536471] mb-2 flex items-center gap-1">
-            <span>Replying to</span>
-            <Link 
-              href={`/${post.targetUsername}`}
-              className="text-[#1d9bf0] hover:underline"
-              onClick={(e) => e.stopPropagation()}
-            >
-              @{post.targetUsername}
-            </Link>
-          </div>
-        )}
-
         {/* Big Tweet Body / Board Title */}
         {(post.title || post.text) && (
           <div className="text-[#0f1419] text-xl font-bold leading-relaxed whitespace-pre-line py-2">
@@ -550,20 +537,6 @@ export default function PostCard({ post, onDelete, onManageCollections, isThread
             </button>
           </div>
         </div>
-
-        {/* Replying context */}
-        {post.targetUsername && (
-          <div className="text-xs text-[#536471] -mt-0.5 mb-1 flex items-center gap-1">
-            <span>Replying to</span>
-            <Link 
-              href={`/${post.targetUsername}`}
-              className="text-[#1d9bf0] hover:underline"
-              onClick={(e) => e.stopPropagation()}
-            >
-              @{post.targetUsername}
-            </Link>
-          </div>
-        )}
 
         {/* Text Body / Board Title */}
         {(post.title || post.text) && (

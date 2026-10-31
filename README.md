@@ -27,16 +27,15 @@
    User profiles organize content across 5 clean tabs ordered left-to-right:
    1. **Boards** (default): Unifies boards and presets. Features a pinned horizontal bar (`BoardPresetsBar.tsx`) leading with **`All Boards`** (master tab showing total boards count) followed by direct creator preset tabs (capped at 12 slots for smooth horizontal scrolling) and owner actions (`[+ New]`, `[Manage]`). Tapping any preset tab provides instant 1-tap filtering directly to that preset's boards with zero intermediate directory cards or drill-down flows.
    2. **Links**: Linktree-style external accounts and destination portal (`LinksPortal.tsx`) for the creator's personal accounts (Discord, Twitch, Steam, X, YouTube, GitHub, Spotify, etc.). Features a 35+ platform vector icon registry, custom logo uploads, domain auto-detection, left-aligned owner creation controls, and inline reordering.
-   3. **Comments**: 1:1 X/Twitter-native profile guestbook and conversational threads with up to 4 image attachments, "Replying to @username" context, and interactive Twitter cards.
+   3. **Comments**: 1:1 X/Twitter-native profile guestbook and conversational threads with up to 4 image attachments, integrated StrawPage-style doodler with background overlays, and interactive Twitter cards.
    4. **Hashtags**: Hyper-minimalist personal notepad (`HashtagsNotepad.tsx`) where creators write and display densely packed, comma-separated hashtags as a continuous flowing paragraph (e.g. `#vibecoder, #gamer, #painter`). Features clean View and Edit modes where adding tags is done simply by typing and pressing comma (`,`) to separate, plus click-to-copy and dual persistence (`localStorage` + Supabase `profiles.hashtags`).
    5. **Likes**: Dedicated feed of posts liked by the user.
 
    *Detailed profile layout rules and routing are available in [Profile Page Context Doc](docs/profile-page.md), [Collections Context Doc](docs/collections.md), and [Links Context Doc](docs/links.md).*
 
-5. **"Profile-First" Strategy (Overcoming Cold Start):**  
-   * We do **not** focus on global feeds, algorithmic discovery, or notifications yet.
-   * Non-profile pages (`/explore`, `/notifications`) display low-pressure "Coming Soon" states.
-   * 100% of product focus is on perfecting **`oomfs.org/[username]`**, thread views, and organic **profile-hopping** between mutuals.
+5. **Home Discovery & "Profile-First" Strategy:**  
+   * The **Home** route (`/`) serves as a high-signal creator directory showcasing real Twitter/X OAuth users in multi-asset cards with banner-balancing board thumbnails and personal hashtags.
+   * Auxiliary exploration pages (`/explore`, `/notifications`) display clean "Coming Soon" states while product focus stays centered on authentic creator profiles, thread views, and organic **profile-hopping** between mutuals.
 
 6. **Design System Rule (Strict North Star):**  
    * **Light Theme by default**: Clean white background (`#ffffff`), Twitter Blue (`#1d9bf0`), subtle gray borders (`#eff3f4`), secondary text (`#536471`), and primary text (`#0f1419`).
@@ -72,6 +71,7 @@
 │   ├── composer.md                     # Post composer architecture, flush builders, & media compression
 │   ├── followerlist.md                 # Network directory architecture (OOMFs, Following, Followers) & 3 view modes
 │   ├── hashtags.md                     # Hyper-minimalist personal hashtags notepad & comma-separator engine
+│   ├── home.md                         # Home timeline & creator discovery cards with board previews & hashtags
 │   ├── links.md                        # Linktree-style external accounts portal, 35+ platform registry, & custom logos
 │   ├── navigation.md                   # Global shell geometry, left sidebar registry (7 items), & responsive layout
 │   ├── post-types.md                   # Specification for active post formats & creation guide

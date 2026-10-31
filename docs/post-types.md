@@ -15,7 +15,7 @@ Standard text posts have been retired. **Curated Boards (`'board'`)** are the **
 | Post Type | Type Identifier | Profile Timeline View | Thread View (`/[username]/status/[id]`) |
 | :--- | :--- | :--- | :--- |
 | **Board** *(Sole Timeline Post Type)* | `'board'` | Pinterest-style 2-column scroll card with 2:1 full-bleed hero cover image, bottom cascading secondary circle avatars, bold title, and item count | Full thread view with bold board title, expanded 2-column Pinterest-style masonry grid, collaborator links, and conversational replies |
-| **Profile Comment** | `'comment'` | Guestbook card on the **Comments** tab (text + optional 1–4 photos, metrics) | Expanded focal thread view with *"Replying to @username"* and replies list |
+| **Profile Comment** | `'comment'` | Guestbook card on the **Comments** tab (text, attached photos/doodles, metrics) | Expanded focal thread view with conversational replies, media grid, and reply composer |
 
 ---
 

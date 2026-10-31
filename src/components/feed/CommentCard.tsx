@@ -134,20 +134,6 @@ export default function CommentCard({ comment, onDelete, canDelete }: CommentCar
           </div>
         </div>
 
-        {/* Replying context if target user is known */}
-        {comment.targetUsername && (
-          <div className="text-xs text-[#536471] -mt-0.5 flex items-center gap-1">
-            <span>Replying to</span>
-            <Link
-              href={`/${comment.targetUsername}`}
-              onClick={(e) => e.stopPropagation()}
-              className="text-[#1d9bf0] hover:underline"
-            >
-              @{comment.targetUsername}
-            </Link>
-          </div>
-        )}
-
         {/* Comment Text */}
         {comment.text && (
           <p className="text-[#0f1419] text-[15px] leading-relaxed whitespace-pre-line mt-0.5">

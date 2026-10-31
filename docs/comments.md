@@ -31,7 +31,7 @@ Every comment establishes a directed relationship between two profiles:
             ▼                                             ▼
 Canonical Status URL:                         Guestbook Display:
 oomfs.org/alice/status/[id]                   oomfs.org/bob (Comments tab)
-Replying to @bob                              Shows Alice's comment & photos
+Direct Status & Replies                       Shows Alice's comment & photos
 ```
 
 This model provides two distinct query vectors:
@@ -145,21 +145,25 @@ Rendered at the top of the **Comments** tab directly beneath the tab bar, adheri
 
 ```
 ┌────────────────────────────────────────────────────────┐
-│ [Avatar]  Replying to @username                        │
-│           Leave a comment for @username...             │
+│ [Avatar]  Leave a comment for @username...             │
 │                                                        │
 │           [Thumbnail 1] [Thumbnail 2]                 │
 │           ──────────────────────────────────────────   │
-│           [📷 Image (2/4)]                   [Comment] │
+│           [📷 Image (2/4)] [✏️ Doodle]       [Comment] │
 └────────────────────────────────────────────────────────┘
 ```
 
 ### Composer Capabilities:
-1. **Context Indicator**: Displays *"Replying to @username"* in `#536471` text above the input.
-2. **Multi-Image Attachments**:
+1. **Multi-Image Attachments**:
    - Accepts up to 4 images via file picker (`accept="image/*" multiple`).
    - Dynamic counter badge on the camera icon button (`${images.length}/4`).
    - Disabled once 4 images are reached.
+2. **StrawPage-Style Doodler (`DoodleModal.tsx`)**:
+   - Mobile-friendly canvas sketching engine with `touch-action: none` and Pointer Events.
+   - Pen, Paint Bucket (flood fill), and Eraser tools, 4 stroke sizes (Fine, Medium, Thick, Chunky), 12 StrawPage color presets + custom hex color picker.
+   - **Background Image Import & Overlays**: Import any photo or drag-and-drop directly onto the canvas to doodle/annotate on top, or click the **Doodle** pill directly on any attached thumbnail in the composer.
+   - Undo, Redo, and Clear actions with full state history.
+   - Exports crisp PNG embeds treated seamlessly as image attachments in the comment grid alongside normal text.
 3. **Interactive Previews**:
    - Thumbnails display with rounded corners (`rounded-xl border border-[#eff3f4] aspect-square`).
    - Each thumbnail features an absolute-positioned top-right `✕` button to remove the attachment before publishing.
@@ -203,9 +207,8 @@ Component: [`src/components/feed/CommentCard.tsx`](file:///c:/Users/GGPC/Desktop
   * Relative timestamp (`comment.createdAt`).
   * Moderation delete button (shown if viewer is author OR profile owner).
   * More options button (`MoreHorizontal`).
-* **Replying Context**: *"Replying to @[targetUsername]"* with clickable handle.
 * **Body Text**: Preserves multi-line whitespace (`whitespace-pre-line text-[15px] leading-relaxed`).
-* **Attached Media**: Renders `TwitterMediaGrid` if `comment.images` contains 1–4 URLs.
+* **Attached Media**: Renders `TwitterMediaGrid` if `comment.images` contains 1–4 URLs (compressed photos or exported doodles).
 * **Action Bar**:
   * **Reply**: Message bubble icon + `repliesCount` (clicking navigates to thread).
   * **Repost**: Green hover cycle + `repostsCount` with optimistic count update.
@@ -239,9 +242,8 @@ Comments are canonicalized under the author's handle:
   * Back button (`←`) with smart history detection: executes `window.history.back()` to return directly to the guestbook, falling back to `/[targetUsername]`.
   * Title: `"Post"`.
 * **Focal Post**: Rendered with expanded typography via `<PostCard post={post} isThreadView={true} />`.
-* **Context Header**: Displays `"Replying to @[targetUsername]"` directly above the focal tweet text.
-* **Reply Composer**: Allows visitors and users to submit nested replies directly to the comment.
-* **Replies Feed**: Chronological list of replies to the comment thread.
+* **Reply Composer**: Allows visitors and users to submit nested replies directly to the comment, with text, multi-image attachments (up to 4 photos), and integrated StrawPage doodling.
+* **Replies Feed**: Chronological list of replies to the comment thread, rendering attached media grids and metrics.
 
 ---
 

@@ -41,7 +41,7 @@ The left navigation menu is driven by the `navItems` registry in [`src/component
 
 | Order | Label | Icon | Route / Target | Type | Description |
 | :---: | :--- | :--- | :--- | :---: | :--- |
-| **1** | **Home** | `Home` | `/` | Live Link | Primary timeline route. |
+| **1** | **Home** | `Home` | `/` | Live Link | Primary timeline route displaying real creator cards with banner-balancing board thumbnails and hashtags (see [Home Architecture](home.md)). |
 | **2** | **Explore** | `Search` | `/explore` | Live Link | Clean "Coming Soon" search & discovery route. |
 | **3** | **Notifications** | `Bell` | `/notifications` | Live Link | Clean "Coming Soon" notifications route. |
 | **4** | **localyt.tv** | `Tv` | `null` | Auxiliary Button | Monochromatic television icon; placeholder for video integration. |
