@@ -23,12 +23,13 @@
 
    *Detailed post format specifications are available in [Post Types Context Doc](docs/post-types.md) and [Composer Context Doc](docs/composer.md).*
 
-4. **The 4 Distinct Profile Tabs:**  
-   User profiles organize content across 4 clean tabs ordered left-to-right:
+4. **The 5 Distinct Profile Tabs:**  
+   User profiles organize content across 5 clean tabs ordered left-to-right:
    1. **Boards** (default): Unifies boards and presets. Features a pinned horizontal bar (`BoardPresetsBar.tsx`) leading with **`All Boards`** (master tab showing total boards count) followed by direct creator preset tabs (capped at 12 slots for smooth horizontal scrolling) and owner actions (`[+ New]`, `[Manage]`). Tapping any preset tab provides instant 1-tap filtering directly to that preset's boards with zero intermediate directory cards or drill-down flows.
    2. **Links**: Linktree-style external accounts and destination portal (`LinksPortal.tsx`) for the creator's personal accounts (Discord, Twitch, Steam, X, YouTube, GitHub, Spotify, etc.). Features a 35+ platform vector icon registry, custom logo uploads, domain auto-detection, left-aligned owner creation controls, and inline reordering.
    3. **Comments**: 1:1 X/Twitter-native profile guestbook and conversational threads with up to 4 image attachments, "Replying to @username" context, and interactive Twitter cards.
-   4. **Likes**: Dedicated feed of posts liked by the user.
+   4. **Hashtags**: Hyper-minimalist personal notepad (`HashtagsNotepad.tsx`) where creators write and display densely packed, comma-separated hashtags as a continuous flowing paragraph (e.g. `#vibecoder, #gamer, #painter`). Features clean View and Edit modes where adding tags is done simply by typing and pressing comma (`,`) to separate, plus click-to-copy and dual persistence (`localStorage` + Supabase `profiles.hashtags`).
+   5. **Likes**: Dedicated feed of posts liked by the user.
 
    *Detailed profile layout rules and routing are available in [Profile Page Context Doc](docs/profile-page.md), [Collections Context Doc](docs/collections.md), and [Links Context Doc](docs/links.md).*
 
@@ -70,16 +71,18 @@
 │   ├── comments.md                     # Profile comments guestbook, 1-4 photo grid, and cross-profile RLS
 │   ├── composer.md                     # Post composer architecture, flush builders, & media compression
 │   ├── followerlist.md                 # Network directory architecture (OOMFs, Following, Followers) & 3 view modes
+│   ├── hashtags.md                     # Hyper-minimalist personal hashtags notepad & comma-separator engine
 │   ├── links.md                        # Linktree-style external accounts portal, 35+ platform registry, & custom logos
 │   ├── navigation.md                   # Global shell geometry, left sidebar registry (7 items), & responsive layout
 │   ├── post-types.md                   # Specification for active post formats & creation guide
-│   ├── profile-page.md                 # Profile layout, identity section, 4 tabs, and status routing
+│   ├── profile-page.md                 # Profile layout, identity section, 5 tabs, and status routing
 │   └── tipjar.md                       # Twin Coin system, left-over-right layering, and style testing modal
 ├── supabase_schema.sql                 # Baseline schema: profiles, blocks, follows tables & RLS policies
 ├── supabase_follows_rpc.sql            # Supabase RPC migration for bidirectional mutual follower queries
 ├── supabase_collections.sql            # Collections & collection_items schema, indexes, and RLS policies
 ├── supabase_banners_storage.sql        # Supabase Storage bucket ('banners') creation and RLS policies
 ├── supabase_profile_columns.sql        # Missing profile columns migration & PostgREST reload
+├── supabase_hashtags.sql               # Hashtags column migration on public.profiles
 ├── supabase_comments_target.sql        # Cross-profile comments target_user_id & RLS delete policy migration
 ├── .env.local                          # Supabase project URL and API keys
 ├── src/
@@ -88,6 +91,7 @@
 │   │   │   ├── page.tsx                # Dynamic profile route (SSR with Supabase fetch + mock fallback)
 │   │   │   ├── presets/page.tsx        # Dedicated Presets switchboard route
 │   │   │   ├── links/page.tsx          # Dedicated Links portal route
+│   │   │   ├── hashtags/page.tsx       # Dedicated Hashtags notepad route
 │   │   │   ├── followers/page.tsx      # In-app Followers list with mutual badges
 │   │   │   ├── following/page.tsx      # In-app Following list with mutual badges
 │   │   │   ├── oomfs/page.tsx          # Dedicated mutuals directory (A ↔ B)
@@ -110,8 +114,10 @@
 │   │   │   ├── RightSidebar.tsx        # 1:1 Right spacer column (350px) for layout geometry + footer links
 │   │   │   └── MainLayout.tsx          # 1:1 X.com layout shell (max-w-[1265px]) + compose modal
 │   │   ├── profile/
-│   │   │   ├── ProfileView.tsx         # Core profile view, 4 tabs, Edit Profile modal, composer, Badge Wall
+│   │   │   ├── ProfileView.tsx         # Core profile view, 5 tabs, Edit Profile modal, composer, Badge Wall
 │   │   │   └── BannerCropModal.tsx     # 1:1 X 1500x500 banner crop viewfinder, zoom slider, & wheel zoom
+│   │   ├── hashtags/
+│   │   │   └── HashtagsNotepad.tsx     # Hyper-minimalist personal hashtags notepad (View/Edit modes, comma engine)
 │   │   ├── collections/
 │   │   │   ├── ReorderPresetsModal.tsx # Modal for rearranging preset collections and deleting presets
 │   │   │   ├── ReorderCollectionModal.tsx # Visual 100-card board reordering workspace for collection owners
@@ -251,7 +257,7 @@ npm run build
 * [x] HD Avatar resolution upscaling (`_400x400`)
 * [x] 1:1 X Profile Banners (1500×500 interactive crop engine, Supabase Storage, and Cards view parity)
 * [x] Twitter bio extraction and native "Edit profile" modal persistence
-* [x] 4 Distinct Profile Tabs: Boards (unifies boards and presets), Links (Linktree portal), Comments (guestbook), Likes
+* [x] 5 Distinct Profile Tabs: Boards (unifies boards and presets), Links (Linktree portal), Comments (guestbook), Hashtags (ultra-minimalist notepad), Likes
 * [x] Thread route (`/[username]/status/[id]`) with replies composer
 * [x] Sole Timeline Post Type: Pinterest-style Curated Visual Boards with title and 3+ images/mutual avatar embeds
 * [x] Board Timeline 2:1 full-bleed hero cover with bottom cascading secondary circles + Thread 2-column masonry expansion

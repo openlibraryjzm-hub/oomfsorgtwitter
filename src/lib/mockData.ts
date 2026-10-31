@@ -28,6 +28,7 @@ export interface User {
   isOomf?: boolean; // Is mutual follower
   isFollowing?: boolean;
   links: BioLink[];
+  hashtags?: string[];
 }
 
 export interface BoardImage {
@@ -264,7 +265,8 @@ export const MOCK_USERS: Record<string, User> = {
         url: 'https://amberlyn.fanbox.cc',
         category: 'pixiv',
       }
-    ]
+    ],
+    hashtags: ['#vibecoder', '#gamer', '#painter', '#pixelart', '#nightowl']
   },
   dev_kyle: {
     id: 'usr_2',
@@ -294,9 +296,11 @@ export const MOCK_USERS: Record<string, User> = {
         id: 'l4b',
         title: 'Buy Me a Coffee',
         url: 'https://buymeacoffee.com',
+        category: 'buymeacoffee',
         clicks: 310
       }
-    ]
+    ],
+    hashtags: ['#rustlang', '#systems', '#vibecoder', '#linux', '#mechanicalkeyboards']
   },
   sora_arts: {
     id: 'usr_3',
@@ -321,7 +325,8 @@ export const MOCK_USERS: Record<string, User> = {
         url: 'https://artstation.com',
         clicks: 3100
       }
-    ]
+    ],
+    hashtags: ['#painter', '#conceptart', '#anime', '#digitalillustration', '#watercolor']
   },
   celeste: {
     id: 'usr_5',
@@ -346,7 +351,8 @@ export const MOCK_USERS: Record<string, User> = {
         url: 'https://podcast.apple.com',
         clicks: 1200
       }
-    ]
+    ],
+    hashtags: ['#founder', '#podcaster', '#ambient', '#solopreneur']
   },
   jack: {
     id: 'usr_4',
@@ -362,7 +368,8 @@ export const MOCK_USERS: Record<string, User> = {
     isVerified: true,
     isOomf: false,
     isFollowing: false,
-    links: []
+    links: [],
+    hashtags: ['#founder', '#bitcoin', '#openprotocol', '#nostr']
   }
 };
 

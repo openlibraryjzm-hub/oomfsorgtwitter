@@ -30,7 +30,7 @@ This document serves as the canonical technical reference for the backend, datab
 
 ## 2. Database Schema & Tables
 
-All schema definitions and migrations are maintained in [`supabase_schema.sql`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/supabase_schema.sql) and [`supabase_follows_rpc.sql`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/supabase_follows_rpc.sql).
+All schema definitions and migrations are maintained in [`supabase_schema.sql`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/supabase_schema.sql), [`supabase_hashtags.sql`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/supabase_hashtags.sql), and [`supabase_follows_rpc.sql`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/supabase_follows_rpc.sql).
 
 ### 2.1 `public.profiles`
 Stores user profile information synced from Twitter OAuth or edited directly on `oomfs.org`.
@@ -45,6 +45,7 @@ Stores user profile information synced from Twitter OAuth or edited directly on 
 | `bio` | `text` | | User biography (preserves newlines) |
 | `location` | `text` | | Geographical location |
 | `website` | `text` | | External URL or personal site |
+| `hashtags` | `text[]` | Default `array[]::text[]` | Array of personal creator hashtags on the notepad |
 | `created_at` | `timestamptz` | Not Null, Default `timezone('utc', now())` | Registration timestamp |
 | `updated_at` | `timestamptz` | Not Null, Default `timezone('utc', now())` | Last profile update |
 

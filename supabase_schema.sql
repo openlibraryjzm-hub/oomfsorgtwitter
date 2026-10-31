@@ -13,6 +13,7 @@ create table if not exists public.profiles (
   bio text,
   location text,
   website text,
+  hashtags text[] default array[]::text[],
   created_at timestamptz default timezone('utc'::text, now()) not null,
   updated_at timestamptz default timezone('utc'::text, now()) not null
 );

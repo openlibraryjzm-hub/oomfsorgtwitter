@@ -31,6 +31,7 @@ export async function resolveUserProfile(rawUsername: string): Promise<User> {
       oomfsCount: followStats.oomfsCount,
       isVerified: false,
       links: [],
+      hashtags: Array.isArray(dbUser.hashtags) ? dbUser.hashtags : (MOCK_USERS[username]?.hashtags || []),
     };
   }
 
@@ -51,5 +52,6 @@ export async function resolveUserProfile(rawUsername: string): Promise<User> {
     oomfsCount: 0,
     isVerified: false,
     links: [],
+    hashtags: [],
   };
 }

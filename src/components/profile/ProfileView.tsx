@@ -44,6 +44,7 @@ import SupporterModal from './SupporterModal';
 import { getSupportersForUser, Supporter } from '@/lib/mockData';
 import PostComposer from '@/components/feed/PostComposer';
 import LinksPortal from '@/components/links/LinksPortal';
+import HashtagsNotepad from '@/components/hashtags/HashtagsNotepad';
 import ReorderCollectionModal from '@/components/collections/ReorderCollectionModal';
 import ReorderPresetsModal from '@/components/collections/ReorderPresetsModal';
 import CreateCollectionModal from '@/components/collections/CreateCollectionModal';
@@ -70,7 +71,7 @@ import {
 
 interface ProfileViewProps {
   user: User;
-  initialTab?: 'boards' | 'posts' | 'presets' | 'links' | 'comments' | 'likes';
+  initialTab?: 'boards' | 'posts' | 'presets' | 'links' | 'comments' | 'hashtags' | 'likes';
 }
 
 function XLogo({ className = "w-3.5 h-3.5" }: { className?: string }) {
@@ -124,9 +125,9 @@ export default function ProfileView({
   const { user: authUser, profile: authProfile, signInWithTwitter, refreshProfile } = useAuth();
   const supabase = createClient();
 
-  // 4 tabs: 1. Boards (unifies posts & presets), 2. Links, 3. Comments, 4. Likes
+  // 5 tabs: 1. Boards (unifies posts & presets), 2. Links, 3. Comments, 4. Hashtags, 5. Likes
   const resolvedTab = (initialTab === 'posts' || initialTab === 'presets' || !initialTab) ? 'boards' : initialTab;
-  const [activeTab, setActiveTab] = useState<'boards' | 'links' | 'comments' | 'likes'>(resolvedTab as any);
+  const [activeTab, setActiveTab] = useState<'boards' | 'links' | 'comments' | 'hashtags' | 'likes'>(resolvedTab as any);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isMutual, setIsMutual] = useState(false);
   const [followsYou, setFollowsYou] = useState(false);
@@ -1287,7 +1288,7 @@ export default function ProfileView({
         </div>
       )}
 
-      {/* 4 TABS BAR: Boards (1st), Links (2nd), Comments (3rd), Likes (4th) */}
+      {/* 5 TABS BAR: Boards (1st), Links (2nd), Comments (3rd), Hashtags (4th), Likes (5th) */}
       <div className="flex border-b border-[#eff3f4] mt-4 font-medium text-sm text-[#536471]">
         {/* 1. Boards */}
         <button
@@ -1337,7 +1338,12 @@ export default function ProfileView({
 
         {/* 3. Comments */}
         <button
-          onClick={() => setActiveTab('comments')}
+          onClick={() => {
+            setActiveTab('comments');
+            if (typeof window !== 'undefined') {
+              window.history.replaceState(null, '', `/${userProfile.username}`);
+            }
+          }}
           className={`flex-1 py-3.5 text-center relative hover:bg-[#f7f9f9] transition-colors font-bold cursor-pointer ${
             activeTab === 'comments' ? 'text-[#0f1419]' : ''
           }`}
@@ -1348,9 +1354,34 @@ export default function ProfileView({
           )}
         </button>
 
-        {/* 4. Likes */}
+        {/* 4. Hashtags */}
         <button
-          onClick={() => setActiveTab('likes')}
+          onClick={() => {
+            setActiveTab('hashtags');
+            if (typeof window !== 'undefined') {
+              window.history.replaceState(null, '', `/${userProfile.username}/hashtags`);
+            }
+          }}
+          className={`flex-1 py-3.5 text-center relative hover:bg-[#f7f9f9] transition-colors font-bold cursor-pointer ${
+            activeTab === 'hashtags' ? 'text-[#0f1419]' : ''
+          }`}
+        >
+          <div className="flex items-center justify-center gap-1.5">
+            <span>Hashtags</span>
+          </div>
+          {activeTab === 'hashtags' && (
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-16 sm:w-20 h-1 bg-[#1d9bf0] rounded-full" />
+          )}
+        </button>
+
+        {/* 5. Likes */}
+        <button
+          onClick={() => {
+            setActiveTab('likes');
+            if (typeof window !== 'undefined') {
+              window.history.replaceState(null, '', `/${userProfile.username}`);
+            }
+          }}
           className={`flex-1 py-3.5 text-center relative hover:bg-[#f7f9f9] transition-colors font-bold cursor-pointer ${
             activeTab === 'likes' ? 'text-[#0f1419]' : ''
           }`}
@@ -1532,7 +1563,12 @@ export default function ProfileView({
 
 
 
-        {/* 4. LIKES TAB */}
+        {/* 4. HASHTAGS TAB (Ultra-minimalist personal notepad) */}
+        {activeTab === 'hashtags' && (
+          <HashtagsNotepad user={userProfile} isSelf={isSelf} />
+        )}
+
+        {/* 5. LIKES TAB */}
         {activeTab === 'likes' && (
           <div>
             {likedPosts.length > 0 ? (

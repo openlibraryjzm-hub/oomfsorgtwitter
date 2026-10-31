@@ -16,6 +16,8 @@ src/app/[username]/
 ├── links/
 │   ├── page.tsx                 # Dedicated Links portal route
 │   └── [slug]/page.tsx          # Permanent server redirect back to /[username]/links
+├── hashtags/
+│   └── page.tsx                 # Dedicated Hashtags notepad route (initialTab="hashtags")
 ├── oomfs/page.tsx               # Interconnected OOMFs (mutuals) route
 ├── following/page.tsx           # Interconnected Following route
 ├── followers/page.tsx           # Interconnected Followers route
@@ -27,8 +29,11 @@ src/components/network/
 └── UserNetworkView.tsx          # 1:1 X/Twitter interconnected tabs (OOMFs, Following, Followers) + live follow actions
 
 src/components/profile/
-├── ProfileView.tsx              # Primary profile component (Header, stats, 4 tabs, breadcrumbs, modals)
+├── ProfileView.tsx              # Primary profile component (Header, stats, 5 tabs, breadcrumbs, modals)
 └── BannerCropModal.tsx          # 1:1 X 1500x500 banner crop viewfinder, zoom slider, & wheel zoom
+
+src/components/hashtags/
+└── HashtagsNotepad.tsx          # Hyper-minimalist personal hashtags notepad (View/Edit modes, comma engine)
 
 src/components/feed/
 ├── BoardPresetsBar.tsx          # Pinned horizontal bar (All Boards, preset tabs, owner actions)
@@ -87,12 +92,12 @@ The profile header sits at the top of `ProfileView.tsx` and adheres strictly to 
 
 ---
 
-## 3. The 4 Profile Tabs
+## 3. The 5 Profile Tabs
 
 Tabs are ordered left-to-right with clean typography without parentheses counters:
 
 ```
-[ 1. Boards ]  [ 2. Links ]  [ 3. Comments ]  [ 4. Likes ]
+[ 1. Boards ]  [ 2. Links ]  [ 3. Comments ]  [ 4. Hashtags ]  [ 5. Likes ]
 ```
 
 ### 1. Boards (Leftmost & Default)
@@ -122,7 +127,17 @@ Tabs are ordered left-to-right with clean typography without parentheses counter
 * **Design & Behavior**: Inline comment composer with *"Replying to @username"* context, text area, and client-compressed image attachments supporting up to 4 photos (`TwitterMediaGrid`).
 * **Cross-Profile Scoping**: Comments store `user_id` (the commenter) and `target_user_id` (the recipient profile). Comments display exclusively on the target profile's Comments tab while remaining indexed under the author.
 
-### 4. Likes (Fourth / Rightmost)
+### 4. Hashtags (Fourth leftmost)
+* **Role**: Hyper-minimalist personal notepad (`HashtagsNotepad.tsx`) residing within the centered 600px timeline container where users write hashtags for themselves (e.g. `#vibecoder`, `#gamer`, `#painter`).
+* **Design & Feel**: Continuous, densely packed paragraph of comma-separated hashtags flowing like long written text in a notepad. No lines/list clutter or boxed pills—authentic, clean typography with Twitter Blue `#` marks and subtle gray commas.
+* **Interactive Capabilities**:
+  * **View Mode**: Clean flowing paragraph of hashtags. Clicking any hashtag copies it to the clipboard with subtle inline confirmation.
+  * **Edit Mode**: Profile owners tap `[Edit]` to enter inline editing. Adding tags is done effortlessly by typing and pressing `,` (comma) to separate. Pressing <kbd>Backspace</kbd> on empty input deletes the previous tag; tags can also be pruned via subtle `×` buttons.
+  * **Bulk Edit**: Supports switching to edit as a raw comma-separated text block if desired.
+  * **Dual Persistence**: Synchronous instant caching in `localStorage` (`oomfs_profile_hashtags_<userId>`) with resilient non-blocking background persistence to Supabase `public.profiles.hashtags`.
+* **Specification Reference**: Detailed architecture is documented in [Hashtags Context Doc](hashtags.md).
+
+### 5. Likes (Fifth / Rightmost)
 * **Role**: Dedicated feed showcasing posts liked by the user.
 
 ---
