@@ -104,7 +104,7 @@
 │   │   ├── explore/page.tsx            # Clean "Coming Soon" explore page
 │   │   ├── notifications/page.tsx      # Clean "Coming Soon" notifications page
 │   │   ├── oomfs/page.tsx              # Mutual followers directory
-│   │   ├── page.tsx                    # Home route with "Coming Soon" timeline disclaimer
+│   │   ├── page.tsx                    # Home feed of real creators in 1:1 Cards format with hashtags integration
 │   │   ├── layout.tsx                  # Root layout with AuthProvider & metadata
 │   │   └── globals.css                 # Twitter Light Theme CSS variables
 │   │
