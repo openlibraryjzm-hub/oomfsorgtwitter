@@ -16,6 +16,22 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { BioLink, User } from '@/lib/mockData';
+import LoopingGlobeIcon from './LoopingGlobeIcon';
+import LoopingDiscordIcon from './LoopingDiscordIcon';
+import LoopingXIcon from './LoopingXIcon';
+import LoopingYouTubeIcon from './LoopingYouTubeIcon';
+import LoopingTwitchIcon from './LoopingTwitchIcon';
+import LoopingSteamIcon from './LoopingSteamIcon';
+import LoopingSpotifyIcon from './LoopingSpotifyIcon';
+import LoopingRedditIcon from './LoopingRedditIcon';
+import LoopingGitHubIcon from './LoopingGitHubIcon';
+import LoopingInstagramIcon from './LoopingInstagramIcon';
+import LoopingTikTokIcon from './LoopingTikTokIcon';
+import LoopingPatreonIcon from './LoopingPatreonIcon';
+import LoopingOnlyFansIcon from './LoopingOnlyFansIcon';
+import LoopingSubstackIcon from './LoopingSubstackIcon';
+import LoopingFanslyIcon from './LoopingFanslyIcon';
+import LoopingPixivIcon from './LoopingPixivIcon';
 
 // --- PLATFORM ICONS (Crisp Vector SVGs) ---
 
@@ -143,6 +159,31 @@ export function PatreonIcon({ className = "w-5 h-5" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
       <path d="M22.957 7.21c-.004-3.064-2.39-5.57-5.188-6.182-3.61-.79-7.587 1.13-8.828 4.67-1.414 4.032.552 8.784 4.418 10.216 3.42 1.267 7.625-.13 9.07-3.58.55-1.313.53-3.69.528-5.124M.5 23.5h4.22V.5H.5v23z" />
+    </svg>
+  );
+}
+
+export function OnlyFansIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg viewBox="-20.62 0.53 820.42 555.49" className={className}>
+      <path d="M266.82.53c35 0 69.65 6.91 101.98 20.34s61.71 33.11 86.45 57.93c24.75 24.81 44.37 54.27 57.77 86.7a267.919 267.919 0 0 1 20.29 102.27c0 108.09-64.93 205.53-164.51 246.89s-214.2 18.5-290.41-57.93C2.18 380.3-20.62 265.36 20.62 165.5 61.87 65.64 159.04.53 266.82.53zm0 347.4c10.5.01 20.9-2.05 30.61-6.07s18.52-9.93 25.95-17.38 13.31-16.29 17.33-26.02a80.365 80.365 0 0 0 6.06-30.7c0-32.43-19.48-61.66-49.35-74.07s-64.26-5.55-87.12 17.38-29.7 57.41-17.33 87.37 41.53 49.49 73.86 49.49z" fill="#00aeef"/>
+      <path d="M566.35 200.96c67.71 19.54 147.63 0 147.63 0-23.19 101.55-96.75 165.15-202.81 172.89a266.766 266.766 0 0 1-40.48 65.86 266.208 266.208 0 0 1-57.62 51.43c-21.6 14.24-45.15 25.25-69.92 32.68s-50.48 11.19-76.33 11.18l79.95-254.81C428.95 18.28 471.08.54 665.98.54H799.8c-22.38 98.88-99.54 174.41-233.44 200.42z" fill="#008ccf"/>
+    </svg>
+  );
+}
+
+export function FanslyIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 33 28" fill="currentColor" className={className}>
+      <path d="M 8.2770048,0.51046747 C 6.3763832,0.59110038 4.4456276,1.1923508 3.0195873,2.4893809 1.3700768,3.9292457 0.59149251,6.1133932 0.3518984,8.237478 v 0.6749374 c 0.0898491,1.8245976 0.8754034,3.5754546 2.1516971,4.8770926 3.84732,3.902608 7.7338435,7.766052 11.6180245,11.629495 0.730299,0.718785 1.405248,1.515867 2.296811,2.045738 h 0.663461 c 0.981413,-0.338663 1.584969,-1.236971 2.324482,-1.90737 2.858992,-2.916594 5.842555,-5.71108 8.632442,-8.692174 L 19.666898,8.4632434 c 0.944551,-0.9468526 1.879793,-1.9052943 2.840473,-2.8337201 0.780983,-0.774071 1.870655,-1.2210395 2.97647,-1.1311923 2.24619,0.029938 4.105293,2.3268613 3.692917,4.5338867 -0.241907,1.9167473 -2.045649,2.9578513 -3.172201,4.3378183 l 2.828659,2.696034 c 0.942246,-0.774072 1.824797,-1.723843 2.626515,-2.643053 2.236974,-2.635528 2.350156,-6.7797506 0.304396,-9.5581132 C 30.425625,1.9135982 28.160883,0.70168181 25.817935,0.51046747 H 24.656707 C 22.921957,0.70629013 21.212819,1.3629574 19.922699,2.5609248 16.040824,6.3460409 12.241781,10.216206 8.3552983,13.996714 7.4545202,13.109757 6.5604975,12.218229 5.6643261,11.326665 4.7151674,10.382112 4.2108408,8.9815916 4.4895971,7.652308 4.8697221,5.6779668 6.9037232,4.1942595 8.9057086,4.5260037 10.83628,4.731041 11.872964,6.5831143 13.26445,7.6958424 L 16.061387,5.0396301 C 14.32203,2.8187827 11.974503,0.67634058 9.0049254,0.51046747 Z M 16.867261,12.92347 c 1.890578,0.02026 3.705264,1.518764 3.9008,3.443866 0.375533,2.391327 -1.905394,4.743586 -4.312846,4.416448 -2.349861,-0.08294 -4.066093,-2.65422 -3.478626,-4.875067 0.338652,-1.462905 1.598741,-2.649093 3.080076,-2.900205 0.268677,-0.06047 0.540513,-0.08796 0.810596,-0.08505 z m -0.04216,1.37451 a 2.5384864,2.5384864 0 0 0 -2.538431,2.538437 2.5384864,2.5384864 0 0 0 2.538432,2.538436 2.5384864,2.5384864 0 0 0 2.538435,-2.538436 2.5384864,2.5384864 0 0 0 -0.247688,-1.093734 1.0835003,1.0835003 0 0 1 -0.622967,0.199782 1.0835003,1.0835003 0 0 1 -1.083608,-1.083613 1.0835003,1.0835003 0 0 1 0.109348,-0.464355 2.5384864,2.5384864 0 0 0 -0.693502,-0.09653 z" />
+    </svg>
+  );
+}
+
+export function PixivIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M 6.723 5.465 h 0.904 a 0.37 0.37 0 0 1 0.31 0.17 l 0.752 1.17 a 6.172 6.172 0 0 1 10.01 4.834 a 6.172 6.172 0 0 1 -9.394 5.265 v 2.016 a 0.37 0.37 0 0 1 -0.37 0.367 H 6.724 a 0.37 0.37 0 0 1 -0.37 -0.367 V 5.834 a 0.37 0.37 0 0 1 0.37 -0.37 Z M 12.527 8.416 a 3.222 3.222 0 1 0 -0.002 6.443 a 3.222 3.222 0 0 0 0.002 -6.443 Z" fillRule="evenodd" />
     </svg>
   );
 }
@@ -337,13 +378,13 @@ export type PlatformType =
   // Music & Audio
   | 'spotify' | 'soundcloud' | 'applemusic' | 'bandcamp'
   // Art & Creative
-  | 'artstation' | 'deviantart' | 'behance' | 'dribbble'
+  | 'artstation' | 'deviantart' | 'behance' | 'dribbble' | 'pixiv'
   // Support & Creator
-  | 'patreon' | 'kofi' | 'buymeacoffee' | 'substack'
+  | 'patreon' | 'kofi' | 'buymeacoffee' | 'substack' | 'onlyfans' | 'fansly'
   // Dev & Tools
   | 'github' | 'figma' | 'notion'
-  // Custom
-  | 'custom';
+  // Custom & Looping Globe
+  | 'globe' | 'custom';
 
 export interface PlatformConfig {
   type: PlatformType;
@@ -898,6 +939,51 @@ export const PLATFORM_REGISTRY: Record<PlatformType, PlatformConfig> = {
     hoverBg: 'hover:bg-[#FF6719]/[0.02]',
     renderIcon: (className = "w-4 h-4") => <SubstackIcon className={className} />
   },
+  onlyfans: {
+    type: 'onlyfans',
+    name: 'OnlyFans',
+    categoryTag: 'support',
+    defaultActionLabel: 'Subscribe on OnlyFans',
+    defaultPlaceholderUrl: 'https://onlyfans.com/yourusername',
+    badgeBg: 'bg-[#00AFF0]/10',
+    badgeText: 'text-[#00AFF0]',
+    iconBg: 'bg-[#00AFF0]',
+    iconText: 'text-white',
+    borderColor: 'border-[#00AFF0]/25',
+    hoverBorder: 'hover:border-[#00AFF0]',
+    hoverBg: 'hover:bg-[#00AFF0]/[0.02]',
+    renderIcon: (className = "w-4 h-4") => <OnlyFansIcon className={className} />
+  },
+  fansly: {
+    type: 'fansly',
+    name: 'Fansly',
+    categoryTag: 'support',
+    defaultActionLabel: 'Follow on Fansly',
+    defaultPlaceholderUrl: 'https://fansly.com/yourusername',
+    badgeBg: 'bg-[#2799f6]/10',
+    badgeText: 'text-[#2799f6]',
+    iconBg: 'bg-[#2799f6]',
+    iconText: 'text-white',
+    borderColor: 'border-[#2799f6]/25',
+    hoverBorder: 'hover:border-[#2799f6]',
+    hoverBg: 'hover:bg-[#2799f6]/[0.02]',
+    renderIcon: (className = "w-4 h-4") => <FanslyIcon className={className} />
+  },
+  pixiv: {
+    type: 'pixiv',
+    name: 'pixiv',
+    categoryTag: 'art',
+    defaultActionLabel: 'Illustrations on pixiv',
+    defaultPlaceholderUrl: 'https://pixiv.net/users/yourusername',
+    badgeBg: 'bg-[#0096fa]/10',
+    badgeText: 'text-[#0096fa]',
+    iconBg: 'bg-[#0096fa]',
+    iconText: 'text-white',
+    borderColor: 'border-[#0096fa]/25',
+    hoverBorder: 'hover:border-[#0096fa]',
+    hoverBg: 'hover:bg-[#0096fa]/[0.02]',
+    renderIcon: (className = "w-4 h-4") => <PixivIcon className={className} />
+  },
 
   // Dev & Tools
   github: {
@@ -944,6 +1030,23 @@ export const PLATFORM_REGISTRY: Record<PlatformType, PlatformConfig> = {
     hoverBorder: 'hover:border-black',
     hoverBg: 'hover:bg-black/[0.02]',
     renderIcon: (className = "w-4 h-4") => <NotionIcon className={className} />
+  },
+
+  // Globe & Looping Network
+  globe: {
+    type: 'globe',
+    name: 'Looping Network Globe',
+    categoryTag: 'custom',
+    defaultActionLabel: 'Visit',
+    defaultPlaceholderUrl: 'https://',
+    badgeBg: 'bg-blue-50',
+    badgeText: 'text-[#1d9bf0]',
+    iconBg: 'bg-[#1d9bf0]',
+    iconText: 'text-white',
+    borderColor: 'border-[#eff3f4]',
+    hoverBorder: 'hover:border-[#1d9bf0]/60',
+    hoverBg: 'hover:bg-blue-50/20',
+    renderIcon: () => <LoopingGlobeIcon size={36} />
   },
 
   // Custom
@@ -1004,6 +1107,7 @@ export function detectPlatform(url: string, title?: string): PlatformType {
   if (lower.includes('bandcamp.com') || lowerTitle.includes('bandcamp')) return 'bandcamp';
 
   // Art
+  if (lower.includes('pixiv.net') || lower.includes('fanbox.cc') || lowerTitle.includes('pixiv') || lowerTitle.includes('fanbox')) return 'pixiv';
   if (lower.includes('artstation.com') || lowerTitle.includes('artstation')) return 'artstation';
   if (lower.includes('deviantart.com') || lowerTitle.includes('deviantart')) return 'deviantart';
   if (lower.includes('behance.net') || lowerTitle.includes('behance')) return 'behance';
@@ -1014,6 +1118,8 @@ export function detectPlatform(url: string, title?: string): PlatformType {
   if (lower.includes('ko-fi.com') || lowerTitle.includes('ko-fi') || lowerTitle.includes('kofi')) return 'kofi';
   if (lower.includes('buymeacoffee.com') || lowerTitle.includes('coffee')) return 'buymeacoffee';
   if (lower.includes('substack.com') || lowerTitle.includes('substack')) return 'substack';
+  if (lower.includes('onlyfans.com') || lowerTitle.includes('onlyfans')) return 'onlyfans';
+  if (lower.includes('fansly.com') || lowerTitle.includes('fansly')) return 'fansly';
 
   // Dev
   if (lower.includes('github.com') || lowerTitle.includes('github')) return 'github';
@@ -1028,51 +1134,75 @@ export function detectPlatform(url: string, title?: string): PlatformType {
 export const DEFAULT_GAMER_LINKS: BioLink[] = [
   {
     id: 'link_discord_default',
-    title: 'The OOMFS Hangout',
-    subtitle: 'discord.gg/oomfs • 3,420 members online',
+    title: 'Discord',
     url: 'https://discord.gg/oomfs',
-    category: 'discord',
-    actionLabel: 'Join Server'
+    category: 'discord'
   },
   {
     id: 'link_x_default',
-    title: 'X / Twitter Main',
-    subtitle: '@amberlyn • Thoughts, art & web design',
+    title: 'X / Twitter',
     url: 'https://x.com/amberlyn',
-    category: 'x',
-    actionLabel: 'Follow on 𝕏'
+    category: 'x'
   },
   {
     id: 'link_twitch_default',
-    title: 'Twitch Live Stream',
-    subtitle: 'twitch.tv/amberlyn • UI Speedruns & Gaming',
+    title: 'Twitch',
     url: 'https://twitch.tv/amberlyn',
-    category: 'twitch',
-    actionLabel: 'Watch Live'
+    category: 'twitch'
   },
   {
     id: 'link_youtube_default',
-    title: 'YouTube Channel',
-    subtitle: 'Design tutorials, breakdowns & dev logs',
+    title: 'YouTube',
     url: 'https://youtube.com/@amberlyn',
-    category: 'youtube',
-    actionLabel: 'Subscribe'
+    category: 'youtube'
   },
   {
     id: 'link_steam_default',
-    title: 'Steam Profile',
-    subtitle: 'steamcommunity.com/id/amberlyn • Play with me',
+    title: 'Steam',
     url: 'https://steamcommunity.com',
-    category: 'steam',
-    actionLabel: 'Steam Profile'
+    category: 'steam'
   },
   {
     id: 'link_reddit_default',
-    title: 'Reddit Profile',
-    subtitle: 'u/amberlyn_ui • Moderating r/oomfs',
+    title: 'Reddit',
     url: 'https://reddit.com/u/amberlyn',
-    category: 'reddit',
-    actionLabel: 'Reddit Profile'
+    category: 'reddit'
+  },
+  {
+    id: 'link_github_default',
+    title: 'GitHub',
+    url: 'https://github.com/amberlyn',
+    category: 'github'
+  },
+  {
+    id: 'link_instagram_default',
+    title: 'Instagram',
+    url: 'https://instagram.com/amberlyn',
+    category: 'instagram'
+  },
+  {
+    id: 'link_tiktok_default',
+    title: 'TikTok',
+    url: 'https://tiktok.com/@amberlyn',
+    category: 'tiktok'
+  },
+  {
+    id: 'link_patreon_default',
+    title: 'Patreon',
+    url: 'https://patreon.com/amberlyn',
+    category: 'patreon'
+  },
+  {
+    id: 'link_onlyfans_default',
+    title: 'OnlyFans',
+    url: 'https://onlyfans.com/amberlyn',
+    category: 'onlyfans'
+  },
+  {
+    id: 'link_substack_default',
+    title: 'Substack',
+    url: 'https://amberlyn.substack.com',
+    category: 'substack'
   }
 ];
 
@@ -1115,12 +1245,10 @@ export default function LinksPortal({ user, isSelf }: LinksPortalProps) {
   const [editingLinkId, setEditingLinkId] = useState<string | null>(null);
 
   // Form fields
-  const [selectedPlatform, setSelectedPlatform] = useState<PlatformType>('discord');
+  const [selectedPlatform, setSelectedPlatform] = useState<PlatformType>('globe');
   const [customLogoUrl, setCustomLogoUrl] = useState<string | null>(null);
   const [linkUrl, setLinkUrl] = useState('');
   const [linkTitle, setLinkTitle] = useState('');
-  const [linkSubtitle, setLinkSubtitle] = useState('');
-  const [linkActionLabel, setLinkActionLabel] = useState('');
 
   // Step 1 Search & Category filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -1139,12 +1267,10 @@ export default function LinksPortal({ user, isSelf }: LinksPortalProps) {
 
   const openAddModal = () => {
     setEditingLinkId(null);
-    setSelectedPlatform('discord');
+    setSelectedPlatform('globe');
     setCustomLogoUrl(null);
     setLinkUrl('');
-    setLinkTitle('Discord');
-    setLinkSubtitle('');
-    setLinkActionLabel(PLATFORM_REGISTRY.discord.defaultActionLabel);
+    setLinkTitle('');
     setSearchQuery('');
     setActiveCategoryFilter('all');
     setModalStep(1);
@@ -1152,31 +1278,29 @@ export default function LinksPortal({ user, isSelf }: LinksPortalProps) {
   };
 
   const openEditModal = (link: BioLink) => {
-    const pType = (link.category as PlatformType) || detectPlatform(link.url, link.title);
+    const pType = (link.category as PlatformType) || 'globe';
     setEditingLinkId(link.id);
     setSelectedPlatform(pType);
     setCustomLogoUrl(link.customIcon || null);
     setLinkUrl(link.url);
     setLinkTitle(link.title);
-    setLinkSubtitle(link.subtitle || '');
-    setLinkActionLabel(link.actionLabel || PLATFORM_REGISTRY[pType]?.defaultActionLabel || 'Visit');
-    setModalStep(2); // Jump straight to edit details
+    setModalStep(2);
     setIsModalOpen(true);
   };
 
   // Step 1: Select Platform Card & advance to Step 2
   const handleSelectPlatform = (pType: PlatformType) => {
     setSelectedPlatform(pType);
-    const cfg = PLATFORM_REGISTRY[pType];
     if (!editingLinkId) {
-      setLinkTitle(cfg.name === 'Website / Custom' ? '' : cfg.name);
-      setLinkActionLabel(cfg.defaultActionLabel);
-      if (!linkUrl) {
-        setLinkUrl(cfg.defaultPlaceholderUrl);
-      }
-    } else {
-      if (!linkActionLabel) {
-        setLinkActionLabel(cfg.defaultActionLabel);
+      if (pType === 'discord') {
+        setLinkTitle('Discord');
+        if (!linkUrl) setLinkUrl('https://discord.gg/');
+      } else if (pType === 'globe') {
+        setLinkTitle('');
+        if (!linkUrl) setLinkUrl('');
+      } else {
+        const cfg = PLATFORM_REGISTRY[pType];
+        setLinkTitle(cfg?.name === 'Looping Network Globe' || cfg?.name === 'Website / Custom' ? '' : cfg?.name || '');
       }
     }
     setModalStep(2);
@@ -1210,9 +1334,8 @@ export default function LinksPortal({ user, isSelf }: LinksPortalProps) {
       finalUrl = 'https://' + finalUrl;
     }
 
-    const cfg = PLATFORM_REGISTRY[selectedPlatform] || PLATFORM_REGISTRY.custom;
-    const finalTitle = linkTitle.trim() || cfg.name;
-    const finalAction = linkActionLabel.trim() || cfg.defaultActionLabel;
+    const cfg = PLATFORM_REGISTRY[selectedPlatform] || PLATFORM_REGISTRY.globe;
+    const finalTitle = linkTitle.trim() || cfg.name || 'Link';
 
     if (editingLinkId) {
       const updated = links.map((l) => {
@@ -1220,11 +1343,9 @@ export default function LinksPortal({ user, isSelf }: LinksPortalProps) {
           return {
             ...l,
             title: finalTitle,
-            subtitle: linkSubtitle.trim(),
             url: finalUrl,
             category: selectedPlatform,
-            customIcon: customLogoUrl || undefined,
-            actionLabel: finalAction
+            customIcon: customLogoUrl || undefined
           };
         }
         return l;
@@ -1234,13 +1355,11 @@ export default function LinksPortal({ user, isSelf }: LinksPortalProps) {
       const newLink: BioLink = {
         id: `link_${Date.now()}`,
         title: finalTitle,
-        subtitle: linkSubtitle.trim() || finalUrl.replace(/^https?:\/\/(www\.)?/, ''),
         url: finalUrl,
         category: selectedPlatform,
-        customIcon: customLogoUrl || undefined,
-        actionLabel: finalAction
+        customIcon: customLogoUrl || undefined
       };
-      persistLinks([newLink, ...links]);
+      persistLinks([...links, newLink]);
     }
 
     setIsModalOpen(false);
@@ -1296,7 +1415,7 @@ export default function LinksPortal({ user, isSelf }: LinksPortalProps) {
 
       {/* Portal Owner Action Bar (Only visible on own profile) */}
       {isSelf && (
-        <div className="px-4 py-3 border-b border-[#eff3f4] flex items-center justify-start">
+        <div className="px-4 py-3 border-b border-[#eff3f4] flex items-center justify-between">
           <button
             type="button"
             onClick={openAddModal}
@@ -1305,129 +1424,125 @@ export default function LinksPortal({ user, isSelf }: LinksPortalProps) {
             <Plus className="w-3.5 h-3.5" />
             <span>Add Link</span>
           </button>
+          <span className="text-xs font-bold text-[#536471]">
+            {links.length} {links.length === 1 ? 'Link' : 'Links'}
+          </span>
         </div>
       )}
 
-      {/* Vertical Linktree-Style Card Stack */}
-      <div className="w-full max-w-xl mx-auto px-4 py-6 flex flex-col gap-3">
+      {/* 3-Column Scrollable Grid */}
+      <div className="w-full max-w-xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
         {links.length > 0 ? (
-          links.map((link, idx) => {
-            const platformType = (link.category as PlatformType) || detectPlatform(link.url, link.title);
-            const config = PLATFORM_REGISTRY[platformType] || PLATFORM_REGISTRY.custom;
-            const actionText = link.actionLabel || config.defaultActionLabel;
-
-            return (
+          <div className="grid grid-cols-3 gap-3 sm:gap-4">
+            {links.map((link) => (
               <div
                 key={link.id}
-                className={`group relative bg-white border ${config.borderColor} ${config.hoverBorder} ${config.hoverBg} rounded-2xl p-3.5 sm:p-4 shadow-2xs hover:shadow-xs transition-all duration-150 flex items-center justify-between gap-3`}
+                className="group relative flex flex-col items-center justify-between p-3 sm:p-3.5 rounded-2xl hover:bg-[#f7f9f9] transition-all duration-150 select-none"
               >
-                {/* Outbound Link Anchor */}
+                {/* Outbound Link Anchor taking you directly to the link */}
                 <a
                   href={link.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-3.5 flex-1 min-w-0"
+                  className="flex flex-col items-center justify-center w-full flex-1 min-w-0"
                 >
-                  {/* Platform Rounded Icon Badge or Custom Uploaded Image */}
-                  <div className={`w-11 h-11 rounded-xl ${config.iconBg} ${config.iconText} flex items-center justify-center shrink-0 overflow-hidden shadow-2xs group-hover:scale-105 transition-transform duration-150`}>
+                  {/* Icon Above (Endless Looping 3D Icon or Custom Image) */}
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center mb-2 transition-transform duration-200 group-hover:scale-105">
                     {link.customIcon ? (
                       <img 
                         src={link.customIcon} 
                         alt={link.title} 
-                        className="w-full h-full object-cover" 
+                        className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover shadow-2xs" 
                       />
+                    ) : link.category === 'pixiv' ? (
+                      <LoopingPixivIcon size={64} />
+                    ) : link.category === 'fansly' ? (
+                      <LoopingFanslyIcon size={64} />
+                    ) : link.category === 'substack' ? (
+                      <LoopingSubstackIcon size={64} />
+                    ) : link.category === 'onlyfans' ? (
+                      <LoopingOnlyFansIcon size={64} />
+                    ) : link.category === 'patreon' ? (
+                      <LoopingPatreonIcon size={64} />
+                    ) : link.category === 'tiktok' ? (
+                      <LoopingTikTokIcon size={64} />
+                    ) : link.category === 'instagram' ? (
+                      <LoopingInstagramIcon size={64} />
+                    ) : link.category === 'github' ? (
+                      <LoopingGitHubIcon size={64} />
+                    ) : link.category === 'reddit' ? (
+                      <LoopingRedditIcon size={64} />
+                    ) : link.category === 'spotify' ? (
+                      <LoopingSpotifyIcon size={64} />
+                    ) : link.category === 'steam' ? (
+                      <LoopingSteamIcon size={64} />
+                    ) : link.category === 'twitch' ? (
+                      <LoopingTwitchIcon size={64} />
+                    ) : link.category === 'youtube' ? (
+                      <LoopingYouTubeIcon size={64} />
+                    ) : link.category === 'x' || link.category === 'twitter' ? (
+                      <LoopingXIcon size={64} />
+                    ) : link.category === 'discord' ? (
+                      <LoopingDiscordIcon size={64} />
                     ) : (
-                      config.renderIcon("w-5 h-5")
+                      <LoopingGlobeIcon size={64} />
                     )}
                   </div>
 
-                  {/* Title & Secondary Details */}
-                  <div className="flex flex-col min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-extrabold text-[#0f1419] text-sm sm:text-[15px] leading-snug truncate group-hover:text-[#1d9bf0] transition-colors">
-                        {link.title}
-                      </h4>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0 hidden sm:inline-flex ${config.badgeBg} ${config.badgeText}`}>
-                        {link.customIcon ? 'Custom' : config.name}
-                      </span>
-                    </div>
-                    {link.subtitle ? (
-                      <p className="text-xs text-[#536471] truncate mt-0.5">
-                        {link.subtitle}
-                      </p>
-                    ) : (
-                      <p className="text-xs text-[#536471] truncate mt-0.5">
-                        {link.url.replace(/^https?:\/\/(www\.)?/, '')}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Action Pill on the right */}
-                  <div className="hidden xs:flex items-center gap-1.5 shrink-0">
-                    <span className={`text-xs font-bold px-3 py-1 rounded-full border border-current/20 transition-all group-hover:translate-x-0.5 ${config.badgeBg} ${config.badgeText}`}>
-                      {actionText}
-                    </span>
-                  </div>
+                  {/* Title Alone Below */}
+                  <span className="text-xs sm:text-[13px] font-bold text-[#0f1419] group-hover:text-[#1d9bf0] transition-colors truncate max-w-full text-center px-1 leading-snug">
+                    {link.title}
+                  </span>
                 </a>
 
-                {/* Owner Actions (Edit, Reorder, Delete) */}
+                {/* Owner Actions (Visible on hover if isSelf) */}
                 {isSelf && (
-                  <div className="flex items-center gap-0.5 sm:gap-1 shrink-0 pl-2 border-l border-[#eff3f4]">
+                  <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white/95 backdrop-blur-xs rounded-full p-1 border border-[#eff3f4] shadow-2xs z-10">
                     <button
                       type="button"
-                      onClick={() => openEditModal(link)}
-                      title="Edit link & logo"
-                      className="p-1 text-[#536471] hover:text-[#1d9bf0] hover:bg-blue-50 rounded cursor-pointer transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEditModal(link);
+                      }}
+                      title="Edit link"
+                      className="p-1 text-[#536471] hover:text-[#1d9bf0] hover:bg-blue-50 rounded-full cursor-pointer transition-colors"
                     >
-                      <Pencil className="w-3.5 h-3.5" />
+                      <Pencil className="w-3 h-3" />
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleMoveLink(idx, 'up')}
-                      disabled={idx === 0}
-                      title="Move up"
-                      className="p-1 text-[#536471] hover:text-[#0f1419] hover:bg-gray-100 rounded disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed transition-colors"
-                    >
-                      <ArrowUp className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleMoveLink(idx, 'down')}
-                      disabled={idx === links.length - 1}
-                      title="Move down"
-                      className="p-1 text-[#536471] hover:text-[#0f1419] hover:bg-gray-100 rounded disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed transition-colors"
-                    >
-                      <ArrowDown className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteLink(link.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteLink(link.id);
+                      }}
                       title="Delete link"
-                      className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded cursor-pointer transition-colors"
+                      className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-3 h-3" />
                     </button>
                   </div>
                 )}
               </div>
-            );
-          })
+            ))}
+          </div>
         ) : (
-          <div className="text-center py-16 px-4 border border-dashed border-gray-200 rounded-2xl">
-            <div className="w-12 h-12 rounded-full bg-gray-100 text-[#536471] flex items-center justify-center mx-auto mb-3">
-              <Globe className="w-6 h-6" />
+          <div className="text-center py-16 px-4 border border-dashed border-gray-200 rounded-2xl flex flex-col items-center">
+            <div className="mb-3">
+              <LoopingGlobeIcon size={64} />
             </div>
             <h4 className="font-extrabold text-[#0f1419] text-base mb-1">
-              No Links Added Yet
+              No links added yet
             </h4>
-            <p className="text-xs text-[#536471] max-w-xs mx-auto mb-4">
-              Add your Discord server, Twitch channel, X account, YouTube, or gaming profiles here.
+            <p className="text-xs text-[#536471] max-w-sm mb-4">
+              {isSelf 
+                ? "Share your destinations, portfolios, and accounts with an endless looping network globe." 
+                : `@${user.username} hasn't shared any links yet.`}
             </p>
             {isSelf && (
               <button
                 type="button"
                 onClick={openAddModal}
-                className="bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-bold text-xs px-4 py-2 rounded-full transition-colors cursor-pointer"
+                className="text-xs font-bold text-white bg-[#1d9bf0] hover:bg-[#1a8cd8] px-4 py-2 rounded-full transition-colors cursor-pointer shadow-2xs"
               >
                 Add Your First Link
               </button>
@@ -1456,12 +1571,12 @@ export default function LinksPortal({ user, isSelf }: LinksPortalProps) {
                 <div>
                   <h3 className="font-extrabold text-base text-[#0f1419]">
                     {modalStep === 1 
-                      ? '1. Select Platform or Custom Logo' 
+                      ? '1. Select 3D Animated Icon' 
                       : editingLinkId ? '2. Edit Link Details' : '2. Fill In Link Details'}
                   </h3>
                   {modalStep === 1 && (
                     <p className="text-xs text-[#536471]">
-                      Choose from {platformKeys.length}+ platforms or upload your own icon
+                      Choose an endless loop 3D icon or upload your custom photo
                     </p>
                   )}
                 </div>
@@ -1475,149 +1590,555 @@ export default function LinksPortal({ user, isSelf }: LinksPortalProps) {
               </button>
             </div>
 
-            {/* STEP 1: SUPER DENSE & SEARCHABLE PLATFORM GRID */}
+            {/* STEP 1: EXCLUSIVELY 3D ANIMATED ICONS (GRID LAYOUT) */}
             {modalStep === 1 && (
-              <div className="p-4 overflow-y-auto flex-1 flex flex-col gap-3.5">
-                {/* Search Bar + Featured Custom Image Trigger */}
-                <div className="flex flex-col sm:flex-row items-stretch gap-2.5">
-                  <div className="relative flex-1">
-                    <Search className="w-4 h-4 text-[#536471] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    <input
-                      type="text"
-                      placeholder={`Search ${platformKeys.length}+ platforms (e.g. Kick, Steam, Discord, Insta)...`}
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full text-xs sm:text-sm pl-9 pr-8 py-2 bg-[#f7f9f9] border border-gray-200 rounded-xl focus:bg-white focus:border-[#1d9bf0] focus:ring-1 focus:ring-[#1d9bf0] outline-none transition-all"
-                    />
-                    {searchQuery && (
-                      <button
-                        type="button"
-                        onClick={() => setSearchQuery('')}
-                        className="p-1 text-gray-400 hover:text-gray-600 absolute right-2.5 top-1/2 -translate-y-1/2"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
+              <div className="p-4 sm:p-5 overflow-y-auto flex-1 flex flex-col gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {/* 1. Looping Network Globe */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomLogoUrl(null);
+                      handleSelectPlatform('globe');
+                    }}
+                    className={`flex flex-col items-center justify-between p-3 rounded-2xl border-2 transition-all cursor-pointer shadow-2xs group text-center hover:scale-[1.02] active:scale-[0.98] ${
+                      selectedPlatform === 'globe' && !customLogoUrl
+                        ? 'border-[#1d9bf0] bg-blue-50/50 shadow-xs'
+                        : 'border-[#eff3f4] bg-white hover:border-[#1d9bf0]/40 hover:bg-[#f7f9f9]'
+                    }`}
+                  >
+                    <div className="w-14 h-14 flex items-center justify-center my-0.5">
+                      <LoopingGlobeIcon size={52} />
+                    </div>
+                    <div className="w-full mt-1.5">
+                      <span className="font-extrabold text-xs sm:text-[13px] text-[#0f1419] group-hover:text-[#1d9bf0] transition-colors block truncate">
+                        Network Globe
+                      </span>
+                      <span className="text-[10px] font-bold text-[#1d9bf0] bg-blue-50 px-2 py-0.5 rounded-full inline-block mt-1">
+                        Default
+                      </span>
+                    </div>
+                  </button>
 
-                  {/* Quick Custom Logo Trigger Button */}
+                  {/* 2. Looping Discord Clyde */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomLogoUrl(null);
+                      handleSelectPlatform('discord');
+                    }}
+                    className={`flex flex-col items-center justify-between p-3 rounded-2xl border-2 transition-all cursor-pointer shadow-2xs group text-center hover:scale-[1.02] active:scale-[0.98] ${
+                      selectedPlatform === 'discord' && !customLogoUrl
+                        ? 'border-[#5865F2] bg-[#5865F2]/10 shadow-xs'
+                        : 'border-[#eff3f4] bg-white hover:border-[#5865F2]/40 hover:bg-[#f7f9f9]'
+                    }`}
+                  >
+                    <div className="w-14 h-14 flex items-center justify-center my-0.5">
+                      <LoopingDiscordIcon size={52} />
+                    </div>
+                    <div className="w-full mt-1.5">
+                      <span className="font-extrabold text-xs sm:text-[13px] text-[#0f1419] group-hover:text-[#5865F2] transition-colors block truncate">
+                        Discord Clyde
+                      </span>
+                      <span className="text-[10px] font-bold text-[#5865F2] bg-[#5865F2]/10 px-2 py-0.5 rounded-full inline-block mt-1">
+                        Discord
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* 3. Looping 𝕏 Monogram */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomLogoUrl(null);
+                      handleSelectPlatform('x');
+                    }}
+                    className={`flex flex-col items-center justify-between p-3 rounded-2xl border-2 transition-all cursor-pointer shadow-2xs group text-center hover:scale-[1.02] active:scale-[0.98] ${
+                      selectedPlatform === 'x' && !customLogoUrl
+                        ? 'border-[#0f1419] bg-black/5 shadow-xs'
+                        : 'border-[#eff3f4] bg-white hover:border-[#0f1419]/40 hover:bg-[#f7f9f9]'
+                    }`}
+                  >
+                    <div className="w-14 h-14 flex items-center justify-center my-0.5">
+                      <LoopingXIcon size={52} />
+                    </div>
+                    <div className="w-full mt-1.5">
+                      <span className="font-extrabold text-xs sm:text-[13px] text-[#0f1419] group-hover:text-black transition-colors block truncate">
+                        𝕏 Monogram
+                      </span>
+                      <span className="text-[10px] font-bold text-white bg-[#0f1419] px-2 py-0.5 rounded-full inline-block mt-1">
+                        𝕏 / Twitter
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* 4. Looping YouTube Screen */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomLogoUrl(null);
+                      handleSelectPlatform('youtube');
+                    }}
+                    className={`flex flex-col items-center justify-between p-3 rounded-2xl border-2 transition-all cursor-pointer shadow-2xs group text-center hover:scale-[1.02] active:scale-[0.98] ${
+                      selectedPlatform === 'youtube' && !customLogoUrl
+                        ? 'border-[#FF0000] bg-red-50/60 shadow-xs'
+                        : 'border-[#eff3f4] bg-white hover:border-[#FF0000]/40 hover:bg-[#f7f9f9]'
+                    }`}
+                  >
+                    <div className="w-14 h-14 flex items-center justify-center my-0.5">
+                      <LoopingYouTubeIcon size={52} />
+                    </div>
+                    <div className="w-full mt-1.5">
+                      <span className="font-extrabold text-xs sm:text-[13px] text-[#0f1419] group-hover:text-[#FF0000] transition-colors block truncate">
+                        YouTube Screen
+                      </span>
+                      <span className="text-[10px] font-bold text-white bg-[#FF0000] px-2 py-0.5 rounded-full inline-block mt-1">
+                        YouTube
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* 5. Looping Twitch Glitch */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomLogoUrl(null);
+                      handleSelectPlatform('twitch');
+                    }}
+                    className={`flex flex-col items-center justify-between p-3 rounded-2xl border-2 transition-all cursor-pointer shadow-2xs group text-center hover:scale-[1.02] active:scale-[0.98] ${
+                      selectedPlatform === 'twitch' && !customLogoUrl
+                        ? 'border-[#9146FF] bg-[#9146FF]/10 shadow-xs'
+                        : 'border-[#eff3f4] bg-white hover:border-[#9146FF]/40 hover:bg-[#f7f9f9]'
+                    }`}
+                  >
+                    <div className="w-14 h-14 flex items-center justify-center my-0.5">
+                      <LoopingTwitchIcon size={52} />
+                    </div>
+                    <div className="w-full mt-1.5">
+                      <span className="font-extrabold text-xs sm:text-[13px] text-[#0f1419] group-hover:text-[#9146FF] transition-colors block truncate">
+                        Twitch Glitch
+                      </span>
+                      <span className="text-[10px] font-bold text-white bg-[#9146FF] px-2 py-0.5 rounded-full inline-block mt-1">
+                        Twitch
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* 6. Looping Steam Medallion */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomLogoUrl(null);
+                      handleSelectPlatform('steam');
+                    }}
+                    className={`flex flex-col items-center justify-between p-3 rounded-2xl border-2 transition-all cursor-pointer shadow-2xs group text-center hover:scale-[1.02] active:scale-[0.98] ${
+                      selectedPlatform === 'steam' && !customLogoUrl
+                        ? 'border-[#66c0f4] bg-[#66c0f4]/15 shadow-xs'
+                        : 'border-[#eff3f4] bg-white hover:border-[#66c0f4]/40 hover:bg-[#f7f9f9]'
+                    }`}
+                  >
+                    <div className="w-14 h-14 flex items-center justify-center my-0.5">
+                      <LoopingSteamIcon size={52} />
+                    </div>
+                    <div className="w-full mt-1.5">
+                      <span className="font-extrabold text-xs sm:text-[13px] text-[#0f1419] group-hover:text-[#66c0f4] transition-colors block truncate">
+                        Steam Medallion
+                      </span>
+                      <span className="text-[10px] font-bold text-white bg-[#1b2838] px-2 py-0.5 rounded-full inline-block mt-1">
+                        Steam
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* 7. Looping Spotify Vinyl */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomLogoUrl(null);
+                      handleSelectPlatform('spotify');
+                    }}
+                    className={`flex flex-col items-center justify-between p-3 rounded-2xl border-2 transition-all cursor-pointer shadow-2xs group text-center hover:scale-[1.02] active:scale-[0.98] ${
+                      selectedPlatform === 'spotify' && !customLogoUrl
+                        ? 'border-[#1DB954] bg-[#1DB954]/15 shadow-xs'
+                        : 'border-[#eff3f4] bg-white hover:border-[#1DB954]/40 hover:bg-[#f7f9f9]'
+                    }`}
+                  >
+                    <div className="w-14 h-14 flex items-center justify-center my-0.5">
+                      <LoopingSpotifyIcon size={52} />
+                    </div>
+                    <div className="w-full mt-1.5">
+                      <span className="font-extrabold text-xs sm:text-[13px] text-[#0f1419] group-hover:text-[#1DB954] transition-colors block truncate">
+                        Spotify Vinyl
+                      </span>
+                      <span className="text-[10px] font-bold text-white bg-[#1DB954] px-2 py-0.5 rounded-full inline-block mt-1">
+                        Spotify
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* 8. Looping Reddit Snoo */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomLogoUrl(null);
+                      handleSelectPlatform('reddit');
+                    }}
+                    className={`flex flex-col items-center justify-between p-3 rounded-2xl border-2 transition-all cursor-pointer shadow-2xs group text-center hover:scale-[1.02] active:scale-[0.98] ${
+                      selectedPlatform === 'reddit' && !customLogoUrl
+                        ? 'border-[#FF4500] bg-[#FF4500]/15 shadow-xs'
+                        : 'border-[#eff3f4] bg-white hover:border-[#FF4500]/40 hover:bg-[#f7f9f9]'
+                    }`}
+                  >
+                    <div className="w-14 h-14 flex items-center justify-center my-0.5">
+                      <LoopingRedditIcon size={52} />
+                    </div>
+                    <div className="w-full mt-1.5">
+                      <span className="font-extrabold text-xs sm:text-[13px] text-[#0f1419] group-hover:text-[#FF4500] transition-colors block truncate">
+                        Reddit Snoo
+                      </span>
+                      <span className="text-[10px] font-bold text-white bg-[#FF4500] px-2 py-0.5 rounded-full inline-block mt-1">
+                        Reddit
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* 9. Looping GitHub Invertocat */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomLogoUrl(null);
+                      handleSelectPlatform('github');
+                    }}
+                    className={`flex flex-col items-center justify-between p-3 rounded-2xl border-2 transition-all cursor-pointer shadow-2xs group text-center hover:scale-[1.02] active:scale-[0.98] ${
+                      selectedPlatform === 'github' && !customLogoUrl
+                        ? 'border-[#24292f] bg-[#24292f]/15 shadow-xs'
+                        : 'border-[#eff3f4] bg-white hover:border-[#24292f]/40 hover:bg-[#f7f9f9]'
+                    }`}
+                  >
+                    <div className="w-14 h-14 flex items-center justify-center my-0.5">
+                      <LoopingGitHubIcon size={52} />
+                    </div>
+                    <div className="w-full mt-1.5">
+                      <span className="font-extrabold text-xs sm:text-[13px] text-[#0f1419] group-hover:text-[#24292f] transition-colors block truncate">
+                        GitHub Invertocat
+                      </span>
+                      <span className="text-[10px] font-bold text-white bg-[#24292f] px-2 py-0.5 rounded-full inline-block mt-1">
+                        GitHub
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* 10. Looping Instagram Sunset Badge */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomLogoUrl(null);
+                      handleSelectPlatform('instagram');
+                    }}
+                    className={`flex flex-col items-center justify-between p-3 rounded-2xl border-2 transition-all cursor-pointer shadow-2xs group text-center hover:scale-[1.02] active:scale-[0.98] ${
+                      selectedPlatform === 'instagram' && !customLogoUrl
+                        ? 'border-[#E4405F] bg-[#E4405F]/15 shadow-xs'
+                        : 'border-[#eff3f4] bg-white hover:border-[#E4405F]/40 hover:bg-[#f7f9f9]'
+                    }`}
+                  >
+                    <div className="w-14 h-14 flex items-center justify-center my-0.5">
+                      <LoopingInstagramIcon size={52} />
+                    </div>
+                    <div className="w-full mt-1.5">
+                      <span className="font-extrabold text-xs sm:text-[13px] text-[#0f1419] group-hover:text-[#E4405F] transition-colors block truncate">
+                        Instagram Badge
+                      </span>
+                      <span className="text-[10px] font-bold text-white bg-[#E4405F] px-2 py-0.5 rounded-full inline-block mt-1">
+                        Instagram
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* 11. Looping TikTok Chromatic Note */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomLogoUrl(null);
+                      handleSelectPlatform('tiktok');
+                    }}
+                    className={`flex flex-col items-center justify-between p-3 rounded-2xl border-2 transition-all cursor-pointer shadow-2xs group text-center hover:scale-[1.02] active:scale-[0.98] ${
+                      selectedPlatform === 'tiktok' && !customLogoUrl
+                        ? 'border-[#00f2fe] bg-[#00f2fe]/10 shadow-xs'
+                        : 'border-[#eff3f4] bg-white hover:border-[#00f2fe]/40 hover:bg-[#f7f9f9]'
+                    }`}
+                  >
+                    <div className="w-14 h-14 flex items-center justify-center my-0.5">
+                      <LoopingTikTokIcon size={52} />
+                    </div>
+                    <div className="w-full mt-1.5">
+                      <span className="font-extrabold text-xs sm:text-[13px] text-[#0f1419] group-hover:text-[#fe2c55] transition-colors block truncate">
+                        TikTok Note
+                      </span>
+                      <span className="text-[10px] font-bold text-white bg-[#000000] px-2 py-0.5 rounded-full inline-block mt-1">
+                        TikTok
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* 12. Looping Patreon Coral Token */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomLogoUrl(null);
+                      handleSelectPlatform('patreon');
+                    }}
+                    className={`flex flex-col items-center justify-between p-3 rounded-2xl border-2 transition-all cursor-pointer shadow-2xs group text-center hover:scale-[1.02] active:scale-[0.98] ${
+                      selectedPlatform === 'patreon' && !customLogoUrl
+                        ? 'border-[#FF424D] bg-[#FF424D]/15 shadow-xs'
+                        : 'border-[#eff3f4] bg-white hover:border-[#FF424D]/40 hover:bg-[#f7f9f9]'
+                    }`}
+                  >
+                    <div className="w-14 h-14 flex items-center justify-center my-0.5">
+                      <LoopingPatreonIcon size={52} />
+                    </div>
+                    <div className="w-full mt-1.5">
+                      <span className="font-extrabold text-xs sm:text-[13px] text-[#0f1419] group-hover:text-[#FF424D] transition-colors block truncate">
+                        Patreon Crest
+                      </span>
+                      <span className="text-[10px] font-bold text-white bg-[#FF424D] px-2 py-0.5 rounded-full inline-block mt-1">
+                        Patreon
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* 13. Looping OnlyFans Cyan Token */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomLogoUrl(null);
+                      handleSelectPlatform('onlyfans');
+                    }}
+                    className={`flex flex-col items-center justify-between p-3 rounded-2xl border-2 transition-all cursor-pointer shadow-2xs group text-center hover:scale-[1.02] active:scale-[0.98] ${
+                      selectedPlatform === 'onlyfans' && !customLogoUrl
+                        ? 'border-[#00AFF0] bg-[#00AFF0]/15 shadow-xs'
+                        : 'border-[#eff3f4] bg-white hover:border-[#00AFF0]/40 hover:bg-[#f7f9f9]'
+                    }`}
+                  >
+                    <div className="w-14 h-14 flex items-center justify-center my-0.5">
+                      <LoopingOnlyFansIcon size={52} />
+                    </div>
+                    <div className="w-full mt-1.5">
+                      <span className="font-extrabold text-xs sm:text-[13px] text-[#0f1419] group-hover:text-[#00AFF0] transition-colors block truncate">
+                        OnlyFans Lock
+                      </span>
+                      <span className="text-[10px] font-bold text-white bg-[#00AFF0] px-2 py-0.5 rounded-full inline-block mt-1">
+                        OnlyFans
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* 14. Looping Substack Radiant Orange Token */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomLogoUrl(null);
+                      handleSelectPlatform('substack');
+                    }}
+                    className={`flex flex-col items-center justify-between p-3 rounded-2xl border-2 transition-all cursor-pointer shadow-2xs group text-center hover:scale-[1.02] active:scale-[0.98] ${
+                      selectedPlatform === 'substack' && !customLogoUrl
+                        ? 'border-[#FF6719] bg-[#FF6719]/15 shadow-xs'
+                        : 'border-[#eff3f4] bg-white hover:border-[#FF6719]/40 hover:bg-[#f7f9f9]'
+                    }`}
+                  >
+                    <div className="w-14 h-14 flex items-center justify-center my-0.5">
+                      <LoopingSubstackIcon size={52} />
+                    </div>
+                    <div className="w-full mt-1.5">
+                      <span className="font-extrabold text-xs sm:text-[13px] text-[#0f1419] group-hover:text-[#FF6719] transition-colors block truncate">
+                        Substack Bookmark
+                      </span>
+                      <span className="text-[10px] font-bold text-white bg-[#FF6719] px-2 py-0.5 rounded-full inline-block mt-1">
+                        Substack
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* 15. Looping Fansly Azure Ribbon Heart Figurine */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomLogoUrl(null);
+                      handleSelectPlatform('fansly');
+                    }}
+                    className={`flex flex-col items-center justify-between p-3 rounded-2xl border-2 transition-all cursor-pointer shadow-2xs group text-center hover:scale-[1.02] active:scale-[0.98] ${
+                      selectedPlatform === 'fansly' && !customLogoUrl
+                        ? 'border-[#2799f6] bg-[#2799f6]/15 shadow-xs'
+                        : 'border-[#eff3f4] bg-white hover:border-[#2799f6]/40 hover:bg-[#f7f9f9]'
+                    }`}
+                  >
+                    <div className="w-14 h-14 flex items-center justify-center my-0.5">
+                      <LoopingFanslyIcon size={52} />
+                    </div>
+                    <div className="w-full mt-1.5">
+                      <span className="font-extrabold text-xs sm:text-[13px] text-[#0f1419] group-hover:text-[#2799f6] transition-colors block truncate">
+                        Fansly Heart
+                      </span>
+                      <span className="text-[10px] font-bold text-white bg-[#2799f6] px-2 py-0.5 rounded-full inline-block mt-1">
+                        Fansly
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* 16. Looping Pixiv Radiant Blue Squircle Token */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomLogoUrl(null);
+                      handleSelectPlatform('pixiv');
+                    }}
+                    className={`flex flex-col items-center justify-between p-3 rounded-2xl border-2 transition-all cursor-pointer shadow-2xs group text-center hover:scale-[1.02] active:scale-[0.98] ${
+                      selectedPlatform === 'pixiv' && !customLogoUrl
+                        ? 'border-[#0096fa] bg-[#0096fa]/15 shadow-xs'
+                        : 'border-[#eff3f4] bg-white hover:border-[#0096fa]/40 hover:bg-[#f7f9f9]'
+                    }`}
+                  >
+                    <div className="w-14 h-14 flex items-center justify-center my-0.5">
+                      <LoopingPixivIcon size={52} />
+                    </div>
+                    <div className="w-full mt-1.5">
+                      <span className="font-extrabold text-xs sm:text-[13px] text-[#0f1419] group-hover:text-[#0096fa] transition-colors block truncate">
+                        pixiv Monogram
+                      </span>
+                      <span className="text-[10px] font-bold text-white bg-[#0096fa] px-2 py-0.5 rounded-full inline-block mt-1">
+                        pixiv
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* 8. Upload Custom Photo Tile */}
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center justify-center gap-2 px-3.5 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 hover:border-[#1d9bf0] text-[#1d9bf0] rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 shadow-2xs"
+                    className="flex flex-col items-center justify-between p-3 rounded-2xl border-2 border-dashed border-[#cfd9de] hover:border-[#1d9bf0] bg-[#f7f9f9] hover:bg-blue-50/40 transition-all cursor-pointer group text-center hover:scale-[1.02] active:scale-[0.98]"
                   >
-                    <Upload className="w-4 h-4" />
-                    <span>Upload Custom Image</span>
+                    <div className="w-14 h-14 flex items-center justify-center rounded-2xl bg-white border border-[#eff3f4] text-[#536471] group-hover:text-[#1d9bf0] group-hover:scale-105 transition-all shadow-2xs my-0.5">
+                      <Upload className="w-6 h-6" />
+                    </div>
+                    <div className="w-full mt-1.5">
+                      <span className="font-extrabold text-xs sm:text-[13px] text-[#0f1419] group-hover:text-[#1d9bf0] transition-colors block truncate">
+                        Upload Photo
+                      </span>
+                      <span className="text-[10px] font-bold text-[#536471] bg-gray-100 px-2 py-0.5 rounded-full inline-block mt-1">
+                        Custom
+                      </span>
+                    </div>
                   </button>
                 </div>
-
-                {/* Category Filter Horizontal Scrollbar */}
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
-                  {[
-                    { id: 'all', label: `All (${platformKeys.length})` },
-                    { id: 'gaming', label: '🎮 Gaming' },
-                    { id: 'video', label: '📺 Streaming' },
-                    { id: 'social', label: '💬 Social' },
-                    { id: 'music', label: '🎵 Music' },
-                    { id: 'art', label: '🎨 Art' },
-                    { id: 'support', label: '💖 Support' },
-                    { id: 'dev', label: '💻 Dev' },
-                  ].map((cat) => (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => setActiveCategoryFilter(cat.id)}
-                      className={`px-3 py-1 rounded-full font-bold whitespace-nowrap transition-colors cursor-pointer text-[11px] sm:text-xs ${
-                        activeCategoryFilter === cat.id
-                          ? 'bg-[#0f1419] text-white shadow-2xs'
-                          : 'bg-[#eff3f4] text-[#536471] hover:bg-gray-200'
-                      }`}
-                    >
-                      {cat.label}
-                    </button>
-                  ))}
-                </div>
-
-                {/* DENSE 5-6 COLUMN PLATFORM GRID */}
-                {filteredPlatforms.length > 0 ? (
-                  <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2 sm:gap-2.5">
-                    {filteredPlatforms.map((pKey) => {
-                      const cfg = PLATFORM_REGISTRY[pKey];
-                      const isSelected = selectedPlatform === pKey && !customLogoUrl;
-                      return (
-                        <button
-                          key={pKey}
-                          type="button"
-                          onClick={() => {
-                            setCustomLogoUrl(null);
-                            handleSelectPlatform(pKey);
-                          }}
-                          className={`flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-xl border text-center transition-all cursor-pointer group shadow-2xs hover:shadow-xs hover:scale-[1.03] ${
-                            isSelected
-                              ? 'border-[#1d9bf0] bg-blue-50/70 text-[#1d9bf0] ring-1 ring-[#1d9bf0]'
-                              : 'border-[#eff3f4] bg-white hover:border-[#1d9bf0]/60 hover:bg-[#f7f9f9] text-[#0f1419]'
-                          }`}
-                          title={cfg.name}
-                        >
-                          <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl ${cfg.iconBg} ${cfg.iconText} flex items-center justify-center mb-1.5 shadow-2xs group-hover:scale-110 transition-transform`}>
-                            {cfg.renderIcon("w-4 h-4 sm:w-5 sm:h-5")}
-                          </div>
-                          <span className="text-[11px] font-bold text-[#0f1419] group-hover:text-[#1d9bf0] transition-colors truncate max-w-full leading-tight">
-                            {cfg.name.split(' (')[0].split(' /')[0]}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-12 px-4 border border-dashed border-gray-200 rounded-2xl">
-                    <p className="text-sm font-bold text-[#0f1419] mb-1">
-                      No matching platform found for &quot;{searchQuery}&quot;
-                    </p>
-                    <p className="text-xs text-[#536471] mb-3">
-                      You can use a custom image logo or select the generic website option.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => handleSelectPlatform('custom')}
-                      className="text-xs font-bold bg-[#1d9bf0] text-white px-4 py-2 rounded-full cursor-pointer hover:bg-[#1a8cd8]"
-                    >
-                      Use Custom Website Link
-                    </button>
-                  </div>
-                )}
               </div>
             )}
 
-            {/* STEP 2: CONFIGURE DETAILS & LOGO SLOT REPLACEMENT */}
+            {/* STEP 2: CONFIGURE DETAILS */}
             {modalStep === 2 && (
               <form onSubmit={handleSaveLink} className="p-4 sm:p-5 overflow-y-auto flex-1 flex flex-col gap-4">
                 {/* Active Logo Assignment Slot Viewport */}
                 <div className="p-3.5 bg-[#f7f9f9] border border-[#eff3f4] rounded-2xl flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3.5 min-w-0">
                     {/* The Active Logo Slot */}
-                    <div className={`w-12 h-12 rounded-xl ${activeConfig.iconBg} ${activeConfig.iconText} flex items-center justify-center overflow-hidden shadow-2xs shrink-0 ring-2 ring-white`}>
+                    <div className="w-14 h-14 rounded-2xl bg-white border border-[#eff3f4] flex items-center justify-center overflow-hidden shadow-2xs shrink-0">
                       {customLogoUrl ? (
                         <img 
                           src={customLogoUrl} 
                           alt="Custom logo preview" 
                           className="w-full h-full object-cover" 
                         />
+                      ) : selectedPlatform === 'pixiv' ? (
+                        <LoopingPixivIcon size={48} />
+                      ) : selectedPlatform === 'fansly' ? (
+                        <LoopingFanslyIcon size={48} />
+                      ) : selectedPlatform === 'substack' ? (
+                        <LoopingSubstackIcon size={48} />
+                      ) : selectedPlatform === 'onlyfans' ? (
+                        <LoopingOnlyFansIcon size={48} />
+                      ) : selectedPlatform === 'patreon' ? (
+                        <LoopingPatreonIcon size={48} />
+                      ) : selectedPlatform === 'tiktok' ? (
+                        <LoopingTikTokIcon size={48} />
+                      ) : selectedPlatform === 'instagram' ? (
+                        <LoopingInstagramIcon size={48} />
+                      ) : selectedPlatform === 'github' ? (
+                        <LoopingGitHubIcon size={48} />
+                      ) : selectedPlatform === 'reddit' ? (
+                        <LoopingRedditIcon size={48} />
+                      ) : selectedPlatform === 'spotify' ? (
+                        <LoopingSpotifyIcon size={48} />
+                      ) : selectedPlatform === 'steam' ? (
+                        <LoopingSteamIcon size={48} />
+                      ) : selectedPlatform === 'twitch' ? (
+                        <LoopingTwitchIcon size={48} />
+                      ) : selectedPlatform === 'youtube' ? (
+                        <LoopingYouTubeIcon size={48} />
+                      ) : selectedPlatform === 'x' ? (
+                        <LoopingXIcon size={48} />
+                      ) : selectedPlatform === 'discord' ? (
+                        <LoopingDiscordIcon size={48} />
                       ) : (
-                        activeConfig.renderIcon("w-6 h-6")
+                        <LoopingGlobeIcon size={48} />
                       )}
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs sm:text-sm font-extrabold text-[#0f1419] truncate">
-                          {customLogoUrl ? 'Custom Photo Assigned' : activeConfig.name}
+                          {customLogoUrl 
+                            ? 'Custom Photo Assigned' 
+                            : selectedPlatform === 'reddit'
+                              ? 'Looping Reddit Snoo'
+                              : selectedPlatform === 'spotify'
+                                ? 'Looping Spotify Vinyl'
+                                : selectedPlatform === 'steam'
+                                  ? 'Looping Steam Medallion'
+                                  : selectedPlatform === 'twitch'
+                                    ? 'Looping Twitch Glitch'
+                                    : selectedPlatform === 'youtube'
+                                      ? 'Looping YouTube Screen'
+                                      : selectedPlatform === 'x'
+                                        ? 'Looping 𝕏 Monogram'
+                                        : selectedPlatform === 'discord' 
+                                          ? 'Looping Discord Clyde' 
+                                          : 'Looping Network Globe'}
                         </span>
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${activeConfig.badgeBg} ${activeConfig.badgeText}`}>
-                          Active Logo
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                          selectedPlatform === 'reddit' && !customLogoUrl
+                            ? 'bg-[#FF4500]/15 text-[#FF4500]'
+                            : selectedPlatform === 'spotify' && !customLogoUrl
+                              ? 'bg-[#1DB954]/15 text-[#1DB954]'
+                              : selectedPlatform === 'steam' && !customLogoUrl
+                                ? 'bg-[#66c0f4]/15 text-[#1b2838]'
+                                : selectedPlatform === 'twitch' && !customLogoUrl
+                                  ? 'bg-[#9146FF]/10 text-[#9146FF]'
+                                  : selectedPlatform === 'youtube' && !customLogoUrl
+                                    ? 'bg-red-50 text-[#FF0000]'
+                                    : selectedPlatform === 'x' && !customLogoUrl
+                                      ? 'bg-black/10 text-[#0f1419]'
+                                      : selectedPlatform === 'discord' && !customLogoUrl 
+                                        ? 'bg-[#5865F2]/10 text-[#5865F2]' 
+                                        : 'bg-blue-50 text-[#1d9bf0]'
+                        }`}>
+                          Active 3D Icon
                         </span>
                       </div>
                       <p className="text-[11px] text-[#536471] truncate mt-0.5">
-                        {customLogoUrl ? 'Custom image preview active' : 'Platform vector icon active'}
+                        {customLogoUrl 
+                          ? 'Custom image preview active' 
+                          : selectedPlatform === 'reddit'
+                            ? '3D Extruded Reddit loop active'
+                            : selectedPlatform === 'spotify'
+                              ? '3D Extruded Spotify loop active'
+                              : selectedPlatform === 'steam'
+                                ? '3D Extruded Steam loop active'
+                                : selectedPlatform === 'twitch'
+                                  ? '3D Extruded Twitch loop active'
+                                  : selectedPlatform === 'youtube'
+                                    ? '3D Extruded YouTube loop active'
+                                    : selectedPlatform === 'x'
+                                      ? '3D Extruded 𝕏 loop active'
+                                      : selectedPlatform === 'discord' 
+                                        ? '3D Extruded Clyde loop active' 
+                                        : '3D Endless looping vector globe active'}
                       </p>
                     </div>
                   </div>
@@ -1628,7 +2149,7 @@ export default function LinksPortal({ user, isSelf }: LinksPortalProps) {
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       className="text-xs font-bold text-[#1d9bf0] hover:bg-blue-100/60 bg-blue-50 px-3 py-1.5 rounded-full transition-colors cursor-pointer flex items-center gap-1"
-                      title="Upload or replace with custom photo"
+                      title="Upload custom photo"
                     >
                       <Camera className="w-3.5 h-3.5" />
                       <span>{customLogoUrl ? 'Change image' : 'Custom photo'}</span>
@@ -1638,7 +2159,7 @@ export default function LinksPortal({ user, isSelf }: LinksPortalProps) {
                       onClick={() => setModalStep(1)}
                       className="text-xs font-bold text-[#536471] hover:bg-gray-200/70 bg-white border border-[#cfd9de] px-3 py-1.5 rounded-full transition-colors cursor-pointer"
                     >
-                      Pick logo
+                      Change icon
                     </button>
                   </div>
                 </div>
@@ -1651,56 +2172,28 @@ export default function LinksPortal({ user, isSelf }: LinksPortalProps) {
                   <input
                     type="text"
                     required
-                    placeholder={activeConfig.defaultPlaceholderUrl}
+                    placeholder={selectedPlatform === 'discord' ? 'https://discord.gg/yourserver' : 'https://yourlink.com'}
                     value={linkUrl}
                     onChange={(e) => setLinkUrl(e.target.value)}
                     className="w-full text-sm px-3.5 py-2 border border-gray-300 rounded-xl focus:border-[#1d9bf0] focus:ring-1 focus:ring-[#1d9bf0] outline-none"
                   />
                 </div>
 
-                {/* Card Headline / Title */}
+                {/* Card Title (Alone Below Icon) */}
                 <div>
                   <label className="text-xs font-bold text-[#536471] uppercase tracking-wider block mb-1">
-                    Card Title / Account Name *
+                    Card Title *
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Community Discord Server"
+                    placeholder="e.g. Portfolio, Discord, My Website"
                     value={linkTitle}
                     onChange={(e) => setLinkTitle(e.target.value)}
                     className="w-full text-sm px-3.5 py-2 border border-gray-300 rounded-xl focus:border-[#1d9bf0] focus:ring-1 focus:ring-[#1d9bf0] outline-none"
                   />
-                </div>
-
-                {/* Subtitle / Description */}
-                <div>
-                  <label className="text-xs font-bold text-[#536471] uppercase tracking-wider block mb-1">
-                    Subtitle / Handle (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Chat with mutuals, hang out & share artwork"
-                    value={linkSubtitle}
-                    onChange={(e) => setLinkSubtitle(e.target.value)}
-                    className="w-full text-sm px-3.5 py-2 border border-gray-300 rounded-xl focus:border-[#1d9bf0] focus:ring-1 focus:ring-[#1d9bf0] outline-none"
-                  />
-                </div>
-
-                {/* Action Button Pill Label */}
-                <div>
-                  <label className="text-xs font-bold text-[#536471] uppercase tracking-wider block mb-1">
-                    Action Pill Label
-                  </label>
-                  <input
-                    type="text"
-                    placeholder={activeConfig.defaultActionLabel}
-                    value={linkActionLabel}
-                    onChange={(e) => setLinkActionLabel(e.target.value)}
-                    className="w-full text-sm px-3.5 py-2 border border-gray-300 rounded-xl focus:border-[#1d9bf0] focus:ring-1 focus:ring-[#1d9bf0] outline-none"
-                  />
                   <span className="text-[11px] text-[#536471] mt-1 block">
-                    Text displayed in the clickable pill on the right (e.g. &quot;{activeConfig.defaultActionLabel}&quot;)
+                    The title alone displayed below the rotating icon in the 3-column grid
                   </span>
                 </div>
 
@@ -1712,7 +2205,7 @@ export default function LinksPortal({ user, isSelf }: LinksPortalProps) {
                     className="text-xs font-bold text-[#536471] hover:text-[#0f1419] cursor-pointer flex items-center gap-1"
                   >
                     <ArrowLeft className="w-3.5 h-3.5" />
-                    <span>Back to Logos</span>
+                    <span>Back to Icons</span>
                   </button>
                   <div className="flex items-center gap-2">
                     <button

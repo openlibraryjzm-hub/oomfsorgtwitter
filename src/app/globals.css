@@ -35,3 +35,32 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #909ea6;
 }
+
+/* 3D Wireframe Endless Looping Globe Keyframes */
+@keyframes spinGlobe {
+  0% {
+    transform: rotateX(-18deg) rotateZ(8deg) rotateY(0deg);
+  }
+  100% {
+    transform: rotateX(-18deg) rotateZ(8deg) rotateY(360deg);
+  }
+}
+
+@keyframes spinOrbit {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-globe {
+  animation: spinGlobe 14s linear infinite;
+  will-change: transform;
+}
+
+.animate-spin-orbit {
+  animation: spinOrbit 7s linear infinite;
+  will-change: transform;
+}

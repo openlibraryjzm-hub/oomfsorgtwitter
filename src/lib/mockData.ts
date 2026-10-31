@@ -170,63 +170,99 @@ export const MOCK_USERS: Record<string, User> = {
     links: [
       {
         id: 'l1',
-        icon: '🎨',
-        title: 'Design Portfolio (2026)',
-        subtitle: 'Product design, design systems & web explorations',
+        title: 'Design Portfolio',
         url: 'https://amberlyn.design',
-        image: 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=600&q=80',
-        category: 'Work',
-        clicks: 1420
+        category: 'globe',
       },
       {
         id: 'l2',
-        icon: '📝',
-        title: 'Substack: Design Systems',
-        subtitle: 'Weekly deep dives into UI engineering and Twitter culture',
-        url: 'https://amberlyn.substack.com',
-        image: 'https://images.unsplash.com/photo-1499750310107-5fef28a66643?auto=format&fit=crop&w=600&q=80',
-        category: 'Writing',
-        clicks: 890
+        title: 'Discord Community',
+        url: 'https://discord.gg/oomfs',
+        category: 'discord',
       },
       {
         id: 'l3',
-        icon: '🎧',
-        title: 'Spotify: Late Night Coding',
-        subtitle: 'Lo-fi beats and ambient synthwave for deep focus',
+        title: '𝕏 Profile',
+        url: 'https://x.com/amberlyn',
+        category: 'x',
+      },
+      {
+        id: 'l4_youtube',
+        title: 'Design Vlogs',
+        url: 'https://youtube.com/@amberlyn',
+        category: 'youtube',
+      },
+      {
+        id: 'l5_twitch',
+        title: 'Live Streams',
+        url: 'https://twitch.tv/amberlyn',
+        category: 'twitch',
+      },
+      {
+        id: 'l6_steam',
+        title: 'Steam Library',
+        url: 'https://steamcommunity.com/id/amberlyn',
+        category: 'steam',
+      },
+      {
+        id: 'l7_spotify',
+        title: 'Coding Chill Lo-Fi',
         url: 'https://spotify.com',
-        image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=600&q=80',
-        category: 'Music',
-        clicks: 2310
+        category: 'spotify',
       },
       {
-        id: 'l4_figma',
-        icon: '📐',
-        title: 'Figma: OOMFS UI Kit',
-        subtitle: 'Complete 1:1 Twitter Light theme tokens and components',
-        url: 'https://figma.com/@amberlyn',
-        image: 'https://images.unsplash.com/photo-1581291518857-4e27b48ff24e?auto=format&fit=crop&w=600&q=80',
-        category: 'Work',
-        clicks: 3410
+        id: 'l8_reddit',
+        title: 'Design Discussion',
+        url: 'https://reddit.com/r/webdesign',
+        category: 'reddit',
       },
       {
-        id: 'l5_github',
-        icon: '🐙',
-        title: 'GitHub: Open Source UI',
-        subtitle: 'Explore repos, design system scripts & experimental web apps',
+        id: 'l9_github',
+        title: 'Open Source Repos',
         url: 'https://github.com/amberlyn',
-        image: 'https://images.unsplash.com/photo-1618401471353-b98aedd04e11?auto=format&fit=crop&w=600&q=80',
-        category: 'Dev',
-        clicks: 1120
+        category: 'github',
       },
       {
-        id: 'l6_cal',
-        icon: '📅',
-        title: 'Book 15m Design Advisory',
-        subtitle: 'Quick office hours for design critique and UI feedback',
-        url: 'https://cal.com/amberlyn',
-        image: 'https://images.unsplash.com/photo-1506784983877-45594efa4cbe?auto=format&fit=crop&w=600&q=80',
-        category: 'Work',
-        clicks: 530
+        id: 'l10_instagram',
+        title: 'Design Shots & BTS',
+        url: 'https://instagram.com/amberlyn',
+        category: 'instagram',
+      },
+      {
+        id: 'l11_tiktok',
+        title: 'Design Tips & Speedpaints',
+        url: 'https://tiktok.com/@amberlyn',
+        category: 'tiktok',
+      },
+      {
+        id: 'l12_patreon',
+        title: 'Exclusive Mentorship Tier',
+        url: 'https://patreon.com/amberlyn',
+        category: 'patreon',
+      },
+      {
+        id: 'l13_onlyfans',
+        title: 'VIP Creator Feed',
+        url: 'https://onlyfans.com/amberlyn',
+        category: 'onlyfans',
+      },
+      {
+        id: 'l14_substack',
+        title: 'Weekly UI/UX Newsletter',
+        url: 'https://amberlyn.substack.com',
+        category: 'substack',
+      },
+      {
+        id: 'l15_fansly',
+        title: 'Behind The Scenes Club',
+        url: 'https://fansly.com/amberlyn',
+        category: 'fansly',
+      },
+      {
+        id: 'l16_pixiv',
+        title: 'Fanbox & Illustrations',
+        url: 'https://amberlyn.fanbox.cc',
+        category: 'pixiv',
       }
     ]
   },
@@ -249,13 +285,14 @@ export const MOCK_USERS: Record<string, User> = {
     links: [
       {
         id: 'l4',
-        title: '💻 GitHub Repositories',
+        title: 'GitHub Repos',
         url: 'https://github.com',
+        category: 'github',
         clicks: 940
       },
       {
         id: 'l4b',
-        title: '☕ Buy me a Coffee',
+        title: 'Buy Me a Coffee',
         url: 'https://buymeacoffee.com',
         clicks: 310
       }
@@ -280,7 +317,7 @@ export const MOCK_USERS: Record<string, User> = {
     links: [
       {
         id: 'l5',
-        title: '🖼️ ArtStation 3D Gallery',
+        title: 'ArtStation',
         url: 'https://artstation.com',
         clicks: 3100
       }
@@ -305,7 +342,7 @@ export const MOCK_USERS: Record<string, User> = {
     links: [
       {
         id: 'l6',
-        title: '🎙️ The Indie Hustle Podcast',
+        title: 'Indie Podcast',
         url: 'https://podcast.apple.com',
         clicks: 1200
       }
