@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, GripVertical, ChevronUp, ChevronDown, Check } from 'lucide-react';
+import { X, GripVertical, ChevronUp, ChevronDown, Trash2, Star } from 'lucide-react';
 import { Collection } from '@/lib/mockData';
 
 interface ReorderPresetsModalProps {
@@ -9,6 +9,8 @@ interface ReorderPresetsModalProps {
   onClose: () => void;
   collections: Collection[];
   onReorder: (reordered: Collection[]) => void;
+  onDelete?: (collectionId: string) => void;
+  onTogglePin?: (collectionId: string) => void;
 }
 
 export default function ReorderPresetsModal({
@@ -16,6 +18,8 @@ export default function ReorderPresetsModal({
   onClose,
   collections,
   onReorder,
+  onDelete,
+  onTogglePin
 }: ReorderPresetsModalProps) {
   const [items, setItems] = useState<Collection[]>(collections);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -72,6 +76,28 @@ export default function ReorderPresetsModal({
     setDragOverIndex(null);
   };
 
+  const handleDeleteItem = (col: Collection) => {
+    const cleanTitle = col.title
+      .replace(
+        /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu,
+        ''
+      )
+      .trim() || 'Preset';
+
+    if (
+      window.confirm(
+        `Delete preset "${cleanTitle}"? Your boards will remain intact on your profile.`
+      )
+    ) {
+      if (onDelete) {
+        onDelete(col.id);
+      }
+      const updated = items.filter((c) => c.id !== col.id);
+      setItems(updated);
+      setHasChanges(true);
+    }
+  };
+
   const handleSave = () => {
     if (hasChanges) {
       onReorder(items);
@@ -103,10 +129,10 @@ export default function ReorderPresetsModal({
             </button>
             <div className="min-w-0">
               <h3 className="font-extrabold text-[#0f1419] text-base leading-tight truncate">
-                Rearrange Presets
+                Manage Presets
               </h3>
               <p className="text-[11px] text-[#536471] truncate">
-                Drag cards or use arrows to customize their order on your profile
+                Drag to rearrange, use step arrows, or delete presets
               </p>
             </div>
           </div>
@@ -120,13 +146,19 @@ export default function ReorderPresetsModal({
           </button>
         </div>
 
-        {/* Reorderable Preset List */}
+        {/* Reorderable & Deletable Preset List */}
         <div className="flex-1 overflow-y-auto p-3 sm:p-4 bg-white">
           {items.length > 0 ? (
             <div className="flex flex-col gap-2">
               {items.map((col, idx) => {
                 const isDraggingThis = draggedIndex === idx;
                 const isTargeted = dragOverIndex === idx;
+                const cleanTitle = col.title
+                  .replace(
+                    /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu,
+                    ''
+                  )
+                  .trim() || 'Preset';
 
                 return (
                   <div
@@ -160,36 +192,57 @@ export default function ReorderPresetsModal({
                           : 'border-[#eff3f4] bg-white hover:border-[#1d9bf0] hover:shadow-xs'
                     }`}
                   >
-                    {/* Left: Grip, Position Number, Icon, Title */}
+                    {/* Left: Grip, Position Number, Title */}
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       <GripVertical className="w-4 h-4 text-gray-400 group-hover:text-[#1d9bf0] shrink-0" />
                       <span className="w-5 h-5 rounded-full bg-[#0f1419] text-white text-[10px] font-extrabold flex items-center justify-center shrink-0">
                         {idx + 1}
                       </span>
 
-                      <span className="text-xl shrink-0 group-hover:scale-110 transition-transform">
-                        {col.icon || '📁'}
-                      </span>
-
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <p className="text-sm font-extrabold text-[#0f1419] truncate leading-snug">
-                            {col.title}
+                            {cleanTitle}
                           </p>
                           <span className="text-[10px] font-semibold text-[#536471] bg-gray-100 px-1.5 py-0.5 rounded-full shrink-0">
-                            {col.itemIds?.length || 0} posts
+                            {col.itemIds?.length || 0} boards
                           </span>
+                          {col.isPinned && (
+                            <span className="text-[10px] font-semibold text-[#1d9bf0] bg-blue-50 px-1.5 py-0.5 rounded-full shrink-0 flex items-center gap-0.5">
+                              <Star className="w-2.5 h-2.5 fill-[#1d9bf0]" />
+                              Top Bar
+                            </span>
+                          )}
                         </div>
-                        {col.description && (
-                          <p className="text-xs text-[#536471] truncate mt-0.5">
-                            {col.description}
-                          </p>
-                        )}
                       </div>
                     </div>
 
-                    {/* Right: Quick Move Arrows */}
+                    {/* Right: Pin Toggle, Quick Move Arrows & Delete Button */}
                     <div className="flex items-center gap-1 shrink-0">
+                      {onTogglePin && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onTogglePin(col.id);
+                            setItems((prev) =>
+                              prev.map((c) =>
+                                c.id === col.id ? { ...c, isPinned: !c.isPinned } : c
+                              )
+                            );
+                          }}
+                          aria-label={col.isPinned ? 'Unpin from top bar' : 'Pin to top bar'}
+                          title={col.isPinned ? 'Pinned to top bar (click to unpin)' : 'Pin to top bar'}
+                          className={`p-1.5 rounded-md transition-colors cursor-pointer mr-0.5 ${
+                            col.isPinned
+                              ? 'text-amber-500 bg-amber-50 hover:bg-amber-100'
+                              : 'text-[#536471] hover:text-[#0f1419] hover:bg-gray-100'
+                          }`}
+                        >
+                          <Star className={`w-3.5 h-3.5 ${col.isPinned ? 'fill-amber-500' : ''}`} />
+                        </button>
+                      )}
+
                       <button
                         type="button"
                         onClick={(e) => {
@@ -217,6 +270,22 @@ export default function ReorderPresetsModal({
                       >
                         <ChevronDown className="w-4 h-4" />
                       </button>
+
+                      {/* Delete Preset Button */}
+                      {onDelete && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteItem(col);
+                          }}
+                          aria-label={`Delete preset ${cleanTitle}`}
+                          title="Delete preset"
+                          className="p-1.5 rounded-md text-[#536471] hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer ml-1"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -224,7 +293,7 @@ export default function ReorderPresetsModal({
             </div>
           ) : (
             <div className="text-center py-10 px-4 text-[#536471]">
-              <p className="text-sm font-semibold">No presets found to rearrange</p>
+              <p className="text-sm font-semibold">No presets found</p>
             </div>
           )}
         </div>

@@ -77,6 +77,7 @@ export interface Post {
   author: User;
   createdAt: string;
   type: 'standard' | 'board' | 'comment';
+  title?: string;
   images?: string[];
   attachments?: PostAttachment[];
   targetUsername?: string;
@@ -358,13 +359,14 @@ export const MOCK_POSTS: Post[] = [
     author: MOCK_USERS.amberlyn,
     createdAt: '1h',
     type: 'board',
-    text: 'Minimalist industrial & brutalist architecture moodboard for our upcoming winter release. Click to expand full board (6 items) 👇',
+    title: 'Brutalist Architecture',
+    text: 'Minimalist industrial and brutalist architecture moodboard for our upcoming winter release.',
     boardData: {
       images: [
         {
           id: 'b1',
           url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=700&h=900&q=80',
-          caption: 'Concrete & warm oak courtyard'
+          caption: 'Concrete and warm oak courtyard'
         },
         {
           id: 'b2',
@@ -373,12 +375,12 @@ export const MOCK_POSTS: Post[] = [
           username: 'sora_arts',
           name: 'Sora',
           avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
-          caption: '3D collaborator & sculptor'
+          caption: '3D collaborator and sculptor'
         },
         {
           id: 'b3',
           url: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=700&h=520&q=80',
-          caption: 'Glass & steel facade geometry'
+          caption: 'Glass and steel facade geometry'
         },
         {
           id: 'b4',
@@ -407,8 +409,37 @@ export const MOCK_POSTS: Post[] = [
     id: 'post_amber_ui',
     author: MOCK_USERS.amberlyn,
     createdAt: '2h',
-    type: 'standard',
-    text: 'Deep dive into token-based design systems for mobile-first web applications. Published our complete Figma library breakdown & layout tokens 🎨👇',
+    type: 'board',
+    title: 'Design Systems Library',
+    text: 'Token-based design systems for mobile-first web applications with Figma components and layout tokens.',
+    boardData: {
+      images: [
+        {
+          id: 'b_ui1',
+          url: 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=700&h=900&q=80',
+          caption: 'Layout math and responsive tokens'
+        },
+        {
+          id: 'b_ui2',
+          type: 'user',
+          url: '/dev_kyle',
+          username: 'dev_kyle',
+          name: 'Kyle Vance',
+          avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
+          caption: 'Design engineering partner'
+        },
+        {
+          id: 'b_ui3',
+          url: 'https://images.unsplash.com/photo-1581291518857-4e27b48ff24e?auto=format&fit=crop&w=700&h=520&q=80',
+          caption: 'Figma component anatomy'
+        },
+        {
+          id: 'b_ui4',
+          url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=700&h=800&q=80',
+          caption: 'Light theme elevation tokens'
+        }
+      ]
+    },
     likesCount: 142,
     repostsCount: 35,
     repliesCount: 18,
@@ -419,12 +450,33 @@ export const MOCK_POSTS: Post[] = [
     id: 'post_amber_film',
     author: MOCK_USERS.amberlyn,
     createdAt: '4h',
-    type: 'standard',
-    text: '35mm film scans from Shibuya & Shinjuku crossing. Late night rainy reflections and grain 🎞️☕',
-    images: [
-      'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=800&q=80'
-    ],
+    type: 'board',
+    title: '35mm Tokyo Night Walk',
+    text: 'Film scans from Shibuya and Shinjuku crossing with late night rainy reflections and grain.',
+    boardData: {
+      images: [
+        {
+          id: 'bf1',
+          url: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80',
+          caption: 'Shibuya crossing in the rain'
+        },
+        {
+          id: 'bf2',
+          url: 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=800&q=80',
+          caption: 'Neon alley reflections'
+        },
+        {
+          id: 'bf3',
+          url: 'https://images.unsplash.com/photo-1503899036084-c55cdd92da26?auto=format&fit=crop&w=800&q=80',
+          caption: 'Tokyo tower perspective'
+        },
+        {
+          id: 'bf4',
+          url: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=800&q=80',
+          caption: 'Subway station monochrome'
+        }
+      ]
+    },
     likesCount: 89,
     repostsCount: 12,
     repliesCount: 6,
@@ -435,22 +487,49 @@ export const MOCK_POSTS: Post[] = [
     id: 'post_grid_1',
     author: MOCK_USERS.amberlyn,
     createdAt: '3h',
-    type: 'standard',
-    text: 'Shoutout to my top mutuals & creative partners shipping with me this sprint ✦\nTap any card to visit their profile!',
-    attachments: [
-      {
-        type: 'user',
-        username: 'dev_kyle',
-        name: 'Kyle Vance',
-        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80'
-      },
-      {
-        type: 'user',
-        username: 'sora_arts',
-        name: 'Sora',
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'
-      }
-    ],
+    type: 'board',
+    title: 'Studio Collaborators',
+    text: 'Top mutuals and creative partners shipping with our design studio this sprint.',
+    boardData: {
+      images: [
+        {
+          id: 'bu1',
+          type: 'user',
+          url: '/dev_kyle',
+          username: 'dev_kyle',
+          name: 'Kyle Vance',
+          avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
+          caption: 'Full-stack lead'
+        },
+        {
+          id: 'bu2',
+          type: 'user',
+          url: '/sora_arts',
+          username: 'sora_arts',
+          name: 'Sora',
+          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+          caption: '3D artist & sculptor'
+        },
+        {
+          id: 'bu3',
+          type: 'user',
+          url: '/celeste',
+          username: 'celeste',
+          name: 'Celeste Ray',
+          avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=400&q=80',
+          caption: 'Audio director'
+        },
+        {
+          id: 'bu4',
+          type: 'user',
+          url: '/marcus_v',
+          username: 'marcus_v',
+          name: 'Marcus Vance',
+          avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
+          caption: 'Product engineer'
+        }
+      ]
+    },
     likesCount: 54,
     repostsCount: 12,
     repliesCount: 4,
@@ -462,7 +541,8 @@ export const MOCK_POSTS: Post[] = [
     author: MOCK_USERS.dev_kyle,
     createdAt: '2h',
     type: 'board',
-    text: 'Shipping our new mechanical keyboard & desk hardware builds this weekend. Tap to view the full 5-image build gallery 🛠️👇',
+    title: 'Mechanical Keyboards',
+    text: 'Mechanical keyboard and desk hardware builds gallery.',
     boardData: {
       images: [
         {
@@ -473,12 +553,12 @@ export const MOCK_POSTS: Post[] = [
         {
           id: 'ks2',
           url: 'https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?auto=format&fit=crop&w=500&h=720&q=80',
-          caption: 'Coiled aviator cable & deskmat'
+          caption: 'Coiled aviator cable and deskmat'
         },
         {
           id: 'ks3',
           url: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=750&h=550&q=80',
-          caption: 'Retro synth & monitor rig'
+          caption: 'Retro synth and monitor rig'
         },
         {
           id: 'ks4',
@@ -503,7 +583,8 @@ export const MOCK_POSTS: Post[] = [
     author: MOCK_USERS.sora_arts,
     createdAt: '5h',
     type: 'board',
-    text: 'New 3D procedural shaders & abstract glass renders board. Tap to view all 5 full-resolution pieces 🎨✨',
+    title: '3D Procedural Shaders',
+    text: 'New 3D procedural shaders and abstract glass renders board.',
     boardData: {
       images: [
         {
@@ -622,16 +703,14 @@ export const MOCK_COLLECTIONS: Collection[] = [
   {
     id: 'col_highlights',
     title: 'Highlights',
-    icon: '⭐',
     tabType: 'posts',
-    description: 'Flagship launches, top design threads, and studio archives',
-    itemIds: ['post_amber_ui', 'post_board_1'],
+    description: 'Flagship launches, top design boards, and studio archives',
+    itemIds: ['post_board_1', 'post_amber_ui', 'post_amber_film'],
     isPinned: true
   },
   {
     id: 'col_design_systems',
     title: 'Design Systems',
-    icon: '🎨',
     tabType: 'posts',
     description: 'Tokens, component architecture, and responsive layout math',
     itemIds: ['post_amber_ui', 'post_board_1'],
@@ -640,25 +719,30 @@ export const MOCK_COLLECTIONS: Collection[] = [
   {
     id: 'col_tokyo_roll',
     title: '35mm Tokyo',
-    icon: '📸',
     tabType: 'posts',
-    description: 'Street photography, camera scans, and neon night walks',
+    description: 'Street photography, camera scans, and night walks',
     itemIds: ['post_amber_film'],
     isPinned: true
   },
   {
     id: 'col_architecture',
     title: 'Brutalism',
-    icon: '🌿',
     tabType: 'posts',
     description: 'Concrete pavilions, geometric facade studies, and minimalism',
-    itemIds: ['post_board_1'],
+    itemIds: ['post_board_1', 'post_amber_ui'],
+    isPinned: true
+  },
+  {
+    id: 'col_collaborators',
+    title: 'Collaborators',
+    tabType: 'posts',
+    description: 'Mutuals, creative partners, and core network',
+    itemIds: ['post_grid_1'],
     isPinned: true
   },
   {
     id: 'col_shaders',
-    title: 'WebGL & Shaders',
-    icon: '⚡',
+    title: 'WebGL Shaders',
     tabType: 'posts',
     description: 'Interactive canvas shaders and kinetic typography experiments',
     itemIds: ['post_amber_ui'],
@@ -666,65 +750,26 @@ export const MOCK_COLLECTIONS: Collection[] = [
   },
   {
     id: 'col_essays',
-    title: 'Essays & Notes',
-    icon: '📝',
+    title: 'Essays and Notes',
     tabType: 'posts',
-    description: 'Longform thoughts on digital gardening and web culture',
-    itemIds: ['post_amber_ui', 'post_amber_film'],
+    description: 'Thoughts on digital curation and web culture',
+    itemIds: ['post_amber_ui', 'post_amber_film', 'post_board_1', 'post_grid_1'],
     isPinned: false
   },
   {
     id: 'col_setups',
     title: 'Studio Setups',
-    icon: '☕',
     tabType: 'posts',
-    description: 'Minimal workspaces, cable management, and daily tools',
+    description: 'Minimal workspaces, hardware builds, and daily tools',
     itemIds: ['post_board_1'],
     isPinned: false
   },
   {
     id: 'col_launches',
     title: 'Product Drops',
-    icon: '🚀',
     tabType: 'posts',
-    description: 'Sprint retrospectives, v1 release notes, and product roadmap',
+    description: 'Sprint retrospectives, release notes, and roadmap',
     itemIds: ['post_amber_ui', 'post_board_1'],
-    isPinned: false
-  },
-  {
-    id: 'col_playlists',
-    title: 'Late Night Focus',
-    icon: '🎧',
-    tabType: 'posts',
-    description: 'Ambient electronic, lo-fi beats, and coding mixes',
-    itemIds: ['post_amber_film'],
-    isPinned: false
-  },
-  {
-    id: 'col_tools',
-    title: 'Dev Stack',
-    icon: '🛠️',
-    tabType: 'posts',
-    description: 'Next.js 16, Tailwind v4, Supabase, and frontend tooling',
-    itemIds: ['post_amber_ui', 'post_board_1'],
-    isPinned: false
-  },
-  {
-    id: 'col_best_2025',
-    title: 'Best of 2025',
-    icon: '🎯',
-    tabType: 'posts',
-    description: 'Annual retrospective of favorite creations and milestones',
-    itemIds: ['post_board_1', 'post_amber_ui'],
-    isPinned: false
-  },
-  {
-    id: 'col_retro_web',
-    title: 'Retro Web',
-    icon: '👾',
-    tabType: 'posts',
-    description: '88x31 pixel buttons, webrings, and early internet lore',
-    itemIds: ['post_amber_film', 'post_amber_ui'],
     isPinned: false
   }
 ];

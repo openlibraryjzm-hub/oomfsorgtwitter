@@ -23,7 +23,7 @@ async function PresetsPageContent({ params }: { params: Promise<{ username: stri
 
   const user = await resolveUserProfile(username);
 
-  return <ProfileView user={user} initialTab="presets" />;
+  return <ProfileView user={user} initialTab="boards" />;
 }
 
 export default function UserPresetsPage({ params }: UserPresetsPageProps) {

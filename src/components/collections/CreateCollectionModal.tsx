@@ -12,8 +12,6 @@ interface CreateCollectionModalProps {
   username?: string;
 }
 
-const EMOJI_PRESETS = ['📁', '⭐', '🎨', '📸', '🌿', '⚡', '📝', '☕', '💼', '🎧', '🛠️', '💡', '🚀', '👾', '📚', '🌐', '🛍️', '📦'];
-
 export default function CreateCollectionModal({
   isOpen,
   onClose,
@@ -27,8 +25,7 @@ export default function CreateCollectionModal({
   const [slug, setSlug] = useState('');
   const [slugEdited, setSlugEdited] = useState(false);
   const [description, setDescription] = useState('');
-  const [icon, setIcon] = useState(isLinkPage ? '🌐' : '📁');
-  const [isPinned, setIsPinned] = useState(false);
+  const [isPinned, setIsPinned] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,7 +40,7 @@ export default function CreateCollectionModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
-      setError(isLinkPage ? 'Please provide a page title' : 'Please provide a collection title');
+      setError(isLinkPage ? 'Please provide a page title' : 'Please provide a preset title');
       return;
     }
 
@@ -58,7 +55,7 @@ export default function CreateCollectionModal({
       tabType,
       title: title.trim(),
       description: description.trim() || undefined,
-      icon,
+      icon: '',
       isPinned,
       isExclusive: false,
       slug: computedSlug
@@ -72,7 +69,6 @@ export default function CreateCollectionModal({
       setSlug('');
       setSlugEdited(false);
       setDescription('');
-      setIcon(isLinkPage ? '🌐' : '📁');
       setIsPinned(false);
     } else {
       setError('Limit reached: A profile can feature a maximum of 50 collections.');
@@ -97,10 +93,10 @@ export default function CreateCollectionModal({
             </div>
             <div>
               <h3 className="font-extrabold text-[#0f1419] text-base leading-tight">
-                {isLinkPage ? 'New Link Page' : 'New Post Collection'}
+                {isLinkPage ? 'New Link Page' : 'New Preset'}
               </h3>
               <p className="text-xs text-[#536471]">
-                {isLinkPage ? 'Create a distinct page for your links and web badges' : 'Curate a custom lens for your profile'}
+                {isLinkPage ? 'Create a distinct page for your links and web badges' : 'Create a curated preset for your boards'}
               </p>
             </div>
           </div>
@@ -121,45 +117,19 @@ export default function CreateCollectionModal({
             </div>
           )}
 
-          {/* Icon + Title Input */}
+          {/* Title Input */}
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold text-[#0f1419]">
-              {isLinkPage ? 'Page Title & Icon *' : 'Title & Icon *'}
+              {isLinkPage ? 'Page Title *' : 'Preset Title *'}
             </label>
-            <div className="flex items-center gap-2">
-              <div className="relative group shrink-0">
-                <button
-                  type="button"
-                  className="w-10 h-10 rounded-xl bg-[#f7f9f9] border border-[#cfd9de] flex items-center justify-center text-lg hover:bg-gray-100 transition-colors cursor-pointer"
-                >
-                  {icon}
-                </button>
-              </div>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder={isLinkPage ? 'e.g. Work & Projects, Shop, Music' : 'e.g. Design Systems, 35mm Tokyo'}
-                className="flex-1 bg-white border border-[#cfd9de] focus:border-[#1d9bf0] rounded-xl px-3 py-2 text-sm text-[#0f1419] outline-none"
-                autoFocus
-              />
-            </div>
-
-            {/* Quick Emoji Picker */}
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
-              {EMOJI_PRESETS.map((e) => (
-                <button
-                  key={e}
-                  type="button"
-                  onClick={() => setIcon(e)}
-                  className={`w-7 h-7 rounded-lg text-sm flex items-center justify-center transition-all cursor-pointer shrink-0 ${
-                    icon === e ? 'bg-[#1d9bf0]/20 scale-110 border border-[#1d9bf0]' : 'hover:bg-gray-100'
-                  }`}
-                >
-                  {e}
-                </button>
-              ))}
-            </div>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder={isLinkPage ? 'e.g. Work & Projects, Shop, Music' : 'e.g. Design Systems, Brutalism, Tokyo 35mm'}
+              className="w-full bg-white border border-[#cfd9de] focus:border-[#1d9bf0] rounded-xl px-3 py-2 text-sm text-[#0f1419] outline-none"
+              autoFocus
+            />
           </div>
 
           {/* URL Slug (for Link Pages) */}
@@ -187,19 +157,21 @@ export default function CreateCollectionModal({
             </div>
           )}
 
-          {/* Description */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-[#0f1419]">
-              Description <span className="font-normal text-[#536471]">(optional)</span>
-            </label>
-            <input
-              type="text"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder={isLinkPage ? 'e.g. Client case studies, client drops, and advisory' : 'e.g. Architectural studies, client drops'}
-              className="bg-white border border-[#cfd9de] focus:border-[#1d9bf0] rounded-xl px-3 py-2 text-xs text-[#0f1419] outline-none"
-            />
-          </div>
+          {/* Description (Only for Link Pages) */}
+          {isLinkPage && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-[#0f1419]">
+                Description <span className="font-normal text-[#536471]">(optional)</span>
+              </label>
+              <input
+                type="text"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="e.g. Client case studies, client drops, and advisory"
+                className="bg-white border border-[#cfd9de] focus:border-[#1d9bf0] rounded-xl px-3 py-2 text-xs text-[#0f1419] outline-none"
+              />
+            </div>
+          )}
 
           {/* Pinned to Top Row Toggle */}
           <div className="border border-[#eff3f4] rounded-xl bg-[#f7f9f9]">
@@ -210,10 +182,10 @@ export default function CreateCollectionModal({
                 </div>
                 <div>
                   <div className="font-bold text-xs text-[#0f1419]">
-                    Pin to quick-access bar
+                    Pin to top bar
                   </div>
                   <p className="text-[11px] text-[#536471] leading-snug mt-0.5">
-                    Surface this {isLinkPage ? 'page' : 'preset'} as a stadium pill directly above your profile feed.
+                    Show this preset as a quick-access rectangle directly on your profile&apos;s pinned scroll.
                   </p>
                 </div>
               </div>

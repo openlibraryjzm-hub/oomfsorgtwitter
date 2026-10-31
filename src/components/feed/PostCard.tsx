@@ -391,10 +391,10 @@ export default function PostCard({ post, onDelete, onManageCollections, isThread
           </div>
         )}
 
-        {/* Big Tweet Body */}
-        {post.text && (
-          <div className="text-[#0f1419] text-xl leading-relaxed whitespace-pre-line py-2">
-            {post.text}
+        {/* Big Tweet Body / Board Title */}
+        {(post.title || post.text) && (
+          <div className="text-[#0f1419] text-xl font-bold leading-relaxed whitespace-pre-line py-2">
+            {post.title || post.text}
           </div>
         )}
 
@@ -565,10 +565,10 @@ export default function PostCard({ post, onDelete, onManageCollections, isThread
           </div>
         )}
 
-        {/* Text Body */}
-        {post.text && (
-          <p className="text-[#0f1419] text-[15px] leading-relaxed whitespace-pre-line">
-            {post.text}
+        {/* Text Body / Board Title */}
+        {(post.title || post.text) && (
+          <p className="text-[#0f1419] text-[15px] font-bold leading-relaxed whitespace-pre-line">
+            {post.title || post.text}
           </p>
         )}
 

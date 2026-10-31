@@ -10,6 +10,7 @@ import {
   User as UserIcon, 
   MoreHorizontal, 
   Feather,
+  LayoutGrid,
   LogOut,
   LogIn,
   Bookmark,
@@ -99,13 +100,13 @@ export default function LeftSidebar({ onOpenComposer }: LeftSidebarProps) {
           })}
         </nav>
 
-        {/* Post Button */}
+        {/* Create Board Button */}
         <button
           onClick={onOpenComposer}
           className="mt-4 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-bold py-3.5 px-4 rounded-full w-fit xl:w-full flex items-center justify-center gap-2 shadow-xs transition-colors text-base cursor-pointer"
         >
-          <Feather className="w-5 h-5 xl:hidden" />
-          <span className="hidden xl:inline">Post</span>
+          <LayoutGrid className="w-5 h-5 xl:hidden" />
+          <span className="hidden xl:inline">Create Board</span>
         </button>
 
         {!user && (

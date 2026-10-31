@@ -9,20 +9,22 @@ import {
   LayoutGrid, 
   Link as LinkIcon,
   FolderPlus,
-  Users
+  Users,
+  Crop
 } from 'lucide-react';
-import { CURRENT_USER, Post, User, Collection, PostAttachment, ImageAttachment, UserAttachment, BoardItem } from '@/lib/mockData';
+import { CURRENT_USER, Post, User, Collection, BoardItem } from '@/lib/mockData';
 import { saveSessionPost } from '@/lib/postStore';
 import { useAuth } from '@/context/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { formatTwitterAvatar } from '@/lib/utils';
 import { addItemToCollection, getProfileCollections } from '@/lib/collections';
-import SelectOomfModal, { SelectableOomf } from './SelectOomfModal';
+import SelectOomfModal from './SelectOomfModal';
+import BoardCropModal from './BoardCropModal';
 
 interface PostComposerProps {
   onAddPost?: (post: Post) => void;
   onClose?: () => void;
-  defaultType?: 'standard' | 'board';
+  defaultType?: 'board';
   targetUser?: User;
   compact?: boolean;
   collections?: Collection[];
@@ -79,24 +81,21 @@ async function compressImageFile(file: File, maxDimension = 1080, quality = 0.82
 export default function PostComposer({
   onAddPost,
   onClose,
-  defaultType = 'standard',
   targetUser,
   compact = false,
   collections,
-  linkCollections,
   defaultLinkCollectionId
 }: PostComposerProps) {
   const { user: authUser, profile: authProfile } = useAuth();
   const supabase = createClient();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const [postType, setPostType] = useState<'standard' | 'board'>(defaultType || 'standard');
-  const [text, setText] = useState('');
+  const [title, setTitle] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Curated collection selection while drafting
+  // Curated preset selection while drafting
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(defaultLinkCollectionId || null);
   const [userPostCols, setUserPostCols] = useState<Collection[]>(collections || []);
 
@@ -118,16 +117,9 @@ export default function PostComposer({
 
   const availableCollections = userPostCols;
 
-  // Standard post unified attachments (up to 4 items max: images or user avatars)
-  const [attachments, setAttachments] = useState<PostAttachment[]>([]);
   const [isSelectOomfModalOpen, setIsSelectOomfModalOpen] = useState(false);
 
   // Board media state (supports images and user avatars)
-  const [mediaItems, setMediaItems] = useState<DraftMediaItem[]>([]);
-  const singleSlotFileInputRef = useRef<HTMLInputElement | null>(null);
-  const targetSlotIndexRef = useRef<number | null>(null);
-  const targetBoardSlotIndexRef = useRef<number | null>(null);
-
   const createBlankBoardSlots = (): DraftMediaItem[] => [
     { id: `b_slot_${Date.now()}_1`, type: 'image', url: '', caption: '' },
     { id: `b_slot_${Date.now()}_2`, type: 'image', url: '', caption: '' },
@@ -135,6 +127,43 @@ export default function PostComposer({
     { id: `b_slot_${Date.now()}_4`, type: 'image', url: '', caption: '' },
     { id: `b_slot_${Date.now()}_5`, type: 'image', url: '', caption: '' },
   ];
+
+  const [mediaItems, setMediaItems] = useState<DraftMediaItem[]>(createBlankBoardSlots());
+  const singleSlotFileInputRef = useRef<HTMLInputElement | null>(null);
+  const targetSlotIndexRef = useRef<number | null>(null);
+  const targetBoardSlotIndexRef = useRef<number | null>(null);
+
+  const [cropModalState, setCropModalState] = useState<{
+    isOpen: boolean;
+    slotIndex: number | null;
+    imageSrc: string;
+  }>({
+    isOpen: false,
+    slotIndex: null,
+    imageSrc: ''
+  });
+
+  const handleOpenCropModal = (index: number) => {
+    const item = mediaItems[index];
+    if (item && item.url && item.type === 'image') {
+      setCropModalState({
+        isOpen: true,
+        slotIndex: index,
+        imageSrc: item.url
+      });
+    }
+  };
+
+  const handleApplyCrop = (croppedDataUrl: string) => {
+    if (cropModalState.slotIndex !== null) {
+      setMediaItems((prev) =>
+        prev.map((item, idx) =>
+          idx === cropModalState.slotIndex ? { ...item, url: croppedDataUrl } : item
+        )
+      );
+    }
+    setCropModalState({ isOpen: false, slotIndex: null, imageSrc: '' });
+  };
 
   const handleSlotUploadClick = (index: number) => {
     targetSlotIndexRef.current = index;
@@ -159,6 +188,15 @@ export default function PostComposer({
         setMediaItems((prev) =>
           prev.map((item, idx) => (idx === targetIdx ? { ...item, type: 'image', url: dataUrl } : item))
         );
+
+        // For Slot 1 (Cover image), immediately open the crop viewfinder for precise 2:1 framing
+        if (targetIdx === 0) {
+          setCropModalState({
+            isOpen: true,
+            slotIndex: 0,
+            imageSrc: dataUrl
+          });
+        }
       }
     } catch (err) {
       console.error('Error uploading slot image:', err);
@@ -187,14 +225,7 @@ export default function PostComposer({
     links: []
   } : CURRENT_USER);
 
-  useEffect(() => {
-    setPostType(defaultType || 'standard');
-    if (defaultType === 'board') {
-      setMediaItems(createBlankBoardSlots());
-    }
-  }, [defaultType]);
-
-  // Handle multi-file upload from computer for standard attachments or board images
+  // Handle multi-file upload from computer for board images
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -211,45 +242,30 @@ export default function PostComposer({
         dataUrls.push(dataUrl);
       }
 
-      if (postType === 'standard') {
-        setAttachments((prev) => {
-          const remaining = 4 - prev.length;
-          if (remaining <= 0) return prev;
-          const newAttachments: PostAttachment[] = dataUrls.slice(0, remaining).map((url) => ({
-            type: 'image' as const,
-            url
-          }));
-          return [...prev, ...newAttachments];
-        });
-        if (dataUrls.length > 4 - attachments.length) {
-          setErrorMsg('Standard posts support a maximum of 4 attachments.');
-        }
-      } else {
-        setMediaItems((prev) => {
-          let fileIdx = 0;
-          // First fill empty slots in order
-          const updated = prev.map((item) => {
-            if (!item.url && fileIdx < dataUrls.length) {
-              const filled = { ...item, type: 'image' as const, url: dataUrls[fileIdx] };
-              fileIdx++;
-              return filled;
-            }
-            return item;
-          });
-
-          // If more files remain, append new slots
-          while (fileIdx < dataUrls.length) {
-            updated.push({
-              id: `media_${Date.now()}_${fileIdx}`,
-              type: 'image',
-              url: dataUrls[fileIdx],
-              caption: ''
-            });
+      setMediaItems((prev) => {
+        let fileIdx = 0;
+        // First fill empty slots in order
+        const updated = prev.map((item) => {
+          if (!item.url && fileIdx < dataUrls.length) {
+            const filled = { ...item, type: 'image' as const, url: dataUrls[fileIdx] };
             fileIdx++;
+            return filled;
           }
-          return updated;
+          return item;
         });
-      }
+
+        // If more files remain, append new slots
+        while (fileIdx < dataUrls.length) {
+          updated.push({
+            id: `media_${Date.now()}_${fileIdx}`,
+            type: 'image',
+            url: dataUrls[fileIdx],
+            caption: ''
+          });
+          fileIdx++;
+        }
+        return updated;
+      });
     } catch (err) {
       console.error('Error processing uploaded images:', err);
       setErrorMsg('Could not process one or more image files.');
@@ -289,48 +305,46 @@ export default function PostComposer({
     setMediaItems((prev) => prev.filter((item) => item.id !== id));
   };
 
-  // Validation check
+  const filledBoardItems = mediaItems.filter((m) => m.url.trim().length > 0);
+
+  // Validation check: Title required and at least 3 items filled
   const canSubmit = () => {
     if (isSubmitting || isProcessingFiles) return false;
-    if (postType === 'standard') return text.trim().length > 0 || attachments.length > 0;
-    if (postType === 'board') return mediaItems.filter((m) => m.url.trim().length > 0).length >= 3;
-    return false;
+    return title.trim().length > 0 && filledBoardItems.length >= 3;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
 
-    const filledBoardItems = mediaItems.filter((m) => m.url.trim().length > 0);
-    if (postType === 'board' && filledBoardItems.length < 3) {
-      setErrorMsg('Boards require at least 3 items (images or avatars).');
+    if (!title.trim()) {
+      setErrorMsg('Please give your board a title.');
       return;
     }
 
-    if (!canSubmit()) return;
+    if (filledBoardItems.length < 3) {
+      setErrorMsg('Boards require at least 3 items (images or mutual avatars).');
+      return;
+    }
+
     setIsSubmitting(true);
 
-    const imageAttachments = attachments.filter((a): a is ImageAttachment => a.type === 'image');
+    const boardTitle = title.trim();
 
     const blockContent: any = {
-      text: text.trim(),
-      ...(postType === 'standard' && attachments.length > 0 ? {
-        attachments: attachments,
-        images: imageAttachments.length > 0 ? imageAttachments.map((a) => a.url) : undefined
-      } : {}),
-      ...(postType === 'board' ? {
-        boardData: {
-          images: filledBoardItems.map((m) => ({
-            id: m.id,
-            type: m.type || 'image',
-            url: m.url,
-            username: m.username,
-            name: m.name,
-            avatar: m.avatar,
-            caption: m.caption.trim() || undefined
-          }))
-        }
-      } : {})
+      title: boardTitle,
+      text: boardTitle,
+      boardData: {
+        images: filledBoardItems.map((m) => ({
+          id: m.id,
+          type: m.type || 'image',
+          url: m.url,
+          username: m.username,
+          name: m.name,
+          avatar: m.avatar,
+          caption: m.caption.trim() || undefined
+        }))
+      }
     };
 
     let newPostId = `post_${Date.now()}`;
@@ -342,26 +356,19 @@ export default function PostComposer({
           .from('blocks')
           .insert({
             user_id: authUser.id,
-            type: postType,
+            type: 'board',
             content: blockContent
           })
           .select('id')
           .single();
 
         if (error) {
-          console.error('Supabase insert error:', error);
-          setErrorMsg(`Failed to save to Supabase: ${error.message}`);
-          setIsSubmitting(false);
-          return;
-        }
-        if (data?.id) {
+          console.error('Error saving board to Supabase blocks:', error);
+        } else if (data) {
           newPostId = data.id;
         }
-      } catch (err: any) {
-        console.error('Error inserting post into Supabase:', err);
-        setErrorMsg('Unexpected error saving post.');
-        setIsSubmitting(false);
-        return;
+      } catch (err) {
+        console.error('Failed to insert block:', err);
       }
     }
 
@@ -369,10 +376,9 @@ export default function PostComposer({
       id: newPostId,
       author: authorUser,
       createdAt: 'Just now',
-      type: postType,
-      text: blockContent.text,
-      attachments: postType === 'standard' && attachments.length > 0 ? attachments : undefined,
-      images: postType === 'standard' && imageAttachments.length > 0 ? imageAttachments.map((a) => a.url) : undefined,
+      type: 'board',
+      title: boardTitle,
+      text: boardTitle,
       boardData: blockContent.boardData,
       likesCount: 0,
       repostsCount: 0,
@@ -383,7 +389,6 @@ export default function PostComposer({
     saveSessionPost(newPost);
 
     const targetCollection = selectedCollectionId;
-
     if (targetCollection) {
       addItemToCollection(targetCollection, newPostId, authorUser.id);
     }
@@ -392,7 +397,7 @@ export default function PostComposer({
       onAddPost(newPost);
     }
 
-    // Broadcast globally so ProfileView updates immediately even if posted from LeftSidebar modal
+    // Broadcast globally so ProfileView updates immediately
     if (typeof window !== 'undefined') {
       window.dispatchEvent(
         new CustomEvent('oomfs:post-created', {
@@ -402,54 +407,14 @@ export default function PostComposer({
     }
 
     // Reset state
+    setTitle('');
+    setMediaItems(createBlankBoardSlots());
     setSelectedCollectionId(null);
-    setText('');
-    setAttachments([]);
-    setMediaItems([]);
     setIsSubmitting(false);
 
     if (onClose) {
       onClose();
     }
-  };
-
-  // Helper to render an attachment preview cell inside the composer tray
-  const renderTrayCell = (item: PostAttachment, idx: number) => {
-    return (
-      <div key={idx} className="relative w-full h-full bg-[#f7f9f9] overflow-hidden group">
-        {item.type === 'image' ? (
-          <img
-            src={item.url}
-            alt={`Attached item ${idx + 1}`}
-            className="w-full h-full object-cover block"
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-[#f7f9f9] to-[#eff3f4] p-3 flex flex-col items-center justify-center text-center select-none">
-            <img
-              src={formatTwitterAvatar(item.avatar)}
-              alt={item.name}
-              className="w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover ring-2 ring-black/10 shadow-xs"
-            />
-            <div className="mt-1.5 min-w-0 max-w-full px-2">
-              <span className="font-bold text-xs sm:text-sm text-[#0f1419] truncate block">
-                {item.name}
-              </span>
-              <span className="text-[11px] text-[#536471] truncate block">
-                @{item.username}
-              </span>
-            </div>
-          </div>
-        )}
-        <button
-          type="button"
-          onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== idx))}
-          className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/70 hover:bg-black text-white flex items-center justify-center transition-opacity cursor-pointer shadow-sm z-10"
-          title="Remove attachment"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      </div>
-    );
   };
 
   return (
@@ -462,53 +427,15 @@ export default function PostComposer({
         />
 
         <form onSubmit={handleSubmit} className="flex-1 min-w-0 flex flex-col gap-3">
-          {/* Main Post Textarea */}
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder={
-              postType === 'board'
-                ? "Add thoughts or a caption for your board... (optional)"
-                : "What is happening?!"
-            }
-            rows={compact ? 2 : 3}
-            className="w-full text-[15px] text-[#0f1419] placeholder-[#536471] outline-none resize-none bg-transparent"
+          {/* Board Title Input */}
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Board title (e.g. Brutalist Architecture)"
+            className="w-full text-base font-bold text-[#0f1419] placeholder-[#536471] outline-none bg-transparent"
+            autoFocus
           />
-
-          {/* Standard Post Attachment Preview Tray (1-4 Items: Photos or User Avatars) */}
-          {postType === 'standard' && attachments.length > 0 && (
-            <div className="w-full">
-              {attachments.length === 1 && (
-                <div className={`relative w-full rounded-2xl overflow-hidden border border-[#eff3f4] bg-[#f7f9f9] ${
-                  attachments[0].type === 'image' ? 'max-h-72 sm:max-h-80' : 'h-44 sm:h-48'
-                }`}>
-                  {renderTrayCell(attachments[0], 0)}
-                </div>
-              )}
-
-              {attachments.length === 2 && (
-                <div className="grid grid-cols-2 gap-1.5 h-48 sm:h-56 rounded-2xl overflow-hidden border border-[#eff3f4] bg-[#eff3f4]">
-                  {attachments.map((item, idx) => renderTrayCell(item, idx))}
-                </div>
-              )}
-
-              {attachments.length === 3 && (
-                <div className="grid grid-cols-2 gap-1.5 h-52 sm:h-64 rounded-2xl overflow-hidden border border-[#eff3f4] bg-[#eff3f4]">
-                  {renderTrayCell(attachments[0], 0)}
-                  <div className="grid grid-rows-2 gap-1.5 w-full h-full">
-                    {renderTrayCell(attachments[1], 1)}
-                    {renderTrayCell(attachments[2], 2)}
-                  </div>
-                </div>
-              )}
-
-              {attachments.length === 4 && (
-                <div className="grid grid-cols-2 grid-rows-2 gap-1.5 h-52 sm:h-64 rounded-2xl overflow-hidden border border-[#eff3f4] bg-[#eff3f4]">
-                  {attachments.map((item, idx) => renderTrayCell(item, idx))}
-                </div>
-              )}
-            </div>
-          )}
 
           {/* Hidden Single Slot File Input */}
           <input
@@ -529,199 +456,213 @@ export default function PostComposer({
             className="hidden"
           />
 
-          {/* BOARD DRAFTING UI */}
-          {postType === 'board' && (
-            <div className="bg-[#f7f9f9] border border-[#eff3f4] rounded-2xl p-3.5 flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-extrabold text-[#0f1419] uppercase tracking-wider flex items-center gap-1.5">
-                  <LayoutGrid className="w-3.5 h-3.5 text-[#1d9bf0]" />
-                  <span>Board Builder ({mediaItems.filter(m => m.url.trim().length > 0).length} items · min 3)</span>
+          {/* BOARD BUILDER UI */}
+          <div className="bg-[#f7f9f9] border border-[#eff3f4] rounded-2xl p-3.5 flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold text-[#0f1419] uppercase tracking-wider flex items-center gap-1.5">
+                <LayoutGrid className="w-3.5 h-3.5 text-[#1d9bf0]" />
+                <span>Board Items ({filledBoardItems.length} items · min 3)</span>
+              </span>
+              {filledBoardItems.length < 3 && (
+                <span className="text-[11px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                  Add at least 3 items (images or avatars)
                 </span>
-                {mediaItems.filter(m => m.url.trim().length > 0).length < 3 && (
-                  <span className="text-[11px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                    Add at least 3 items (images or avatars)
-                  </span>
-                )}
-              </div>
+              )}
+            </div>
 
-              {/* List of 5 Board Item Slots with Placeholders */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                {mediaItems.map((item, idx) => (
-                  <div
-                    key={item.id}
-                    className="bg-white border border-[#eff3f4] rounded-xl overflow-hidden flex flex-col shadow-2xs"
-                  >
-                    <div className="relative h-28 bg-[#eff3f4] flex items-center justify-center overflow-hidden">
-                      {item.url ? (
-                        item.type === 'user' ? (
-                          <div
-                            onClick={() => handleSlotAvatarClick(idx)}
-                            className="w-full h-full bg-gradient-to-br from-[#f7f9f9] to-[#eff3f4] hover:bg-blue-50/40 flex flex-col items-center justify-center p-2 text-center relative select-none cursor-pointer group/user-slot transition-colors"
-                            title="Click to change avatar"
-                          >
-                            <img
-                              src={formatTwitterAvatar(item.avatar || item.url)}
-                              alt={item.name || item.username || ''}
-                              className="w-11 h-11 rounded-full object-cover ring-2 ring-black/10 group-hover/user-slot:ring-[#1d9bf0] shadow-xs transition-all"
-                            />
-                            <span className="mt-1 text-[11px] font-bold text-[#0f1419] truncate max-w-full px-1 block">
-                              {item.name || item.username}
+            {/* List of Board Item Slots */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              {mediaItems.map((item, idx) => (
+                <div
+                  key={item.id}
+                  className="bg-white border border-[#eff3f4] rounded-xl overflow-hidden flex flex-col shadow-2xs"
+                >
+                  <div className="relative h-28 bg-[#eff3f4] flex items-center justify-center overflow-hidden">
+                    {item.url ? (
+                      item.type === 'user' ? (
+                        <div
+                          onClick={() => handleSlotAvatarClick(idx)}
+                          className="w-full h-full bg-gradient-to-br from-[#f7f9f9] to-[#eff3f4] hover:bg-blue-50/40 flex flex-col items-center justify-center p-2 text-center relative select-none cursor-pointer group/user-slot transition-colors"
+                          title="Click to change avatar"
+                        >
+                          <img
+                            src={formatTwitterAvatar(item.avatar || item.url)}
+                            alt={item.name || item.username || ''}
+                            className="w-11 h-11 rounded-full object-cover ring-2 ring-black/10 group-hover/user-slot:ring-[#1d9bf0] shadow-xs transition-all"
+                          />
+                          <span className="mt-1 text-[11px] font-bold text-[#0f1419] truncate max-w-full px-1 block">
+                            {item.name || item.username}
+                          </span>
+                          {item.username && (
+                            <span className="text-[10px] text-[#536471] truncate max-w-full block">
+                              @{item.username}
                             </span>
-                            {item.username && (
-                              <span className="text-[10px] text-[#536471] truncate max-w-full block">
-                                @{item.username}
-                              </span>
-                            )}
-                            <span className="absolute top-1 left-1 bg-black/65 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                              #{idx + 1}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRemoveMedia(item.id);
-                              }}
-                              className="absolute top-1 right-1 p-1 bg-red-600/90 hover:bg-red-600 text-white rounded-full cursor-pointer z-10"
-                              title="Remove item"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </div>
-                        ) : (
-                          <>
-                            <img src={item.url} alt="" className="w-full h-full object-cover" />
-                            <span className="absolute top-1 left-1 bg-black/65 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                              #{idx + 1}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveMedia(item.id)}
-                              className="absolute top-1 right-1 p-1 bg-red-600/90 hover:bg-red-600 text-white rounded-full cursor-pointer"
-                              title="Remove image"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </>
-                        )
-                      ) : (
-                        <div className="w-full h-full p-2 flex flex-col justify-between relative bg-white">
-                          <span className="absolute top-1 left-1 bg-gray-200 text-[#536471] text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                          )}
+                          <span className="absolute top-1 left-1 bg-black/65 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
                             #{idx + 1}
                           </span>
                           <button
                             type="button"
-                            onClick={() => handleRemoveMedia(item.id)}
-                            className="absolute top-1 right-1 p-0.5 text-[#536471] hover:text-red-500 rounded-full cursor-pointer"
-                            title="Remove slot"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveMedia(item.id);
+                            }}
+                            className="absolute top-1 right-1 p-1 bg-red-600/90 hover:bg-red-600 text-white rounded-full cursor-pointer z-10"
+                            title="Remove item"
                           >
                             <X className="w-3 h-3" />
                           </button>
-                          <div className="flex-1 flex items-center gap-1.5 pt-3.5">
-                            <button
-                              type="button"
-                              onClick={() => handleSlotUploadClick(idx)}
-                              className="flex-1 h-full flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#cfd9de] hover:border-[#1d9bf0] hover:bg-[#1d9bf0]/5 text-[#536471] hover:text-[#1d9bf0] transition-colors p-1 cursor-pointer"
-                              title="Upload image"
-                            >
-                              <Upload className="w-3.5 h-3.5 mb-0.5 text-[#1d9bf0]" />
-                              <span className="text-[10px] font-bold">Image</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleSlotAvatarClick(idx)}
-                              className="flex-1 h-full flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#cfd9de] hover:border-[#1d9bf0] hover:bg-[#1d9bf0]/5 text-[#536471] hover:text-[#1d9bf0] transition-colors p-1 cursor-pointer"
-                              title="Attach mutual avatar"
-                            >
-                              <Users className="w-3.5 h-3.5 mb-0.5 text-[#1d9bf0]" />
-                              <span className="text-[10px] font-bold">Avatar</span>
-                            </button>
-                          </div>
                         </div>
-                      )}
-                    </div>
-                    <div className="p-1.5">
-                      <input
-                        type="text"
-                        placeholder={`Board — ${String(idx + 1).padStart(2, '0')}`}
-                        value={item.caption}
-                        onChange={(e) => handleUpdateCaption(item.id, e.target.value)}
-                        className="w-full text-[11px] text-[#0f1419] placeholder-[#536471]/50 bg-[#f7f9f9] border border-[#eff3f4] rounded px-1.5 py-1 outline-none transition-colors"
-                      />
-                    </div>
+                      ) : (
+                        <>
+                          <img src={item.url} alt="" className="w-full h-full object-cover" />
+                          <span
+                            className={`absolute top-1 left-1 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-2xs ${
+                              idx === 0 ? 'bg-[#1d9bf0]' : 'bg-black/65'
+                            }`}
+                          >
+                            {idx === 0 ? '#1 Cover' : `#${idx + 1}`}
+                          </span>
+                          {/* Crop / Reposition Framing Button */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenCropModal(idx);
+                            }}
+                            className="absolute bottom-1 right-1 p-1 bg-black/70 hover:bg-black text-white rounded-full transition-colors cursor-pointer shadow-xs z-10"
+                            title="Frame / crop image"
+                          >
+                            <Crop className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveMedia(item.id)}
+                            className="absolute top-1 right-1 p-1 bg-red-600/90 hover:bg-red-600 text-white rounded-full cursor-pointer z-10"
+                            title="Remove image"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </>
+                      )
+                    ) : (
+                      <div className="w-full h-full p-2 flex flex-col justify-between relative bg-white">
+                        <span className="absolute top-1 left-1 bg-gray-200 text-[#536471] text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                          #{idx + 1}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveMedia(item.id)}
+                          className="absolute top-1 right-1 p-0.5 text-[#536471] hover:text-red-500 rounded-full cursor-pointer"
+                          title="Remove slot"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                        <div className="flex-1 flex items-center gap-1.5 pt-3.5">
+                          <button
+                            type="button"
+                            onClick={() => handleSlotUploadClick(idx)}
+                            className="flex-1 h-full flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#cfd9de] hover:border-[#1d9bf0] hover:bg-[#1d9bf0]/5 text-[#536471] hover:text-[#1d9bf0] transition-colors p-1 cursor-pointer"
+                            title="Upload image"
+                          >
+                            <Upload className="w-3.5 h-3.5 mb-0.5 text-[#1d9bf0]" />
+                            <span className="text-[10px] font-bold">Image</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSlotAvatarClick(idx)}
+                            className="flex-1 h-full flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#cfd9de] hover:border-[#1d9bf0] hover:bg-[#1d9bf0]/5 text-[#536471] hover:text-[#1d9bf0] transition-colors p-1 cursor-pointer"
+                            title="Attach mutual avatar"
+                          >
+                            <Users className="w-3.5 h-3.5 mb-0.5 text-[#1d9bf0]" />
+                            <span className="text-[10px] font-bold">Avatar</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                ))}
-
-                {/* Add Board Item Slot Button */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMediaItems((prev) => [
-                      ...prev,
-                      { id: `b_slot_${Date.now()}_${prev.length + 1}`, type: 'image', url: '', caption: '' }
-                    ]);
-                  }}
-                  className="h-36 rounded-xl border-2 border-dashed border-[#cfd9de] hover:border-[#1d9bf0] hover:bg-[#1d9bf0]/5 text-[#536471] hover:text-[#1d9bf0] transition-colors flex flex-col items-center justify-center gap-1.5 cursor-pointer"
-                  title="Add another board slot"
-                >
-                  <Plus className="w-5 h-5" />
-                  <span className="text-xs font-bold">Add Slot</span>
-                </button>
-              </div>
-
-              {/* Upload / Add Avatar / Paste URL Buttons */}
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isProcessingFiles}
-                  className="bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <Upload className="w-3.5 h-3.5" />
-                  <span>{isProcessingFiles ? 'Processing...' : 'Upload Images'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    targetBoardSlotIndexRef.current = null;
-                    setIsSelectOomfModalOpen(true);
-                  }}
-                  className="bg-white border border-[#eff3f4] hover:border-gray-300 text-[#0f1419] text-xs font-semibold px-3 py-2 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <Users className="w-3.5 h-3.5 text-[#1d9bf0]" />
-                  <span>Add Mutual Avatar</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setShowUrlInput(!showUrlInput)}
-                  className="bg-white border border-[#eff3f4] hover:border-gray-300 text-[#0f1419] text-xs font-semibold px-3 py-2 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <LinkIcon className="w-3.5 h-3.5 text-[#536471]" />
-                  <span>Paste Image URL</span>
-                </button>
-              </div>
-
-              {showUrlInput && (
-                <div className="flex gap-2">
-                  <input
-                    type="url"
-                    placeholder="https://images.unsplash.com/..."
-                    value={urlInput}
-                    onChange={(e) => setUrlInput(e.target.value)}
-                    className="flex-1 bg-white border border-[#eff3f4] rounded-xl px-3 py-1.5 text-xs text-[#0f1419] outline-none focus:border-[#1d9bf0]"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddUrlImage}
-                    className="bg-[#0f1419] text-white text-xs font-bold px-3 py-1.5 rounded-xl cursor-pointer"
-                  >
-                    Add
-                  </button>
+                  <div className="p-1.5">
+                    <input
+                      type="text"
+                      placeholder={`Item ${idx + 1} caption (optional)`}
+                      value={item.caption}
+                      onChange={(e) => handleUpdateCaption(item.id, e.target.value)}
+                      className="w-full text-[11px] text-[#0f1419] placeholder-[#536471]/50 bg-[#f7f9f9] border border-[#eff3f4] rounded px-1.5 py-1 outline-none transition-colors"
+                    />
+                  </div>
                 </div>
-              )}
+              ))}
+
+              {/* Add Board Item Slot Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setMediaItems((prev) => [
+                    ...prev,
+                    { id: `b_slot_${Date.now()}_${prev.length + 1}`, type: 'image', url: '', caption: '' }
+                  ]);
+                }}
+                className="h-36 rounded-xl border-2 border-dashed border-[#cfd9de] hover:border-[#1d9bf0] hover:bg-[#1d9bf0]/5 text-[#536471] hover:text-[#1d9bf0] transition-colors flex flex-col items-center justify-center gap-1.5 cursor-pointer"
+                title="Add another board slot"
+              >
+                <Plus className="w-5 h-5" />
+                <span className="text-xs font-bold">Add Slot</span>
+              </button>
             </div>
-          )}
+
+            {/* Upload / Add Avatar / Paste URL Buttons */}
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isProcessingFiles}
+                className="bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>{isProcessingFiles ? 'Processing...' : 'Upload Images'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  targetBoardSlotIndexRef.current = null;
+                  setIsSelectOomfModalOpen(true);
+                }}
+                className="bg-white border border-[#eff3f4] hover:border-gray-300 text-[#0f1419] text-xs font-semibold px-3 py-2 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <Users className="w-3.5 h-3.5 text-[#1d9bf0]" />
+                <span>Add Mutual Avatar</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowUrlInput(!showUrlInput)}
+                className="bg-white border border-[#eff3f4] hover:border-gray-300 text-[#0f1419] text-xs font-semibold px-3 py-2 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <LinkIcon className="w-3.5 h-3.5 text-[#536471]" />
+                <span>Paste Image URL</span>
+              </button>
+            </div>
+
+            {showUrlInput && (
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  placeholder="https://images.unsplash.com/..."
+                  value={urlInput}
+                  onChange={(e) => setUrlInput(e.target.value)}
+                  className="flex-1 bg-white border border-[#eff3f4] rounded-xl px-3 py-1.5 text-xs text-[#0f1419] outline-none focus:border-[#1d9bf0]"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddUrlImage}
+                  className="bg-[#0f1419] text-white text-xs font-bold px-3 py-1.5 rounded-xl cursor-pointer"
+                >
+                  Add
+                </button>
+              </div>
+            )}
+          </div>
 
           {errorMsg && (
             <p className="text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
@@ -735,16 +676,16 @@ export default function PostComposer({
               <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">
                   <FolderPlus className="w-4 h-4 text-[#1d9bf0]" />
-                  <span className="font-bold text-[#0f1419]">Add to collection:</span>
+                  <span className="font-bold text-[#0f1419]">Add to preset:</span>
                   <select
                     value={selectedCollectionId || ''}
                     onChange={(e) => setSelectedCollectionId(e.target.value || null)}
                     className="bg-white border border-[#cfd9de] focus:border-[#1d9bf0] rounded-lg px-2 py-1 text-xs text-[#0f1419] outline-none cursor-pointer"
                   >
-                    <option value="">None (main timeline)</option>
+                    <option value="">None (all boards)</option>
                     {availableCollections.map((col) => (
                       <option key={col.id} value={col.id}>
-                        {col.icon || '📁'} {col.title}
+                        {col.title.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim()}
                       </option>
                     ))}
                   </select>
@@ -756,75 +697,25 @@ export default function PostComposer({
           {/* Footer Action Bar */}
           <div className="flex items-center justify-between pt-2 border-t border-[#eff3f4]">
             <div className="flex items-center gap-1 text-[#1d9bf0]">
-              {/* Attach Photos button */}
               <button
                 type="button"
-                onClick={() => {
-                  fileInputRef.current?.click();
-                }}
-                disabled={postType === 'standard' && attachments.length >= 4}
-                title={
-                  postType === 'standard' && attachments.length >= 4
-                    ? 'Maximum 4 attachments'
-                    : postType === 'board'
-                    ? 'Upload images to board'
-                    : 'Attach photos'
-                }
-                className={`p-2 rounded-full transition-colors cursor-pointer ${
-                  postType === 'standard' && attachments.length >= 4
-                    ? 'opacity-40 cursor-not-allowed text-gray-400'
-                    : 'hover:bg-[#1d9bf0]/10 text-[#1d9bf0]'
-                }`}
+                onClick={() => fileInputRef.current?.click()}
+                title="Upload images to board"
+                className="p-2 rounded-full hover:bg-[#1d9bf0]/10 text-[#1d9bf0] transition-colors cursor-pointer"
               >
                 <ImageIcon className="w-5 h-5" />
               </button>
 
-              {/* Attach Mutual / Avatar button */}
               <button
                 type="button"
                 onClick={() => {
-                  if (postType === 'board') {
-                    targetBoardSlotIndexRef.current = null;
-                  }
+                  targetBoardSlotIndexRef.current = null;
                   setIsSelectOomfModalOpen(true);
                 }}
-                disabled={postType === 'standard' && attachments.length >= 4}
-                title={
-                  postType === 'board'
-                    ? 'Attach mutual avatar to board'
-                    : attachments.length >= 4
-                    ? 'Maximum 4 attachments'
-                    : 'Attach mutual avatar'
-                }
-                className={`p-2 rounded-full transition-colors cursor-pointer ${
-                  postType === 'standard' && attachments.length >= 4
-                    ? 'opacity-40 cursor-not-allowed text-gray-400'
-                    : 'hover:bg-[#1d9bf0]/10 text-[#1d9bf0]'
-                }`}
+                title="Attach mutual avatar to board"
+                className="p-2 rounded-full hover:bg-[#1d9bf0]/10 text-[#1d9bf0] transition-colors cursor-pointer"
               >
                 <Users className="w-5 h-5" />
-              </button>
-
-              {/* Create Board button */}
-              <button
-                type="button"
-                onClick={() => {
-                  setErrorMsg(null);
-                  if (postType === 'board') {
-                    setPostType('standard');
-                  } else {
-                    setPostType('board');
-                    if (mediaItems.length === 0) {
-                      setMediaItems(createBlankBoardSlots());
-                    }
-                  }
-                }}
-                title="Create Board"
-                className={`p-2 rounded-full transition-colors cursor-pointer ${
-                  postType === 'board' ? 'bg-[#1d9bf0]/15 text-[#1d9bf0]' : 'hover:bg-[#1d9bf0]/10'
-                }`}
-              >
-                <LayoutGrid className="w-5 h-5" />
               </button>
             </div>
 
@@ -843,14 +734,14 @@ export default function PostComposer({
                 disabled={!canSubmit()}
                 className="bg-[#1d9bf0] hover:bg-[#1a8cd8] disabled:opacity-40 text-white font-bold px-5 py-2 rounded-full text-xs transition-colors shadow-2xs cursor-pointer"
               >
-                {isSubmitting ? 'Posting...' : 'Post'}
+                {isSubmitting ? 'Creating...' : 'Create Board'}
               </button>
             </div>
           </div>
         </form>
       </div>
 
-      {/* Modal for selecting an OOMF / Mutual to attach */}
+      {/* Modal for selecting an OOMF / Mutual to attach to board */}
       <SelectOomfModal
         isOpen={isSelectOomfModalOpen}
         onClose={() => {
@@ -859,58 +750,52 @@ export default function PostComposer({
         }}
         currentUserId={authUser?.id}
         onSelectUser={(user) => {
-          if (postType === 'board') {
-            const targetIdx = targetBoardSlotIndexRef.current;
-            if (targetIdx !== null && targetIdx >= 0) {
-              setMediaItems((prev) =>
-                prev.map((item, idx) =>
-                  idx === targetIdx
-                    ? {
-                        ...item,
-                        type: 'user',
-                        url: `/${user.username}`,
-                        username: user.username,
-                        name: user.name,
-                        avatar: user.avatar
-                      }
-                    : item
-                )
-              );
-            } else {
-              setMediaItems((prev) => {
-                const emptyIdx = prev.findIndex((m) => !m.url);
-                const newItem: DraftMediaItem = {
-                  id: `b_slot_${Date.now()}`,
-                  type: 'user',
-                  url: `/${user.username}`,
-                  username: user.username,
-                  name: user.name,
-                  avatar: user.avatar,
-                  caption: ''
-                };
-                if (emptyIdx !== -1) {
-                  return prev.map((m, i) => (i === emptyIdx ? { ...m, ...newItem, id: m.id } : m));
-                }
-                return [...prev, newItem];
-              });
-            }
-            targetBoardSlotIndexRef.current = null;
+          const targetIdx = targetBoardSlotIndexRef.current;
+          if (targetIdx !== null && targetIdx >= 0) {
+            setMediaItems((prev) =>
+              prev.map((item, idx) =>
+                idx === targetIdx
+                  ? {
+                      ...item,
+                      type: 'user',
+                      url: `/${user.username}`,
+                      username: user.username,
+                      name: user.name,
+                      avatar: user.avatar
+                    }
+                  : item
+              )
+            );
           } else {
-            if (attachments.length < 4) {
-              setAttachments((prev) => [
-                ...prev,
-                {
-                  type: 'user',
-                  username: user.username,
-                  name: user.name,
-                  avatar: user.avatar,
-                  id: user.id
-                }
-              ]);
-            }
+            setMediaItems((prev) => {
+              const emptyIdx = prev.findIndex((m) => !m.url);
+              const newItem: DraftMediaItem = {
+                id: `b_slot_${Date.now()}`,
+                type: 'user',
+                url: `/${user.username}`,
+                username: user.username,
+                name: user.name,
+                avatar: user.avatar,
+                caption: ''
+              };
+              if (emptyIdx !== -1) {
+                return prev.map((m, i) => (i === emptyIdx ? { ...m, ...newItem, id: m.id } : m));
+              }
+              return [...prev, newItem];
+            });
           }
+          targetBoardSlotIndexRef.current = null;
           setIsSelectOomfModalOpen(false);
         }}
+      />
+
+      {/* Board Hero Image Crop Viewfinder Modal */}
+      <BoardCropModal
+        isOpen={cropModalState.isOpen}
+        imageSrc={cropModalState.imageSrc}
+        onClose={() => setCropModalState({ isOpen: false, slotIndex: null, imageSrc: '' })}
+        onApply={handleApplyCrop}
+        aspectRatio={2.0}
       />
     </div>
   );

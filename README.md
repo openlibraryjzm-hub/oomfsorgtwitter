@@ -16,21 +16,19 @@
    * When User A and User B follow each other on `oomfs.org`, they automatically earn an **OOMF mutual badge** ($A \leftrightarrow B$).
    * Mutuals are highlighted on user profiles and in the dedicated **OOMFS** tab.
 
-3. **Specialized Post & Block Types (Beyond Tweets):**  
+3. **Specialized Post Formats & Pinterest Boards:**  
    Profiles showcase rich, modular content formats tailored to creative work and visual curation:
-   * 📝 **Standard Post (`standard`)**: Native 1:1 timeline tweet post with optional native Twitter media attachments (1–4 items: images or mutual/user avatars). Threadable, likeable, repostable.
-   * 📌 **Board (`board`)**: Pinterest-style visual curation boards (`3+` items: images and/or mutual user avatars). Renders as a 3-item preview on the profile timeline (`50%` left half, two `25%` stacked right quarter cells with a `+N` badge) with a dedicated exploration mini banner between the media and action metrics, expanding into a full **2-column Pinterest masonry grid** in the dedicated thread view (`/[username]/status/[id]`).
+   * 📌 **Board (`board`)**: The **sole timeline post type**. Renders on the profile in an authentic **2-column Pinterest-style scroll grid** with a full-bleed 2:1 hero cover image, bottom cascading secondary circle avatars ("also followed by" pattern), bold title, and item count below. Cover photos are framed precisely during upload via the interactive `BoardCropModal.tsx` viewfinder. Supports image uploads and mutual avatar link embeds (`SelectOomfModal`). Expands into a full **2-column Pinterest masonry grid** in the dedicated thread view (`/[username]/status/[id]`).
    * 💬 **Profile Comments (`comment`)**: 1:1 X/Twitter-native guestbook comments supporting attached images (up to 4 photos), rich interaction suite (Reply, Repost, Like, Share), and full thread navigation (`/[author]/status/[id]`).
 
-   *Detailed post format specifications and extension guides are available in [Post Types Context Doc](docs/post-types.md) and [Composer Context Doc](docs/composer.md).*
+   *Detailed post format specifications are available in [Post Types Context Doc](docs/post-types.md) and [Composer Context Doc](docs/composer.md).*
 
-4. **The 5 Distinct Profile Tabs:**  
-   User profiles organize content across 5 clean tabs ordered left-to-right:
-   1. **Posts** (default): Master chronological timeline displaying actual posts (Standard and Board). Preserves clean 1:1 Twitter view without secondary stadium bars. When filtered by an active preset, displays a clean single-line breadcrumb (`← All posts` / `[Icon] [Title]` / `Reorder`) without heavy toolbars.
-   2. **Presets**: Dedicated in-situ switchboard channel directory housing the author's curated post collections/playlists in a responsive 2-column grid. Clicking any preset launches the Posts tab filtered to that collection. Features left-aligned owner controls for creating new collections and rearranging preset display order.
-   3. **Links**: Linktree-style external accounts and destination portal (`LinksPortal.tsx`) for the creator's personal accounts (Discord, Twitch, Steam, X, YouTube, GitHub, Spotify, etc.). Features a 35+ platform vector icon registry, custom logo uploads, domain auto-detection, left-aligned owner creation controls, and inline reordering.
-   4. **Comments**: 1:1 X/Twitter-native profile guestbook and conversational threads with up to 4 image attachments, "Replying to @username" context, and interactive Twitter cards.
-   5. **Likes**: Dedicated feed of posts liked by the user.
+4. **The 4 Distinct Profile Tabs:**  
+   User profiles organize content across 4 clean tabs ordered left-to-right:
+   1. **Boards** (default): Unifies boards and presets. Features a pinned horizontal bar (`BoardPresetsBar.tsx`) leading with **`All Boards`** (master tab showing total boards count) followed by direct creator preset tabs (capped at 12 slots for smooth horizontal scrolling) and owner actions (`[+ New]`, `[Manage]`). Tapping any preset tab provides instant 1-tap filtering directly to that preset's boards with zero intermediate directory cards or drill-down flows.
+   2. **Links**: Linktree-style external accounts and destination portal (`LinksPortal.tsx`) for the creator's personal accounts (Discord, Twitch, Steam, X, YouTube, GitHub, Spotify, etc.). Features a 35+ platform vector icon registry, custom logo uploads, domain auto-detection, left-aligned owner creation controls, and inline reordering.
+   3. **Comments**: 1:1 X/Twitter-native profile guestbook and conversational threads with up to 4 image attachments, "Replying to @username" context, and interactive Twitter cards.
+   4. **Likes**: Dedicated feed of posts liked by the user.
 
    *Detailed profile layout rules and routing are available in [Profile Page Context Doc](docs/profile-page.md), [Collections Context Doc](docs/collections.md), and [Links Context Doc](docs/links.md).*
 
@@ -75,7 +73,7 @@
 │   ├── links.md                        # Linktree-style external accounts portal, 35+ platform registry, & custom logos
 │   ├── navigation.md                   # Global shell geometry, left sidebar registry (7 items), & responsive layout
 │   ├── post-types.md                   # Specification for active post formats & creation guide
-│   ├── profile-page.md                 # Profile layout, identity section, 5 tabs, and status routing
+│   ├── profile-page.md                 # Profile layout, identity section, 4 tabs, and status routing
 │   └── tipjar.md                       # Twin Coin system, left-over-right layering, and style testing modal
 ├── supabase_schema.sql                 # Baseline schema: profiles, blocks, follows tables & RLS policies
 ├── supabase_follows_rpc.sql            # Supabase RPC migration for bidirectional mutual follower queries
@@ -108,26 +106,29 @@
 │   │
 │   ├── components/
 │   │   ├── layout/
-│   │   │   ├── LeftSidebar.tsx         # 1:1 Left navigation (275px), 7-item registry, profile pill, "Post" button
+│   │   │   ├── LeftSidebar.tsx         # 1:1 Left navigation (275px), 7-item registry, profile pill, "Create Board" button
 │   │   │   ├── RightSidebar.tsx        # 1:1 Right spacer column (350px) for layout geometry + footer links
 │   │   │   └── MainLayout.tsx          # 1:1 X.com layout shell (max-w-[1265px]) + compose modal
 │   │   ├── profile/
-│   │   │   ├── ProfileView.tsx         # Core profile view, 5 tabs, Edit Profile modal, composer, Badge Wall
+│   │   │   ├── ProfileView.tsx         # Core profile view, 4 tabs, Edit Profile modal, composer, Badge Wall
 │   │   │   └── BannerCropModal.tsx     # 1:1 X 1500x500 banner crop viewfinder, zoom slider, & wheel zoom
 │   │   ├── collections/
-│   │   │   ├── ReorderPresetsModal.tsx # Modal for rearranging preset collections order on the profile Presets tab
-│   │   │   ├── ReorderCollectionModal.tsx # Visual 100-card post reordering workspace for collection owners
-│   │   │   ├── CreateCollectionModal.tsx # Modal to create custom post preset collections
-│   │   │   └── AddToCollectionModal.tsx # Modal to assign existing blocks/posts to curated presets
+│   │   │   ├── ReorderPresetsModal.tsx # Modal for rearranging preset collections and deleting presets
+│   │   │   ├── ReorderCollectionModal.tsx # Visual 100-card board reordering workspace for collection owners
+│   │   │   ├── CreateCollectionModal.tsx # Modal to create custom post preset collections (Title + Pin to Top Bar)
+│   │   │   └── AddToCollectionModal.tsx # Modal to assign boards to curated presets
 │   │   ├── links/
 │   │   │   └── LinksPortal.tsx         # Linktree-style vertical stack for external user accounts (35+ platforms, custom logos)
 │   │   ├── network/
 │   │   │   ├── FollowButton.tsx        # Dynamic optimistic Follow/Unfollow action pill
 │   │   │   └── UserNetworkView.tsx     # 1:1 network directory (OOMFs, Following, Followers) & 3 display modes
 │   │   └── feed/
-│   │       ├── PostCard.tsx            # 1:1 timeline post rendering (Standard, Board)
+│   │       ├── BoardPresetsBar.tsx     # Pinned horizontal bar (All Boards, preset tabs, owner actions)
+│   │       ├── BoardGridCard.tsx       # 2-column Pinterest board card (2:1 hero cover, bottom cascading circle avatars)
+│   │       ├── BoardCropModal.tsx      # 2:1 interactive cover crop viewfinder (drag-pan, zoom slider, thirds grid)
+│   │       ├── PostCard.tsx            # Thread view post renderer & board expansion
 │   │       ├── CommentCard.tsx         # Flat guestbook comment card (non-threaded)
-│   │       └── PostComposer.tsx        # Unified post composer with bottom icon toggles & in-situ templates
+│   │       └── PostComposer.tsx        # Board Builder composer (Title, 5 visual slots, mutual avatars, crop trigger)
 │   │
 │   ├── context/
 │   │   └── AuthContext.tsx             # Supabase auth session, profile state, signInWithTwitter, signOut
@@ -250,14 +251,15 @@ npm run build
 * [x] HD Avatar resolution upscaling (`_400x400`)
 * [x] 1:1 X Profile Banners (1500×500 interactive crop engine, Supabase Storage, and Cards view parity)
 * [x] Twitter bio extraction and native "Edit profile" modal persistence
-* [x] 5 Distinct Profile Tabs: Posts, Presets, Links (Linktree portal), Comments (flat guestbook), Likes
+* [x] 4 Distinct Profile Tabs: Boards (unifies boards and presets), Links (Linktree portal), Comments (guestbook), Likes
 * [x] Thread route (`/[username]/status/[id]`) with replies composer
-* [x] Custom Post Formats: Pinterest-style Visual Board & Standard 1–4 Attachments (Images & User Avatars)
-* [x] Board Timeline 3-image preview + Thread 2-column masonry grid expansion
-* [x] Unified Post Composer with local file upload compression & sample presets
+* [x] Sole Timeline Post Type: Pinterest-style Curated Visual Boards with title and 3+ images/mutual avatar embeds
+* [x] Board Timeline 2:1 full-bleed hero cover with bottom cascading secondary circles + Thread 2-column masonry expansion
+* [x] Interactive 2:1 Cover Viewfinder Cropper (`BoardCropModal.tsx`) with drag-to-pan, 3x zoom, and rule-of-thirds grid
+* [x] Unified Board Composer with client-side canvas compression & mutual avatar selector (`SelectOomfModal`)
+* [x] Direct Preset Tabs on pinned `BoardPresetsBar` with 1-tap switching and zero intermediate directory cards
 * [x] Follow / Unfollow button wired to `public.follows`
 * [x] Real-time mutual follower count calculation (SQL view or RPC)
-* [x] Dedicated Presets tab with 1-line mobile-first breadcrumb navigation
 * [x] Linktree-style external accounts portal (`LinksPortal.tsx`) with 35+ platform registry & custom logos
 * [ ] Custom link click tracking / analytics for bio links
 * [ ] Dynamic Open Graph (OG) image generation for Twitter Cards (`oomfs.org/[username]`)

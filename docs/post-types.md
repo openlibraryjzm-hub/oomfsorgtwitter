@@ -1,22 +1,21 @@
 # Post Types on oomfs.org
 
-This document outlines the post type architecture for `oomfs.org`. It defines the active post types, data models, rendering behaviors, drafting workflows, and instructions for adding new post types in the future.
+This document outlines the post type architecture for `oomfs.org`. It defines the post formats, data models, rendering behaviors, drafting workflows, and instructions for developers and agents.
 
 ---
 
 ## 1. Architecture & Core Philosophy
 
-On `oomfs.org`, content is modeled as modular blocks stored in Supabase (`public.blocks`) and displayed either on a user's profile timeline (`/[username]`) or in a dedicated thread route (`/[username]/status/[id]`).
+On `oomfs.org`, timeline content is modeled as modular blocks stored in Supabase (`public.blocks`) and displayed on user profile timelines (`/[username]`) or in dedicated thread routes (`/[username]/status/[id]`).
 
-`oomfs.org` supports focused, expressive media post formats tailored to creative portfolios and X-native culture.
+### Sole Timeline Post Type: Board (`type: 'board'`)
 
-### Active Post Types
+Standard text posts have been retired. **Curated Boards (`'board'`)** are the **sole timeline post type** across user profiles.
 
 | Post Type | Type Identifier | Profile Timeline View | Thread View (`/[username]/status/[id]`) |
 | :--- | :--- | :--- | :--- |
-| **Standard** | `'standard'` | 1:1 X-style post with text and optional media attachments (1–4 photos or user avatars) | Expanded focal view with thread replies |
-| **Board** | `'board'` | Pinterest-style 3-item preview (`50%` left, `25%`+`25%` right, `+N` badge) with images and/or mutual avatars | Expanded 2-column Pinterest-style masonry grid |
-| **Profile Comment** | `'comment'` | 1:1 X guestbook card on the **Comments** tab (1–4 photo grid, action bar) | Expanded focal view with *"Replying to @username"* and replies feed |
+| **Board** *(Sole Timeline Post Type)* | `'board'` | Pinterest-style 2-column scroll card with 2:1 full-bleed hero cover image, bottom cascading secondary circle avatars, bold title, and item count | Full thread view with bold board title, expanded 2-column Pinterest-style masonry grid, collaborator links, and conversational replies |
+| **Profile Comment** | `'comment'` | Guestbook card on the **Comments** tab (text + optional 1–4 photos, metrics) | Expanded focal thread view with *"Replying to @username"* and replies list |
 
 ---
 
@@ -27,12 +26,12 @@ Defined in [`src/lib/mockData.ts`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twit
 ```typescript
 export interface BoardImage {
   id: string;
-  type?: 'image' | 'user';
+  type?: 'image' | 'user'; // Supports both compressed image uploads and mutual avatar link embeds
   url: string;
-  caption?: string; // Optional item note
-  username?: string;
-  name?: string;
-  avatar?: string;
+  caption?: string; // Optional clean note per item (zero emojis)
+  username?: string; // Present when type === 'user'
+  name?: string;     // Present when type === 'user'
+  avatar?: string;   // Present when type === 'user'
 }
 
 export type BoardItem = BoardImage;
@@ -41,35 +40,15 @@ export interface BoardData {
   images: BoardItem[]; // Minimum 3 items required (images or avatars)
 }
 
-export interface ImageAttachment {
-  type: 'image';
-  url: string;
-}
-
-export interface UserAttachment {
-  type: 'user';
-  username: string;
-  name: string;
-  avatar: string;
-  id?: string;
-}
-
-export type PostAttachment = ImageAttachment | UserAttachment;
-
 export interface Post {
   id: string;
   author: User;
   createdAt: string;
-  type: 'standard' | 'board' | 'comment';
-  text: string;
+  type: 'board' | 'comment' | 'standard'; // 'board' is the sole authored timeline type
+  title?: string; // Bold title (e.g., "Brutalist Architecture") — no emojis
+  text: string;   // Retained for database schema compatibility, mirrored to title
   images?: string[];
-  attachments?: PostAttachment[];
-  targetUsername?: string;
-  targetUserId?: string;
-  boardData?: {
-    images: BoardImage[];
-  };
-  badgeData?: BadgeData;
+  boardData?: BoardData;
   likesCount: number;
   repostsCount: number;
   repliesCount: number;
@@ -81,109 +60,100 @@ export interface Post {
 
 ---
 
-## 3. Detailed Specifications of Post Types
+## 3. Detailed Specifications
 
-### 1. Standard Post (`type: 'standard'`)
-- **Purpose**: Native 1:1 tweet post adhering strictly to the Twitter/X Web Light Theme design system.
-- **Unified Attachments (1–4 items)**:
-  - Supports attaching 1–4 items: photos, user/mutual avatars, or a blend of both.
-  - Rendered identically via [`TwitterMediaGrid.tsx`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/components/feed/TwitterMediaGrid.tsx):
-    - **1 Item**: Full card aspect ratio.
-    - **2 Items**: 2 equal vertical columns (`grid-cols-2`).
-    - **3 Items**: 50% left half, two 25% stacked right half cells.
-    - **4 Items**: 2x2 grid (`grid-cols-2 grid-rows-2`).
-  - **User/Avatar Attachment**: Displays circular avatar, display name, `@username`, and navigates to `/[username]`.
-- **Interactions**: Clicking the post card navigates to the thread route `/[username]/status/[id]`. Supports like, reply, repost, and view counts.
+### 1. Board (`type: 'board'`) — Sole Timeline Post Type
 
-### 2. Board (`type: 'board'`)
-- **Purpose**: Pinterest-style visual curation boards (e.g. architectural studies, design references, collaborative moodboards). Requires at least 3 items (images and/or mutual avatar circles).
-- **Dual Presentation Modes**:
-  1. **Timeline Mode (`isThreadView = false`)**:
-     - Renders a 3-item preview adhering to consistent attachment layout geometry.
-     - **Item 1**: Occupies the left half (`50%` width, 100% height; renders photo or circular user avatar).
-     - **Items 2 & 3**: Stacked vertically on the right half (`25%` area each; renders photo or circular user avatar).
-     - **Badge**: If the board has more than 3 items, Item 3 displays a `+N more in thread` overlay badge.
-     - **Board Indicator Mini Banner**: Directly between the media cards and post action metrics, a dedicated banner indicates the curation style (e.g. `Click to view [N] more items on this board → Explore board`) and directly routes to the expanded thread.
-     - Clicking the post opens the thread view.
-  2. **Thread View Mode (`isThreadView = true` at `/[username]/status/[id]`)**:
-     - Expands all `3+` items into an authentic **2-column Pinterest-style masonry grid**.
-     - Image cards maintain natural aspect ratios with optional notes underneath.
-     - User avatar cards render circular avatars, display names, `@username` handles, and optional collaboration captions underneath, routing directly to `/[username]`.
+* **Purpose**: Visual moodboards, architectural studies, design references, and creative collaborations. Requires a title and at least 3 items (images and/or mutual user avatars).
+* **Zero Emojis**: Board titles, item notes, and tags enforce strict clean typography without emoji glyphs.
+* **Dual Presentation Modes**:
 
-### 3. Profile Comment (`type: 'comment'`)
-- **Purpose**: Guestbook comments placed on user profiles via the Comments tab.
-- Supports attached photos (1–4 items) via `TwitterMediaGrid`, full interaction metrics, and replies.
+#### A. Timeline Grid Mode (`BoardGridCard.tsx`)
+Rendered inside a 2-column Pinterest-style scroll grid (`grid-cols-2 gap-2.5 sm:gap-3`):
+* **Thumbnail Geometry**: Tightly packed rounded rectangle maintaining the compact **$2:1$ aspect ratio** (`aspect-[2/1]`, `rounded-2xl`, `border-[#cfd9de]`):
+  * **Main Hero Image**: Full-bleed edge-to-edge presentation of the primary board image (or collaborator avatar card) spanning the full 100% width and 100% height, framed precisely using `BoardCropModal.tsx` in the composer.
+  * **Cascading Overlapping Circles**: Overlaid in the bottom-left corner over a soft gradient scrim ("also followed by" pattern). Shows up to 3 secondary images/avatars (`w-6 h-6 sm:w-7 sm:h-7`, `ring-2 ring-white`, `-ml-2`).
+  * **Overflow Badge**: If the board has more than 4 items (3 secondary), the final bubble renders `+N` count.
+* **Avatar Link Embeds (`type: 'user'`)**: Cells render circular HD avatars, display names, and `@handles` (`SelectOomfModal`).
+* **Title & Metadata**: Clean bold title displayed directly under the rectangle, followed by item count (e.g. `6 items`).
+* **Hover Menu**: Owner 3-dots menu providing **"Add to preset"** and **"Delete board"** actions.
+* **Navigation**: Clicking the card navigates directly to `/[username]/status/[id]`.
+
+#### B. Full Thread View Mode (`ThreadClientView.tsx` & `PostCard.tsx`)
+At `/[username]/status/[id]`:
+* **Header**: Displays a bold, large board title (`text-xl font-bold text-[#0f1419]`).
+* **Masonry Grid**: Expands all board items into a responsive 2-column Pinterest masonry grid with natural photo heights, captions, and interactive collaborator profile links.
+* **Replies Feed**: Standard conversational reply composer and threaded responses below the board media.
+* **Owner Actions**: Owners can delete the board directly from the thread view, triggering confirmation, cache invalidation, and redirection back to the profile.
 
 ---
 
-## 4. Drafting & Submitting Posts
+### 2. Profile Comment (`type: 'comment'`)
 
-The unified composer is implemented in [`src/components/feed/PostComposer.tsx`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/components/feed/PostComposer.tsx).
+* **Purpose**: Guestbook comments left by visitors or mutuals on a creator's profile via the **Comments** tab.
+* Supports attached photos (1–4 images) via `TwitterMediaGrid`, full interaction metrics, and replies.
 
-### Entry Points & Format Selection
-Post drafting can be initiated from:
-1. **Left Sidebar `"Post"` Button**: Accessible from anywhere in the app; opens the composer in a modal overlay.
-2. **Profile Page Header `"Create Post"` Button**: Toggles the composer drawer at the top of the profile.
+---
 
-Attachments and format switching are controlled via the **bottom icon action bar**:
-- `ImageIcon`: Attach photos to standard post (1–4 total attachments).
-- `Users`: Attach mutual/user avatar (opens `SelectOomfModal`, 1–4 total attachments).
-- `LayoutGrid`: Toggle between standard post and Board builder (pre-filling 5 blank image slots).
+## 4. Drafting Boards (`PostComposer.tsx`)
 
-*For full composer architecture and media pipeline details, see [Composer Documentation](composer.md).*
+The creator composer is dedicated exclusively to drafting Boards:
 
-### Media Upload & Compression
-- **Computer File Uploads**: Users can select multiple image files from their local machine.
-- **Client-Side `<canvas>` Compression**: In `PostComposer.tsx`, `compressImageFile(file, 1080, 0.82)` resizes high-resolution camera photos down to a maximum dimension of 1080px (JPEG quality 0.82) while preserving the exact natural aspect ratio. This allows rich image previews and saves directly into `public.blocks` without requiring external storage buckets.
-- **URL Paste Fallback**: Users can also input external image URLs for boards.
-- **5-Slot Pre-Filled Templates**: Boards initialize with 5 blank upload slots and faint grey placeholder suggestions (`Board — 01` to `Board — 05`) that only save as notes if explicitly typed.
+### Entry Points
+1. **Left Sidebar ("Create Board" Button)**: Accessible from anywhere in the app; opens the composer inside a centered modal overlay (`MainLayout.tsx`).
+2. **Profile Page Header ("Create Post / Board" Button)**: Toggles an inline accordion drawer directly above the profile tabs (`ProfileView.tsx`).
 
-### Persistence & Event Flow
+### Validation & Form Rules
+* **Board Title Required**: Creators must provide a title (e.g., `Brutalist Architecture`). Subtitles and captions have been completely eliminated.
+* **Minimum 3 Items**: At least 3 slots must be populated (image uploads or mutual avatar links) before the "Create Board" submit button is enabled.
+* **Pre-Filled Template**: Initializes with 5 visual slots for rapid drafting.
+* **Preset Assignment**: Includes an inline dropdown (`Add to preset:`) allowing immediate assignment to a curated preset collection.
+
+### Media Pipeline
+* **In-Browser Compression**: Camera photos and file uploads are compressed client-side via HTML5 canvas (`compressImageFile(file, 1080, 0.82)`) to 1080px JPEG, avoiding upload latency and external bucket dependencies.
+* **Mutual Avatar Picker**: The "Avatar" slot action opens `SelectOomfModal` to search and select mutual friends (`oomfs`) to embed directly into the board.
+
+---
+
+## 5. Persistence, State, & Deletion Flow
+
 ```
-User clicks "Post" in PostComposer
+Creator submits Board in PostComposer
   │
   ├─► 1. If authenticated: INSERT into Supabase `public.blocks`
-  │       (user_id = authUser.id, type = postType, content = { text, attachments, boardData })
+  │       (user_id = authUser.id, type = 'board', content = { title, text: title, boardData })
   │
   ├─► 2. Save in client runtime store: `saveSessionPost(newPost)`
-  │       (Guarantees immediate resolution when clicking into `/[username]/status/[id]`)
+  │       (Ensures immediate resolution when navigating to `/[username]/status/[id]`)
   │
-  ├─► 3. Call local callback: `onAddPost(newPost)`
+  ├─► 3. If preset selected: `addItemToCollection(targetColId, newPostId, userId)`
   │
-  └─► 4. Broadcast global event: `window.dispatchEvent(new CustomEvent('oomfs:post-created', { detail: newPost }))`
+  ├─► 4. Call local callback: `onAddPost(newPost)`
+  │
+  └─► 5. Broadcast global event:
+          `window.dispatchEvent(new CustomEvent('oomfs:post-created', { detail: { post, collectionId } }))`
 ```
 
----
-
-## 5. Adding New Post Types in the Future
-
-The removal of siloed post types (like the old standalone grid and carousel) leaves a clean, extensible architectural foundation:
-
-1. **Attachment Extensibility**: New attachment types (e.g. video clips, audio snippets, link embeds) can simply be added to the `PostAttachment` union:
-   ```typescript
-   export type PostAttachment = ImageAttachment | UserAttachment | AudioAttachment | ...;
-   ```
-   and rendered inside `TwitterMediaGrid.tsx` following the same 1–4 slot layout geometry.
-2. **Full Custom Block Formats**: For completely new visual experiences (e.g. full interactive canvases), follow the Board pattern:
-   - Add the new format identifier to `Post['type']` and `supabase_schema.sql`.
-   - Add a format icon toggle to `PostComposer.tsx`'s bottom action bar.
-   - Render the format block in `PostCard.tsx` under a dedicated `renderNewFormat()` method.
+### Deletion Architecture
+* **Tombstone Persistence**: When a board is deleted via `BoardGridCard` or `ThreadClientView`, it is recorded in the deleted ID store (`markPostAsDeleted(id)` in `src/lib/postStore.ts`) across both `localStorage` and `sessionStorage`.
+* **Immediate Removal**: The board is purged from local state, active collections, session cache, and Supabase `blocks` table.
+* **Reload Resilience**: On page refresh, deleted IDs are checked so deleted boards never reappear during mock/demo rehydration.
 
 ---
 
-## 6. Fresh Agent Onboarding Checklist & Critical Architecture Rules
+## 6. Fresh Agent Onboarding Checklist & Rules
 
-When adding, modifying, or testing post formats or attachments:
+When maintaining or extending post formats:
 
-- [ ] **Unified Attachments vs Format Bloat**:
-  Always prefer adding new media kinds to `PostAttachment` (`ImageAttachment | UserAttachment | ...`) inside standard posts and boards, rather than inventing dedicated top-level post types. Standard posts and boards share Twitter's proven layout math and geometry.
-- [ ] **1–4 Attachment Limit on Standard Posts**:
-  Standard posts support a strict maximum of 4 total attachments (photos, user avatars, or a blend). When users select more files or avatar chips, enforce `attachments.length < 4` and disable the action icons when full.
-- [ ] **Board 3-Item Minimum Requirement**:
-  Boards require at least 3 filled items (`mediaItems.filter(m => m.url.trim().length > 0).length >= 3`) before submission. Slots can be filled with either images or mutual avatars.
-- [ ] **Dual Presentation Parity for Boards**:
-  Boards must render in two distinct modes:
-  1. Timeline Mode: 3-item split (50% left, two 25% stacked right cells, with `+N more in thread` badge if > 3 items) and a mini exploration banner.
-  2. Thread Mode (`isThreadView = true` at `/[username]/status/[id]`): 2-column Pinterest-style masonry grid showing all items.
-- [ ] **Preserve Session Store Synchronization**:
-  Whenever creating a post in `PostComposer.tsx`, always call `saveSessionPost(newPost)` and emit the `oomfs:post-created` window event so navigating to `/[username]/status/[id]` resolves instantly without latency.
+- [ ] **Boards Are the Sole Timeline Post Type**:
+  Do not introduce separate standard text posts to the profile timeline. All profile content lives within visual boards.
+- [ ] **No Emojis Rule**:
+  Preserve clean typography: strip emojis from board titles, preset names, and item captions.
+- [ ] **Aspect Ratio Math ($2:1$) & Hero Geometry**:
+  The timeline board thumbnail card MUST maintain the exact $2:1$ aspect ratio (`aspect-[2/1]`) featuring a 100% full-bleed hero image with secondary items cascading as overlapping circles in the bottom-left corner. Cover photos framed in composer via `BoardCropModal.tsx`.
+- [ ] **3-Item Minimum**:
+  Always validate that `filledBoardItems.length >= 3` before allowing board creation.
+- [ ] **Subtitles Removed**:
+  Do not re-add subtitle or caption textareas to the board composer. Board titles serve as the sole clean text identifier.
+- [ ] **Tombstone Synchronization**:
+  When implementing deletion features, always call both `deleteSessionPost(id)` and `markPostAsDeleted(id)` to prevent rehydration ghosts.

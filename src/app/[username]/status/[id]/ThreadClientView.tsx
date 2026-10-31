@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ArrowLeft, MessageCircle, Heart, Repeat2, Share, CheckCircle2 } from 'lucide-react';
 import PostCard from '@/components/feed/PostCard';
 import { Post, ThreadReply, MOCK_THREAD_REPLIES, CURRENT_USER } from '@/lib/mockData';
-import { getSessionPost } from '@/lib/postStore';
+import { getSessionPost, deleteSessionPost, markPostAsDeleted } from '@/lib/postStore';
 import { useAuth } from '@/context/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { formatTwitterAvatar } from '@/lib/utils';
@@ -69,7 +70,8 @@ export default function ThreadClientView({ initialPost, username }: ThreadClient
               },
               createdAt: new Date(dbBlock.created_at).toLocaleDateString(),
               type: dbBlock.type,
-              text: dbBlock.content?.text || '',
+              title: dbBlock.content?.title || dbBlock.content?.text || undefined,
+              text: dbBlock.content?.title || dbBlock.content?.text || '',
               images: dbBlock.content?.images || [],
               attachments: dbBlock.content?.attachments || [],
               targetUsername: dbBlock.content?.targetUsername || null,
@@ -126,6 +128,28 @@ export default function ThreadClientView({ initialPost, username }: ThreadClient
     setReplyText('');
   };
 
+  const router = useRouter();
+  const isOwner = Boolean(
+    (authProfile && authProfile.username.toLowerCase() === username.toLowerCase()) ||
+    (authUser && authUser.id === post.author.id) ||
+    (username.toLowerCase() === 'amberlyn' && !authUser)
+  );
+
+  const handleDeleteThreadPost = async (id: string) => {
+    if (confirm('Delete this board?')) {
+      deleteSessionPost(id);
+      markPostAsDeleted(id);
+      if (authUser?.id) {
+        try {
+          await supabase.from('blocks').delete().eq('id', id);
+        } catch (err) {
+          console.error('Error deleting block from Supabase:', err);
+        }
+      }
+      router.push(`/${username}`);
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-white">
       {/* Sticky Header */}
@@ -146,12 +170,12 @@ export default function ThreadClientView({ initialPost, username }: ThreadClient
           <ArrowLeft className="w-5 h-5 text-[#0f1419]" />
         </button>
         <h1 className="font-extrabold text-xl text-[#0f1419]">
-          Post
+          Board
         </h1>
       </header>
 
       {/* Main Tweet View */}
-      <PostCard post={post} isThreadView={true} />
+      <PostCard post={post} isThreadView={true} onDelete={isOwner ? handleDeleteThreadPost : undefined} />
 
       {/* Reply Composer */}
       <div className="p-4 border-b border-[#eff3f4] bg-white">
