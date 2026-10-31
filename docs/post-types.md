@@ -27,11 +27,12 @@ Defined in [`src/lib/mockData.ts`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twit
 export interface BoardImage {
   id: string;
   type?: 'image' | 'user'; // Supports both compressed image uploads and mutual avatar link embeds
-  url: string;
-  caption?: string; // Optional clean note per item (zero emojis)
-  username?: string; // Present when type === 'user'
-  name?: string;     // Present when type === 'user'
-  avatar?: string;   // Present when type === 'user'
+  url: string;             // Full uncropped image for thread masonry view
+  thumbnailUrl?: string;   // 2:1 cropped thumbnail preview for boards tab & home cards
+  caption?: string;        // Optional clean note per item (zero emojis)
+  username?: string;       // Present when type === 'user'
+  name?: string;           // Present when type === 'user'
+  avatar?: string;         // Present when type === 'user'
 }
 
 export type BoardItem = BoardImage;
@@ -71,12 +72,13 @@ export interface Post {
 #### A. Timeline Grid Mode (`BoardGridCard.tsx`)
 Rendered inside a 2-column Pinterest-style scroll grid (`grid-cols-2 gap-2.5 sm:gap-3`):
 * **Thumbnail Geometry**: Tightly packed rounded rectangle maintaining the compact **$2:1$ aspect ratio** (`aspect-[2/1]`, `rounded-2xl`, `border-[#cfd9de]`):
-  * **Main Hero Image**: Full-bleed edge-to-edge presentation of the primary board image (or collaborator avatar card) spanning the full 100% width and 100% height, framed precisely using `BoardCropModal.tsx` in the composer.
+  * **Main Hero Image**: Full-bleed edge-to-edge presentation of the primary board image (or collaborator avatar card) spanning the full 100% width and 100% height, displaying the 2:1 crop (`thumbnailUrl || url`) framed using `BoardCropModal.tsx`.
+  * **On-Card Cover Recropping**: Profile owners can recrop the lead cover thumbnail directly from the card hover action bar or the `...` more options menu via `BoardCropModal.tsx`, immediately syncing `thumbnailUrl` to Supabase `blocks` and session store without affecting the full uncropped image.
   * **Cascading Overlapping Circles**: Overlaid in the bottom-left corner over a soft gradient scrim ("also followed by" pattern). Shows up to 3 secondary images/avatars (`w-6 h-6 sm:w-7 sm:h-7`, `ring-2 ring-white`, `-ml-2`).
   * **Overflow Badge**: If the board has more than 4 items (3 secondary), the final bubble renders `+N` count.
 * **Avatar Link Embeds (`type: 'user'`)**: Cells render circular HD avatars, display names, and `@handles` (`SelectOomfModal`).
 * **Title & Metadata**: Clean bold title displayed directly under the rectangle, followed by item count (e.g. `6 items`).
-* **Hover Menu**: Owner 3-dots menu providing **"Add to preset"** and **"Delete board"** actions.
+* **Hover Menu**: Owner 3-dots menu providing **"Recrop cover"**, **"Add to preset"**, and **"Delete board"** actions.
 * **Navigation**: Clicking the card navigates directly to `/[username]/status/[id]`.
 
 #### B. Full Thread View Mode (`ThreadClientView.tsx` & `PostCard.tsx`)
@@ -110,6 +112,13 @@ The creator composer is dedicated exclusively to drafting Boards:
 * **Preset Assignment**: Includes an inline dropdown (`Add to preset:`) allowing immediate assignment to a curated preset collection.
 
 ### Media Pipeline
+* **Hybrid Multi-Image & Folder Ingestion**:
+  * **Multi-File Selection**: The "Upload Images" button and individual slot upload inputs accept multiple files at once, auto-filling empty slots sequentially and expanding slots up to 20 items.
+  * **One-Click Folder Upload (`webkitdirectory`)**: Allows selecting an entire local folder of images in one click.
+  * **Drag-and-Drop Zone**: Dropping multiple images or folders onto the Board Builder automatically extracts and sequences files in natural numerical/alphabetical order.
+* **Cover Framing on Slot 1 Only**:
+  * Uploading the first image triggers the 2:1 viewfinder cropper (`BoardCropModal.tsx`) to set `thumbnailUrl` for card previews.
+  * The original full-resolution image (`url`) is preserved uncropped for the expanded 2-column thread masonry grid.
 * **In-Browser Compression**: Camera photos and file uploads are compressed client-side via HTML5 canvas (`compressImageFile(file, 1080, 0.82)`) to 1080px JPEG, avoiding upload latency and external bucket dependencies.
 * **Mutual Avatar Picker**: The "Avatar" slot action opens `SelectOomfModal` to search and select mutual friends (`oomfs`) to embed directly into the board.
 

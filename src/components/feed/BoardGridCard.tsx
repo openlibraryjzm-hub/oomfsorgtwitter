@@ -4,21 +4,25 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Post, BoardItem } from '@/lib/mockData';
 import { formatTwitterAvatar } from '@/lib/utils';
-import { MoreHorizontal, Trash2, FolderPlus } from 'lucide-react';
+import { MoreHorizontal, Trash2, FolderPlus, Crop } from 'lucide-react';
+import BoardCropModal from './BoardCropModal';
 
 interface BoardGridCardProps {
   post: Post;
   onDelete?: (id: string) => void;
   onManageCollections?: (post: Post) => void;
+  onUpdateCoverCrop?: (postId: string, newCroppedUrl: string) => void;
 }
 
 export default function BoardGridCard({
   post,
   onDelete,
-  onManageCollections
+  onManageCollections,
+  onUpdateCoverCrop
 }: BoardGridCardProps) {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [cropModalOpen, setCropModalOpen] = useState(false);
 
   const handleCardClick = () => {
     const selection = window.getSelection();
@@ -89,7 +93,7 @@ export default function BoardGridCard({
           </div>
         ) : (
           <img
-            src={firstItem.url}
+            src={firstItem.thumbnailUrl || firstItem.url}
             alt={firstItem.caption || cleanTitle}
             className="w-full h-full object-cover group-hover/board:scale-[1.02] transition-transform duration-200"
             loading="lazy"
@@ -143,11 +147,24 @@ export default function BoardGridCard({
         )}
 
         {/* Hover action menu for owner */}
-        {(onDelete || onManageCollections) && (
+        {(onDelete || onManageCollections || onUpdateCoverCrop) && (
           <div 
             onClick={(e) => e.stopPropagation()} 
             className="absolute top-1.5 right-1.5 opacity-0 group-hover/board:opacity-100 transition-opacity flex items-center gap-1 z-20"
           >
+            {onUpdateCoverCrop && firstItem.type !== 'user' && firstItem.url && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCropModalOpen(true);
+                }}
+                title="Recrop thumbnail image"
+                className="p-1 rounded-full bg-white/90 hover:bg-white text-[#536471] hover:text-[#1d9bf0] shadow-xs transition-colors cursor-pointer"
+              >
+                <Crop className="w-3.5 h-3.5" />
+              </button>
+            )}
             {onManageCollections && (
               <button
                 type="button"
@@ -186,7 +203,7 @@ export default function BoardGridCard({
           </p>
         </div>
 
-        {(onDelete || onManageCollections) && (
+        {(onDelete || onManageCollections || onUpdateCoverCrop) && (
           <div className="relative shrink-0">
             <button
               type="button"
@@ -213,6 +230,20 @@ export default function BoardGridCard({
                   onClick={(e) => e.stopPropagation()}
                   className="absolute right-0 bottom-full mb-1 w-36 bg-white border border-[#eff3f4] rounded-xl shadow-xl py-1 z-30 animate-in fade-in zoom-in-95 duration-100"
                 >
+                  {onUpdateCoverCrop && firstItem.type !== 'user' && firstItem.url && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMenuOpen(false);
+                        setCropModalOpen(true);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-xs text-[#0f1419] hover:bg-[#f7f9f9] transition-colors font-medium text-left cursor-pointer"
+                    >
+                      <Crop className="w-3.5 h-3.5 text-[#1d9bf0]" />
+                      <span>Crop thumbnail</span>
+                    </button>
+                  )}
                   {onManageCollections && (
                     <button
                       type="button"
@@ -249,6 +280,24 @@ export default function BoardGridCard({
           </div>
         )}
       </div>
+
+      {/* 2:1 Crop Viewfinder Modal */}
+      {cropModalOpen && firstItem.url && (
+        <div onClick={(e) => e.stopPropagation()}>
+          <BoardCropModal
+            isOpen={cropModalOpen}
+            imageSrc={firstItem.url}
+            aspectRatio={2.0}
+            onClose={() => setCropModalOpen(false)}
+            onApply={(newCroppedUrl) => {
+              setCropModalOpen(false);
+              if (onUpdateCoverCrop) {
+                onUpdateCoverCrop(post.id, newCroppedUrl);
+              }
+            }}
+          />
+        </div>
+      )}
     </article>
   );
 }

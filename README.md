@@ -34,7 +34,7 @@
    *Detailed profile layout rules and routing are available in [Profile Page Context Doc](docs/profile-page.md), [Collections Context Doc](docs/collections.md), and [Links Context Doc](docs/links.md).*
 
 5. **Home Discovery & "Profile-First" Strategy:**  
-   * The **Home** route (`/`) serves as a high-signal creator directory showcasing real Twitter/X OAuth users in multi-asset cards with banner-balancing board thumbnails and personal hashtags.
+   * The **Home** route (`/`) serves as a high-signal creator directory showcasing real Twitter/X OAuth users who meet minimum platform qualifications ($\ge 4$ boards, $\ge 1$ hashtag). Profile cards present an unobstructed top asset row (avatar + up to 4 horizontally aligned 2:1 board thumbnails), inline follow button next to `@username`, and personal hashtags with click-to-copy utility.
    * Auxiliary exploration pages (`/explore`, `/notifications`) display clean "Coming Soon" states while product focus stays centered on authentic creator profiles, thread views, and organic **profile-hopping** between mutuals.
 
 6. **Design System Rule (Strict North Star):**  

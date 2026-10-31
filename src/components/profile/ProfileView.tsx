@@ -1013,6 +1013,70 @@ export default function ProfileView({
     }
   };
 
+  const handleUpdatePostCoverCrop = async (postId: string, newCroppedUrl: string) => {
+    // 1. Optimistically update local posts state (only updates thumbnailUrl for board card preview; preserves full url for masonry view)
+    let updatedTargetPost: Post | null = null;
+    setPosts((prev) =>
+      prev.map((p) => {
+        if (p.id !== postId) return p;
+
+        const updatedBoardItems = (p.boardData?.images || []).map((item: any, idx: number) => {
+          if (idx === 0) {
+            return typeof item === 'string'
+              ? { url: item, thumbnailUrl: newCroppedUrl }
+              : { ...item, thumbnailUrl: newCroppedUrl };
+          }
+          return item;
+        });
+
+        const updatedPost: Post = {
+          ...p,
+          boardData: p.boardData
+            ? { ...p.boardData, images: updatedBoardItems }
+            : undefined
+        };
+
+        saveSessionPost(updatedPost);
+        updatedTargetPost = updatedPost;
+        return updatedPost;
+      })
+    );
+
+    // 2. Persist update to Supabase public.blocks if valid UUID
+    if (isValidUuid(postId)) {
+      try {
+        const targetPost = updatedTargetPost || posts.find((p) => p.id === postId);
+        if (targetPost) {
+          const updatedBoardItems = (targetPost.boardData?.images || []).map((item: any, idx: number) => {
+            if (idx === 0) {
+              return typeof item === 'string'
+                ? { url: item, thumbnailUrl: newCroppedUrl }
+                : { ...item, thumbnailUrl: newCroppedUrl };
+            }
+            return item;
+          });
+
+          await supabase
+            .from('blocks')
+            .update({
+              content: {
+                title: targetPost.title || targetPost.text || '',
+                text: targetPost.title || targetPost.text || '',
+                images: targetPost.images || [],
+                boardData: {
+                  ...targetPost.boardData,
+                  images: updatedBoardItems
+                }
+              }
+            })
+            .eq('id', postId);
+        }
+      } catch (err) {
+        console.error('Error updating board cover crop in Supabase:', err);
+      }
+    }
+  };
+
   // Raw timeline posts (Standard, Board, Web Badge - all post types included)
   const rawTimelinePosts = useMemo(
     () => posts,
@@ -1454,6 +1518,7 @@ export default function ProfileView({
                       post={post}
                       onDelete={handleDeletePost}
                       onManageCollections={isSelf ? (p) => setManageItem({ id: p.id, title: p.title || p.text?.slice(0, 40) || 'Board' }) : undefined}
+                      onUpdateCoverCrop={isSelf ? handleUpdatePostCoverCrop : undefined}
                     />
                   ))}
                 </div>

@@ -35,6 +35,7 @@ export interface BoardImage {
   id: string;
   type?: 'image' | 'user';
   url: string;
+  thumbnailUrl?: string; // 2:1 cropped thumbnail preview for boards tab
   caption?: string;
   username?: string;
   name?: string;

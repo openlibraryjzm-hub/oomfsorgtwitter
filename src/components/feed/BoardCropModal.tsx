@@ -64,6 +64,9 @@ export default function BoardCropModal({
   useEffect(() => {
     if (!imageSrc) return;
     const img = new Image();
+    if (!imageSrc.startsWith('data:')) {
+      img.crossOrigin = 'anonymous';
+    }
     img.src = imageSrc;
     img.onload = () => {
       setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
@@ -208,6 +211,9 @@ export default function BoardCropModal({
     const sHeight = Math.min(naturalSize.height - sy, sViewHeight);
 
     const img = new Image();
+    if (!imageSrc.startsWith('data:')) {
+      img.crossOrigin = 'anonymous';
+    }
     img.src = imageSrc;
     img.onload = () => {
       ctx.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, exportWidth, exportHeight);

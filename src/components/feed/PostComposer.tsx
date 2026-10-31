@@ -9,6 +9,7 @@ import {
   LayoutGrid, 
   Link as LinkIcon,
   FolderPlus,
+  FolderUp,
   Users,
   Crop
 } from 'lucide-react';
@@ -35,7 +36,8 @@ interface PostComposerProps {
 interface DraftMediaItem {
   id: string;
   type?: 'image' | 'user';
-  url: string;
+  url: string; // Full uncropped image for masonry view
+  thumbnailUrl?: string; // 2:1 cropped thumbnail preview for boards tab
   caption: string;
   username?: string;
   name?: string;
@@ -130,83 +132,13 @@ export default function PostComposer({
 
   const [mediaItems, setMediaItems] = useState<DraftMediaItem[]>(createBlankBoardSlots());
   const singleSlotFileInputRef = useRef<HTMLInputElement | null>(null);
+  const folderInputRef = useRef<HTMLInputElement | null>(null);
   const targetSlotIndexRef = useRef<number | null>(null);
   const targetBoardSlotIndexRef = useRef<number | null>(null);
 
-  const [cropModalState, setCropModalState] = useState<{
-    isOpen: boolean;
-    slotIndex: number | null;
-    imageSrc: string;
-  }>({
-    isOpen: false,
-    slotIndex: null,
-    imageSrc: ''
-  });
-
-  const handleOpenCropModal = (index: number) => {
-    const item = mediaItems[index];
-    if (item && item.url && item.type === 'image') {
-      setCropModalState({
-        isOpen: true,
-        slotIndex: index,
-        imageSrc: item.url
-      });
-    }
-  };
-
-  const handleApplyCrop = (croppedDataUrl: string) => {
-    if (cropModalState.slotIndex !== null) {
-      setMediaItems((prev) =>
-        prev.map((item, idx) =>
-          idx === cropModalState.slotIndex ? { ...item, url: croppedDataUrl } : item
-        )
-      );
-    }
-    setCropModalState({ isOpen: false, slotIndex: null, imageSrc: '' });
-  };
-
-  const handleSlotUploadClick = (index: number) => {
-    targetSlotIndexRef.current = index;
-    singleSlotFileInputRef.current?.click();
-  };
-
-  const handleSlotAvatarClick = (index: number) => {
-    targetBoardSlotIndexRef.current = index;
-    setIsSelectOomfModalOpen(true);
-  };
-
-  const handleSingleSlotFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    const file = files[0];
-    setIsProcessingFiles(true);
-    setErrorMsg(null);
-    try {
-      const dataUrl = await compressImageFile(file);
-      const targetIdx = targetSlotIndexRef.current;
-      if (targetIdx !== null && targetIdx >= 0) {
-        setMediaItems((prev) =>
-          prev.map((item, idx) => (idx === targetIdx ? { ...item, type: 'image', url: dataUrl } : item))
-        );
-
-        // For Slot 1 (Cover image), immediately open the crop viewfinder for precise 2:1 framing
-        if (targetIdx === 0) {
-          setCropModalState({
-            isOpen: true,
-            slotIndex: 0,
-            imageSrc: dataUrl
-          });
-        }
-      }
-    } catch (err) {
-      console.error('Error uploading slot image:', err);
-      setErrorMsg('Failed to process image upload.');
-    } finally {
-      setIsProcessingFiles(false);
-      targetSlotIndexRef.current = null;
-      if (singleSlotFileInputRef.current) singleSlotFileInputRef.current.value = '';
-    }
-  };
+  // Drag and drop state
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const dragCounterRef = useRef(0);
 
   const [urlInput, setUrlInput] = useState('');
   const [showUrlInput, setShowUrlInput] = useState(false);
@@ -225,36 +157,128 @@ export default function PostComposer({
     links: []
   } : CURRENT_USER);
 
-  // Handle multi-file upload from computer for board images
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
+  const [cropModalState, setCropModalState] = useState<{
+    isOpen: boolean;
+    slotIndex: number | null;
+    imageSrc: string;
+  }>({
+    isOpen: false,
+    slotIndex: null,
+    imageSrc: ''
+  });
+
+  // Thumbnail crop is strictly for the first image (Slot #1) to determine board card preview
+  const handleOpenCropModal = () => {
+    const item = mediaItems[0];
+    if (item && item.url && item.type === 'image') {
+      setCropModalState({
+        isOpen: true,
+        slotIndex: 0,
+        imageSrc: item.url // source from the original full image
+      });
+    }
+  };
+
+  const handleApplyCrop = (croppedDataUrl: string) => {
+    // Only update thumbnailUrl for the board card preview; preserve original item.url for full masonry view
+    setMediaItems((prev) =>
+      prev.map((item, idx) =>
+        idx === 0 ? { ...item, thumbnailUrl: croppedDataUrl } : item
+      )
+    );
+    setCropModalState({ isOpen: false, slotIndex: null, imageSrc: '' });
+  };
+
+  const handleSlotUploadClick = (index: number) => {
+    targetSlotIndexRef.current = index;
+    singleSlotFileInputRef.current?.click();
+  };
+
+  const handleSlotAvatarClick = (index: number) => {
+    targetBoardSlotIndexRef.current = index;
+    setIsSelectOomfModalOpen(true);
+  };
+
+  // Unified batch image processor: multi-file, folder uploads, and drag-and-drop
+  const processAndAssignFiles = async (
+    files: FileList | File[],
+    startSlotIndex: number | null = null
+  ) => {
     if (!files || files.length === 0) return;
 
     setIsProcessingFiles(true);
     setErrorMsg(null);
 
     try {
-      const dataUrls: string[] = [];
+      // 1. Filter image files
+      const imageFiles: File[] = [];
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        if (!file.type.startsWith('image/')) continue;
-        const dataUrl = await compressImageFile(file);
-        dataUrls.push(dataUrl);
+        if (
+          file.type.startsWith('image/') ||
+          /\.(jpe?g|png|webp|gif|svg|avif|bmp)$/i.test(file.name)
+        ) {
+          imageFiles.push(file);
+        }
       }
 
+      if (imageFiles.length === 0) {
+        setErrorMsg('No valid image files found to upload.');
+        return;
+      }
+
+      // Sort alphabetically/numerically so numbered photos (01.jpg, 02.jpg) preserve ordering
+      imageFiles.sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+      );
+
+      // Cap at 24 images to avoid browser canvas memory exhaustion
+      const cappedFiles = imageFiles.slice(0, 24);
+
+      // 2. Compress images via client canvas
+      const dataUrls: string[] = [];
+      for (const file of cappedFiles) {
+        try {
+          const dataUrl = await compressImageFile(file);
+          dataUrls.push(dataUrl);
+        } catch (e) {
+          console.error('Failed to compress image:', file.name, e);
+        }
+      }
+
+      if (dataUrls.length === 0) {
+        setErrorMsg('Failed to process image files.');
+        return;
+      }
+
+      let shouldCropSlotZero = false;
+
+      // 3. Assign to slots
       setMediaItems((prev) => {
         let fileIdx = 0;
-        // First fill empty slots in order
-        const updated = prev.map((item) => {
-          if (!item.url && fileIdx < dataUrls.length) {
-            const filled = { ...item, type: 'image' as const, url: dataUrls[fileIdx] };
-            fileIdx++;
-            return filled;
-          }
-          return item;
-        });
+        const updated = [...prev];
 
-        // If more files remain, append new slots
+        // If a specific slot was targeted (e.g. user clicked "Image" on Slot #2)
+        if (startSlotIndex !== null && startSlotIndex >= 0 && startSlotIndex < updated.length) {
+          for (let idx = startSlotIndex; idx < updated.length && fileIdx < dataUrls.length; idx++) {
+            if (!updated[idx].url || idx === startSlotIndex) {
+              if (idx === 0 && !updated[idx].url) shouldCropSlotZero = true;
+              updated[idx] = { ...updated[idx], type: 'image', url: dataUrls[fileIdx] };
+              fileIdx++;
+            }
+          }
+        }
+
+        // Fill remaining empty slots in order
+        for (let idx = 0; idx < updated.length && fileIdx < dataUrls.length; idx++) {
+          if (!updated[idx].url) {
+            if (idx === 0) shouldCropSlotZero = true;
+            updated[idx] = { ...updated[idx], type: 'image', url: dataUrls[fileIdx] };
+            fileIdx++;
+          }
+        }
+
+        // If more images remain, append new overflow slots
         while (fileIdx < dataUrls.length) {
           updated.push({
             id: `media_${Date.now()}_${fileIdx}`,
@@ -264,15 +288,145 @@ export default function PostComposer({
           });
           fileIdx++;
         }
+
         return updated;
       });
+
+      // If Slot 1 (hero cover) was newly assigned, trigger the 2:1 crop modal
+      if (shouldCropSlotZero && dataUrls.length > 0) {
+        setCropModalState({
+          isOpen: true,
+          slotIndex: 0,
+          imageSrc: dataUrls[0]
+        });
+      }
     } catch (err) {
       console.error('Error processing uploaded images:', err);
       setErrorMsg('Could not process one or more image files.');
     } finally {
       setIsProcessingFiles(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+    }
+  };
+
+  const handleSingleSlotFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    const targetIdx = targetSlotIndexRef.current;
+    if (files && files.length > 0) {
+      await processAndAssignFiles(files, targetIdx);
+    }
+    targetSlotIndexRef.current = null;
+    if (singleSlotFileInputRef.current) singleSlotFileInputRef.current.value = '';
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      await processAndAssignFiles(files, null);
+    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleFolderChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      await processAndAssignFiles(files, null);
+    }
+    if (folderInputRef.current) folderInputRef.current.value = '';
+  };
+
+  // Drag and Drop helpers & handlers
+  const getFilesFromDataTransfer = async (dataTransfer: DataTransfer): Promise<File[]> => {
+    const files: File[] = [];
+    const items = dataTransfer.items;
+
+    if (items && items.length > 0 && typeof (items[0] as any).webkitGetAsEntry === 'function') {
+      const queue: any[] = [];
+      for (let i = 0; i < items.length; i++) {
+        const entry = (items[i] as any).webkitGetAsEntry();
+        if (entry) queue.push(entry);
+      }
+
+      const readEntry = async (entry: any): Promise<void> => {
+        if (entry.isFile) {
+          return new Promise<void>((resolve) => {
+            entry.file((file: File) => {
+              if (
+                file.type.startsWith('image/') ||
+                /\.(jpe?g|png|webp|gif|svg|avif|bmp)$/i.test(file.name)
+              ) {
+                files.push(file);
+              }
+              resolve();
+            }, () => resolve());
+          });
+        } else if (entry.isDirectory) {
+          const reader = entry.createReader();
+          const entries: any[] = await new Promise((resolve) => {
+            reader.readEntries((ents: any[]) => resolve(ents), () => resolve([]));
+          });
+          for (const ent of entries) {
+            await readEntry(ent);
+          }
+        }
+      };
+
+      for (const ent of queue) {
+        await readEntry(ent);
+      }
+
+      if (files.length > 0) {
+        return files;
+      }
+    }
+
+    // Fallback to standard dataTransfer.files
+    for (let i = 0; i < dataTransfer.files.length; i++) {
+      const file = dataTransfer.files[i];
+      if (
+        file.type.startsWith('image/') ||
+        /\.(jpe?g|png|webp|gif|svg|avif|bmp)$/i.test(file.name)
+      ) {
+        files.push(file);
+      }
+    }
+    return files;
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current += 1;
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDraggingOver(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current -= 1;
+    if (dragCounterRef.current <= 0) {
+      setIsDraggingOver(false);
+      dragCounterRef.current = 0;
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'copy';
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+    dragCounterRef.current = 0;
+
+    if (e.dataTransfer) {
+      const droppedFiles = await getFilesFromDataTransfer(e.dataTransfer);
+      if (droppedFiles.length > 0) {
+        await processAndAssignFiles(droppedFiles, null);
       }
     }
   };
@@ -335,10 +489,11 @@ export default function PostComposer({
       title: boardTitle,
       text: boardTitle,
       boardData: {
-        images: filledBoardItems.map((m) => ({
+        images: filledBoardItems.map((m, idx) => ({
           id: m.id,
           type: m.type || 'image',
           url: m.url,
+          thumbnailUrl: idx === 0 ? (m.thumbnailUrl || m.url) : undefined,
           username: m.username,
           name: m.name,
           avatar: m.avatar,
@@ -437,11 +592,12 @@ export default function PostComposer({
             autoFocus
           />
 
-          {/* Hidden Single Slot File Input */}
+          {/* Hidden Slot File Input (multi-file capable) */}
           <input
             ref={singleSlotFileInputRef}
             type="file"
             accept="image/*"
+            multiple
             onChange={handleSingleSlotFileChange}
             className="hidden"
           />
@@ -456,8 +612,42 @@ export default function PostComposer({
             className="hidden"
           />
 
-          {/* BOARD BUILDER UI */}
-          <div className="bg-[#f7f9f9] border border-[#eff3f4] rounded-2xl p-3.5 flex flex-col gap-3">
+          {/* Hidden Folder Upload Input */}
+          <input
+            ref={folderInputRef}
+            type="file"
+            {...({ webkitdirectory: '', directory: '' } as any)}
+            multiple
+            onChange={handleFolderChange}
+            className="hidden"
+          />
+
+          {/* BOARD BUILDER UI with Drag & Drop Zone */}
+          <div 
+            onDragEnter={handleDragEnter}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            className={`relative border rounded-2xl p-3.5 flex flex-col gap-3 transition-all ${
+              isDraggingOver 
+                ? 'bg-[#1d9bf0]/5 border-[#1d9bf0] border-dashed ring-2 ring-[#1d9bf0]/20' 
+                : 'bg-[#f7f9f9] border-[#eff3f4]'
+            }`}
+          >
+            {/* Drag overlay indicator when dragging over */}
+            {isDraggingOver && (
+              <div className="absolute inset-0 bg-white/90 backdrop-blur-2xs rounded-2xl flex flex-col items-center justify-center z-30 pointer-events-none border-2 border-dashed border-[#1d9bf0]">
+                <div className="w-12 h-12 rounded-full bg-[#1d9bf0]/10 text-[#1d9bf0] flex items-center justify-center mb-2 animate-bounce">
+                  <Upload className="w-6 h-6" />
+                </div>
+                <p className="font-extrabold text-sm text-[#0f1419]">
+                  Drop images or folder here
+                </p>
+                <p className="text-xs text-[#536471] mt-0.5">
+                  Files will auto-populate your board slots
+                </p>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <span className="text-xs font-extrabold text-[#0f1419] uppercase tracking-wider flex items-center gap-1.5">
                 <LayoutGrid className="w-3.5 h-3.5 text-[#1d9bf0]" />
@@ -515,7 +705,11 @@ export default function PostComposer({
                         </div>
                       ) : (
                         <>
-                          <img src={item.url} alt="" className="w-full h-full object-cover" />
+                          <img
+                            src={idx === 0 ? (item.thumbnailUrl || item.url) : item.url}
+                            alt=""
+                            className="w-full h-full object-cover"
+                          />
                           <span
                             className={`absolute top-1 left-1 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-2xs ${
                               idx === 0 ? 'bg-[#1d9bf0]' : 'bg-black/65'
@@ -523,18 +717,20 @@ export default function PostComposer({
                           >
                             {idx === 0 ? '#1 Cover' : `#${idx + 1}`}
                           </span>
-                          {/* Crop / Reposition Framing Button */}
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenCropModal(idx);
-                            }}
-                            className="absolute bottom-1 right-1 p-1 bg-black/70 hover:bg-black text-white rounded-full transition-colors cursor-pointer shadow-xs z-10"
-                            title="Frame / crop image"
-                          >
-                            <Crop className="w-3.5 h-3.5" />
-                          </button>
+                          {/* Crop / Reposition Framing Button ONLY for Slot 0 (Cover Thumbnail) */}
+                          {idx === 0 && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenCropModal();
+                              }}
+                              className="absolute bottom-1 right-1 p-1 bg-black/70 hover:bg-black text-white rounded-full transition-colors cursor-pointer shadow-xs z-10"
+                              title="Frame cover thumbnail (2:1)"
+                            >
+                              <Crop className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() => handleRemoveMedia(item.id)}
@@ -563,7 +759,7 @@ export default function PostComposer({
                             type="button"
                             onClick={() => handleSlotUploadClick(idx)}
                             className="flex-1 h-full flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#cfd9de] hover:border-[#1d9bf0] hover:bg-[#1d9bf0]/5 text-[#536471] hover:text-[#1d9bf0] transition-colors p-1 cursor-pointer"
-                            title="Upload image"
+                            title="Upload image(s) starting from this slot"
                           >
                             <Upload className="w-3.5 h-3.5 mb-0.5 text-[#1d9bf0]" />
                             <span className="text-[10px] font-bold">Image</span>
@@ -610,16 +806,28 @@ export default function PostComposer({
               </button>
             </div>
 
-            {/* Upload / Add Avatar / Paste URL Buttons */}
+            {/* Upload / Folder / Add Avatar / Paste URL Buttons */}
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isProcessingFiles}
-                className="bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
+                className="bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                title="Select multiple images from computer"
               >
                 <Upload className="w-3.5 h-3.5" />
                 <span>{isProcessingFiles ? 'Processing...' : 'Upload Images'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => folderInputRef.current?.click()}
+                disabled={isProcessingFiles}
+                className="bg-white border border-[#eff3f4] hover:border-gray-300 text-[#0f1419] text-xs font-semibold px-3 py-2 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                title="Upload all images from a folder"
+              >
+                <FolderUp className="w-3.5 h-3.5 text-[#1d9bf0]" />
+                <span>Upload Folder</span>
               </button>
 
               <button
@@ -643,6 +851,12 @@ export default function PostComposer({
                 <span>Paste Image URL</span>
               </button>
             </div>
+
+            {/* Helpful Multi-Upload Tip */}
+            <p className="text-[11px] text-[#536471] -mt-1 flex items-center gap-1.5">
+              <span>💡</span>
+              <span>Tip: Select multiple photos, pick an entire folder, or drag & drop files directly onto this board.</span>
+            </p>
 
             {showUrlInput && (
               <div className="flex gap-2">
@@ -704,6 +918,15 @@ export default function PostComposer({
                 className="p-2 rounded-full hover:bg-[#1d9bf0]/10 text-[#1d9bf0] transition-colors cursor-pointer"
               >
                 <ImageIcon className="w-5 h-5" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => folderInputRef.current?.click()}
+                title="Upload folder of images to board"
+                className="p-2 rounded-full hover:bg-[#1d9bf0]/10 text-[#1d9bf0] transition-colors cursor-pointer"
+              >
+                <FolderUp className="w-5 h-5" />
               </button>
 
               <button

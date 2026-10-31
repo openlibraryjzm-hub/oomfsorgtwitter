@@ -1,6 +1,6 @@
 # Home Timeline & Creator Discovery Architecture (`docs/home.md`)
 
-This document serves as the canonical technical reference for the primary **Home** route (`/`) on `oomfs.org`. It details the feed philosophy, data layer queries, card visual architecture, banner-balancing board thumbnails, hashtag bio integration, and relationship badge logic.
+This document serves as the canonical technical reference for the primary **Home** route (`/`) on `oomfs.org`. It details the feed philosophy, data layer queries, card visual architecture, horizontally aligned board thumbnails, hashtag bio integration, and relationship badge logic.
 
 ---
 
@@ -10,8 +10,8 @@ The **Home** timeline represents the primary entry point and creator directory f
 
 1. **Real OAuth Creators Only**: Exclusively indexes authentic users who have authenticated via Twitter / X OAuth 2.0 PKCE. Placeholder and demo accounts from client-side mock datasets are strictly excluded.
 2. **1:1 Twitter Web Geometry**: Embedded within the standard desktop shell (`MainLayout.tsx`) occupying the central 600px timeline container (`max-w-[600px] border-x border-[#eff3f4]`) with light theme tokens (`#ffffff`, `#eff3f4`, `#0f1419`, `#536471`).
-3. **Multi-Asset Card Presentation**: Adapts the comprehensive profile card format detailed in [`docs/followerlist.md`](followerlist.md), enhanced with direct visual previews of the creator's boards and personal hashtags.
-4. **Zero-Friction Discovery & Routing**: Every asset on a creator card is directly interactive—clicking the banner, avatar, or handle navigates to `/[username]`, clicking board thumbnails navigates to `/[username]/status/[board.id]`, and clicking hashtags triggers instantaneous clipboard copying.
+3. **Multi-Asset Card Presentation**: Adapts the comprehensive profile card format detailed in [`docs/followerlist.md`](followerlist.md), presenting an unobstructed top asset row (avatar + horizontally aligned board thumbnails) and personal hashtags.
+4. **Zero-Friction Discovery & Routing**: Every asset on a creator card is directly interactive—clicking the avatar or handle navigates to `/[username]`, clicking board thumbnails navigates to `/[username]/status/[board.id]`, and clicking hashtags triggers instantaneous clipboard copying.
 
 ---
 
@@ -26,8 +26,8 @@ src/components/layout/
 └── LeftSidebar.tsx              # Active route highlighting for Home ('/')
 
 src/lib/
-├── follows.ts                   # Relationship resolver (OOMFS, Following, Followers) & live toggleFollow()
-├── postStore.ts                 # Tombstone registry (getDeletedPostIds) to filter purged boards
+├── follows.ts                   # Relationship resolver (Following, Followers) & live toggleFollow()
+├── postStore.ts                 # Tombstone registry (getDeletedPostIds) & live session store (getSessionPost, getAllSessionPosts)
 ├── utils.ts                     # formatTwitterAvatar() (400x400 HD resolution upscaler)
 └── supabase/
     └── client.ts                # Browser Supabase client (@supabase/ssr)
@@ -55,7 +55,7 @@ The Home feed employs an **RPC-efficient, 2-roundtrip query pattern** to load al
 ┌───────────────────────────────┐
 │     3. Batch Fetch Boards     │
 │  `public.blocks` (type=board) │
-│  Group top 3 per user_id      │
+│  Group up to 4 per user_id    │
 └───────────────────────────────┘
 ```
 
@@ -80,13 +80,19 @@ const { data: boardsData } = await supabase
   .order('created_at', { ascending: false });
 ```
 * **Deleted Posts Tombstone**: Cross-referenced with `getDeletedPostIds()` from [`src/lib/postStore.ts`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/lib/postStore.ts) so recently deleted boards never reappear.
-* **Capping**: Grouped by `user_id` in memory and capped at **up to 3 boards** per creator.
+* **Capping**: Grouped by `user_id` in memory and capped at **up to 4 boards** per creator.
 
 ### 3.3 Viewer Relationship Sets
 If the viewer is signed in, [`getViewerRelationships(authUser.id)`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/lib/follows.ts) retrieves:
 * `viewerFollowing`: `Set<string>` of account IDs the viewer follows.
 * `viewerFollowers`: `Set<string>` of account IDs following the viewer.
-Enables $O(1)$ lookup for dynamic relationship tags (`OOMFS` vs `Follows you`).
+Enables $O(1)$ lookup for relationship indicators (`Follows you`).
+
+### 3.4 Home Feed Minimum Qualification Requirements
+To ensure the Home timeline serves as a high-signal creator discovery surface, profiles must fulfill two minimum qualifications to appear:
+1. **At least 4 boards**: Must have published $\ge 4$ undeleted boards (`boardsByUser[userId].length >= 4`).
+2. **At least 1 hashtag**: Must have configured $\ge 1$ personal hashtag (`tags.length >= 1`).
+Profiles that have not yet met both thresholds are filtered from the Home feed and header creator counter until their requirements are satisfied.
 
 ---
 
@@ -95,51 +101,44 @@ Enables $O(1)$ lookup for dynamic relationship tags (`OOMFS` vs `Follows you`).
 Each creator is presented in a card adhering strictly to Twitter Web Light Theme tokens:
 
 ```
-┌────────────────────────────────────────────────────────────┐
-│                    BANNER (3:1 Aspect)                     │
-│                                                            │
-│       ┌─────┐       ┌──────────┐ ┌──────────┐ ┌──────────┐ │
-│  - - -│- - -│- - - -│- - - - - │-│- - - - - │-│- - - - - │-│- - (Banner Bottom Line)
-│       │ AV  │       │ Board 1  │ │ Board 2  │ │ Board 3  │ │  [ Follow ]
-│       └─────┘       └──────────┘ └──────────┘ └──────────┘ │
-└────────────────────────────────────────────────────────────┘
- Display Name ✓
- @username  [ OOMFS ]
- #vibecoder, #gamer, #painter, #pixelart (+2 more)
-──────────────────────────────────────────────────────────────
+┌────────────────────────────────────────────────────────────────────────┐
+│ ┌─────┐   ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐          │
+│ │ AV  │   │ Board 1  │ │ Board 2  │ │ Board 3  │ │ Board 4  │          │
+│ └─────┘   └──────────┘ └──────────┘ └──────────┘ └──────────┘          │
+│                                                                        │
+│ Display Name ✓                                                         │
+│ @username  [ Follow ]                                                  │
+│ #vibecoder, #gamer, #painter, #pixelart (+2 more)                      │
+└────────────────────────────────────────────────────────────────────────┘
+──────────────────────────────────────────────────────────────────────────
 ```
 
-### 4.1 Header Banner
-* **Aspect Ratio**: 3:1 (`aspect-[3/1]`), matching profile headers ($1500 \times 500\text{px}$).
-* **Fallback**: When no banner is uploaded (`banner_url === null`), renders the Twitter neutral slate gradient (`from-[#cfd9de] via-[#d5dde2] to-[#cfd9de]`).
-* **Hover State**: Subtle zoom (`group-hover:scale-[1.02] transition-transform duration-300`).
-
-### 4.2 Banner-Balancing Row (Avatar + Board Thumbnails + Action Button)
-Anchored at the bottom edge of the banner with negative margin (`-mt-10 sm:-mt-12 mb-2`):
+### 4.1 Top Asset Row (Avatar + Horizontally Aligned Board Thumbnails)
+Structured as a full-width, clean bannerless top row with horizontal alignment across all media:
 1. **Avatar**:
-   * Size: $80 \times 80\text{px}$ (`w-20 h-20 sm:w-22 sm:h-22`), circular with 4px white ring (`border-4 border-white`).
+   * Size: $64 \times 64\text{px}$ to $72 \times 72\text{px}$ (`w-16 h-16 sm:w-18 sm:h-18`), circular with a subtle border (`border border-black/5 shadow-xs`).
    * Upscaled via `formatTwitterAvatar()` to ensure 400×400 HD resolution.
 2. **Solo Board Thumbnails (`BoardCollageThumbnail`)**:
-   * Horizontally aligned alongside the avatar, balancing partially across the banner's bottom edge.
-   * Container Geometry: Compact rounded card (`h-16 sm:h-18 w-24 sm:w-28 rounded-xl overflow-hidden border-2 border-white shadow-sm`).
-   * **Solo Image Mode**: Displays the board's primary lead image edge-to-edge (`object-cover w-full h-full`).
+   * Horizontally aligned alongside and to the right of the avatar (up to 4 boards).
+   * Container Geometry: Compact rounded 2:1 card (`aspect-[2/1] w-24 sm:w-28 rounded-xl overflow-hidden border border-[#eff3f4] shadow-xs`).
+   * **Solo Image Mode**: Displays the board's primary lead image or custom 2:1 cover crop (`thumbnailUrl || url`), perfectly mirroring the cropping on the profile Boards tab.
    * **Hover Interaction**: Scales up (`hover:scale-[1.04]`), increases shadow, and reveals the board title in a dark glass bottom bar (`bg-black/65 backdrop-blur-2xs text-white text-[9px]`).
    * **Route**: Clicks directly to `/[username]/status/[board.id]`.
-   * **Mobile Responsiveness**: Enclosed in a horizontal flex container (`overflow-x-auto no-scrollbar`), ensuring boards scroll smoothly without clipping or pushing the Follow button.
-3. **Follow / Unfollow Action Button**:
-   * Positioned on the far right.
-   * If viewing own profile (`isSelf`): Displays a static `"You"` pill (`bg-[#eff3f4] text-[#536471] rounded-full`).
-   * If viewing another profile: Interactive action button with optimistic state toggle and network rollback. Unauthenticated clicks trigger `signInWithTwitter()`.
+   * **Mobile Responsiveness**: Enclosed in a horizontal flex container (`overflow-x-auto no-scrollbar`), ensuring boards scroll smoothly across viewports without obstruction.
 
-### 4.3 Profile Identity Details
+### 4.2 Profile Identity & Action Details
+Positioned directly beneath the top asset row:
 * **Display Name**: Bold primary typography (`font-extrabold text-base text-[#0f1419] hover:underline`).
 * **Verified Badge**: Twitter Blue checkmark (`CheckCircle2`).
 * **Handle**: Secondary text (`@username text-xs text-[#536471]`).
 * **Relationship Badges**:
-  * **`OOMFS`**: Mutual follower ($A \leftrightarrow B$). Badge: `bg-[#1d9bf0]/10 text-[#1d9bf0] text-[11px] font-bold px-1.5 py-0.5 rounded`.
   * **`Follows you`**: User follows viewer, but viewer has not followed back. Badge: `bg-[#eff3f4] text-[#536471] text-[11px] font-medium px-1.5 py-0.5 rounded`.
+* **Follow / Unfollow Action Button**:
+  * Positioned inline alongside `@username` (`py-0.5 px-3 min-w-[76px] text-xs font-bold rounded-full`).
+  * If viewing own profile (`isSelf`): Displays a static `"You"` pill (`bg-[#eff3f4] text-[#536471] text-[11px] font-medium px-2 py-0.5 rounded-full`).
+  * If viewing another profile: Interactive action button with optimistic state toggle and network rollback. Unauthenticated clicks trigger `signInWithTwitter()`.
 
-### 4.4 Hashtags Display (Bio Replacement)
+### 4.3 Hashtags Display (Bio Replacement)
 In accordance with [`docs/hashtags.md`](hashtags.md), the creator's personal hashtags replace the standard bio paragraph:
 * **Densely Packed Paragraph Flow**: Rendered as continuous text with Twitter Blue `#` marks (`text-[#1d9bf0] font-bold`) and subtle gray commas (`text-[#536471]`).
 * **Display Cap**: Displays up to 7 hashtags (`MAX_TAGS_ON_CARD = 7`). If the creator has additional tags, a `+N more` link routes directly to `/[username]/hashtags`.
@@ -150,10 +149,10 @@ In accordance with [`docs/hashtags.md`](hashtags.md), the creator's personal has
 
 ## 5. Dual-Persistence & Cache Hydration
 
-Hashtags on creator cards adhere to the platform's multi-tier hydration strategy:
+Hashtags and boards on creator cards adhere to the platform's multi-tier hydration strategy:
 
-1. **Remote Database**: Read from PostgreSQL column `public.profiles.hashtags` (`text[]`).
-2. **Local Synchronous Cache**: If the user recently updated their tags in the current browser session, `localStorage.getItem('oomfs_profile_hashtags_<userId>')` instantly takes precedence to eliminate cache latency.
+1. **Remote Database**: Read from PostgreSQL tables `public.profiles` (`hashtags` column) and `public.blocks` (`type = 'board'`).
+2. **Local Synchronous Cache**: If the user recently updated their tags or recropped/created boards in the current browser session, `localStorage` and `postStore` session records (`getSessionPost`, `getAllSessionPosts`) immediately hydrate to eliminate cache latency.
 3. **Showcase Fallback**: For primary platform showcase handles (`amberlyndev`, `amberlyn`), default demo tags (`#vibecoder`, `#gamer`, `#painter`, `#pixelart`, `#nightowl`) are populated if the database field is uninitialized.
 
 ---
@@ -163,7 +162,7 @@ Hashtags on creator cards adhere to the platform's multi-tier hydration strategy
 When maintaining or modifying the Home feed:
 
 - [ ] **Preserve UUID Filtering**: Never allow mock strings (e.g. `usr_amberlyn`) to enter database query arrays; always validate IDs with `isValidUuid()`.
-- [ ] **Banner Height & Aspect Parity**: Keep banner containers at `aspect-[3/1]` to preserve exact 1:1 visual parity with profile headers.
-- [ ] **Preserve Solo Board Thumbnail Geometry**: Ensure board thumbnails maintain `h-16 sm:h-18 w-24 sm:w-28 rounded-xl border-2 border-white` to maintain proportional balance against the overlapping avatar.
-- [ ] **Mobile Scroll Container**: The avatar and board thumbnail container must retain `overflow-x-auto no-scrollbar` so that 3 boards on compact viewports never squish the avatar or displace the Follow button.
+- [ ] **Preserve Solo Board Thumbnail Geometry**: Ensure board thumbnails maintain `aspect-[2/1] w-24 sm:w-28 rounded-xl border border-[#eff3f4]` to maintain proportional horizontal alignment alongside the avatar and match the 2:1 cover crop ratio.
+- [ ] **Mobile Scroll Container**: The avatar and board thumbnail container must retain `overflow-x-auto no-scrollbar` so that up to 4 boards on compact viewports never squish the avatar or displace the Follow button.
+- [ ] **Prioritize `thumbnailUrl`**: When rendering board cards or thumbnails, always extract `img?.thumbnailUrl || img?.url || img?.avatar` so custom cover crops reflect accurately while preserving the uncropped image for thread views.
 - [ ] **Click-to-Copy Propagation**: When clicking a hashtag on a card, ensure `e.stopPropagation()` is called so the click does not inadvertently trigger parent card navigation.

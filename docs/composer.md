@@ -35,14 +35,22 @@ Boards treat **image uploads** and **mutual/user avatars** as unified interchang
 1. **Visual Slots (3+ items)**: Pre-fills 5 blank item slots where creators can choose either **"Image"** (file upload) or **"Avatar"** (picking a mutual friend via `SelectOomfModal`). In addition, bottom action buttons allow adding photos or mutual avatars to the board dynamically.
 2. **Item Captions**: Optional clean notes per slot. Zero emojis.
 
-### 3. Cover Photo Framing & Viewfinder Cropper (`BoardCropModal.tsx`)
-- **Focal Framing on Slot 1**: Slot 1 serves as the board's hero cover photo displayed in the 2-column feed.
-- **Interactive Viewfinder Modal**: Uploading to Slot 1 (or clicking the Crop icon on any image slot) launches `BoardCropModal.tsx`:
+### 3.1 Hybrid Multi-Image Ingestion Engine
+To eliminate the friction of manually uploading photos one by one into individual slots, `PostComposer.tsx` provides a seamless hybrid upload pipeline:
+* **Multi-File Selection (`multiple`)**: Both the primary "Upload Images" button and individual slot "Image" buttons support multi-file selection. Selecting $N$ photos sequentially auto-populates empty slots starting from the active slot and appends new overflow slots as needed.
+* **One-Click Folder Upload (`webkitdirectory`)**: A dedicated "Upload Folder" action enables PC creators to select an entire moodboard folder in 1 click.
+* **Full Drag-and-Drop Target**: Dropping loose images or directories directly onto the Board Builder area recurses via `webkitGetAsEntry()`, auto-extracting and populating board slots.
+* **Smart Natural Ordering**: Ingested files are sorted numerically and alphabetically (`01.jpg`, `02.jpg`), preserving the creator's curated sequencing.
+
+### 3.2 Cover Photo Framing & Viewfinder Cropper (`BoardCropModal.tsx`)
+- **Focal Framing on Slot 1 Only**: Cropping is strictly confined to the board's first image (Slot 1) to determine how it appears as the 2:1 thumbnail on the Boards tab. Secondary slots cannot be cropped.
+- **Full Image Preservation**: The crop action only updates `thumbnailUrl` for the card preview. The original `item.url` remains 100% untouched and uncropped so that when the board is opened in full thread view, all images display in full natural height within the 2-column masonry grid.
+- **Interactive Viewfinder Modal**: Uploading to Slot 1 (or clicking the Crop icon on Slot 1) launches `BoardCropModal.tsx`:
   - Enforces the exact 2:1 card ratio (`aspect-[2/1]`) inside a high-contrast darkroom viewfinder.
   - Supports interactive drag-to-pan with touch and mouse clamping, ensuring no empty margins appear.
   - Zoom slider, mouse wheel zoom, and pinch-to-zoom up to 3× magnification.
   - Displays rule-of-thirds alignment grid lines during active dragging.
-  - "Apply" rasters the framed crop onto an in-memory canvas and updates the slot with the 2:1 JPEG data URL.
+  - "Apply" rasters the framed crop onto an in-memory canvas and updates the slot's `thumbnailUrl` with the 2:1 JPEG data URL.
 
 ---
 

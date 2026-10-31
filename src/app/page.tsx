@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { CheckCircle2, Sparkles, Hash } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
@@ -12,7 +12,8 @@ import {
   toggleFollow, 
   isValidUuid 
 } from '@/lib/follows';
-import { getDeletedPostIds } from '@/lib/postStore';
+import { getDeletedPostIds, getSessionPost, getAllSessionPosts } from '@/lib/postStore';
+import { Post } from '@/lib/mockData';
 
 interface HomeProfile {
   id: string;
@@ -52,7 +53,7 @@ function BoardCollageThumbnail({
     <Link
       href={`/${username}/status/${board.id}`}
       title={board.title ? `Board: ${board.title}` : 'View board'}
-      className="group/board relative block h-16 sm:h-18 w-24 sm:w-28 rounded-xl overflow-hidden border-2 border-white shadow-sm hover:shadow-md hover:scale-[1.04] transition-all bg-[#eff3f4] shrink-0 cursor-pointer"
+      className="group/board relative block aspect-[2/1] w-24 sm:w-28 rounded-xl overflow-hidden border border-[#eff3f4] shadow-xs hover:shadow-md hover:scale-[1.04] transition-all bg-[#eff3f4] shrink-0 cursor-pointer"
     >
       {leadImage ? (
         <img
@@ -113,7 +114,7 @@ export default function HomePage() {
     loadRelationships();
   }, [authUser?.id]);
 
-  // 2. Fetch real profiles and batch-fetch up to 3 boards per user
+  // 2. Fetch real profiles and batch-fetch up to 4 boards per user
   useEffect(() => {
     let isCancelled = false;
 
@@ -151,28 +152,71 @@ export default function HomePage() {
             if (!boardsError && boardsData) {
               const grouped: Record<string, BoardSummary[]> = {};
               const deletedIds = getDeletedPostIds();
+              const sessionPosts = getAllSessionPosts();
+              const sessionMap = new Map<string, Post>(sessionPosts.map((p) => [p.id, p]));
 
               boardsData.forEach((b: any) => {
                 if (deletedIds.has(b.id)) return;
 
-                const rawImgs = b.content?.boardData?.images || b.content?.images || [];
+                const sessionPost = sessionMap.get(b.id) || getSessionPost(b.id);
+                const rawImgs = sessionPost?.boardData?.images || b.content?.boardData?.images || b.content?.images || [];
                 const images: string[] = rawImgs
                   .map((img: any) =>
-                    typeof img === 'string' ? img : img?.url || img?.avatar
+                    typeof img === 'string'
+                      ? img
+                      : img?.thumbnailUrl || img?.url || img?.avatar
                   )
                   .filter(Boolean);
 
-                const title = b.content?.text || b.content?.title || '';
+                const title = sessionPost?.title || sessionPost?.text || b.content?.text || b.content?.title || '';
 
                 if (!grouped[b.user_id]) {
                   grouped[b.user_id] = [];
                 }
-                if (grouped[b.user_id].length < 3) {
+                if (grouped[b.user_id].length < 4) {
                   grouped[b.user_id].push({
                     id: b.id,
                     title,
                     images,
                   });
+                }
+              });
+
+              // Merge any session boards that belong to these creators
+              sessionPosts.forEach((sp) => {
+                if (deletedIds.has(sp.id) || sp.type !== 'board') return;
+                const authorId = sp.author?.id;
+                const authorUsername = sp.author?.username?.toLowerCase();
+                const matchedProfile = validProfiles.find(
+                  (p) => p.id === authorId || (authorUsername && p.username?.toLowerCase() === authorUsername)
+                );
+                if (!matchedProfile) return;
+
+                const targetUserId = matchedProfile.id;
+                if (!grouped[targetUserId]) {
+                  grouped[targetUserId] = [];
+                }
+
+                const existingIdx = grouped[targetUserId].findIndex((x) => x.id === sp.id);
+                const rawImgs = sp.boardData?.images || sp.images || [];
+                const images: string[] = rawImgs
+                  .map((img: any) =>
+                    typeof img === 'string'
+                      ? img
+                      : img?.thumbnailUrl || img?.url || img?.avatar
+                  )
+                  .filter(Boolean);
+
+                const item: BoardSummary = {
+                  id: sp.id,
+                  title: sp.title || sp.text || '',
+                  images,
+                };
+
+                if (existingIdx >= 0) {
+                  grouped[targetUserId][existingIdx] = item;
+                } else if (grouped[targetUserId].length < 4) {
+                  grouped[targetUserId].unshift(item);
                 }
               });
 
@@ -295,6 +339,15 @@ export default function HomePage() {
     return tags;
   };
 
+  // Minimum requirements to be displayed on Home feed: at least 4 boards, at least 1 hashtag
+  const qualifiedProfiles = useMemo(() => {
+    return profiles.filter((p) => {
+      const tags = resolveProfileHashtags(p);
+      const userBoards = boardsByUser[p.id] || [];
+      return userBoards.length >= 4 && tags.length >= 1;
+    });
+  }, [profiles, boardsByUser]);
+
   return (
     <MainLayout>
       {/* 1:1 Sticky Top Header */}
@@ -302,9 +355,9 @@ export default function HomePage() {
         <div className="flex items-center gap-2">
           <h1 className="font-extrabold text-xl text-[#0f1419] tracking-tight">Home</h1>
         </div>
-        {!loading && profiles.length > 0 && (
+        {!loading && qualifiedProfiles.length > 0 && (
           <span className="text-xs font-semibold text-[#536471] bg-[#eff3f4] px-2.5 py-1 rounded-full">
-            {profiles.length} {profiles.length === 1 ? 'creator' : 'creators'}
+            {qualifiedProfiles.length} {qualifiedProfiles.length === 1 ? 'creator' : 'creators'}
           </span>
         )}
       </header>
@@ -315,43 +368,49 @@ export default function HomePage() {
           /* Clean Loading Skeleton */
           <div className="divide-y divide-[#eff3f4]">
             {[1, 2, 3].map((n) => (
-              <div key={n} className="pb-4 animate-pulse">
-                <div className="w-full aspect-[3/1] bg-[#eff3f4]" />
-                <div className="px-4 flex justify-between items-end -mt-10 sm:-mt-12 mb-2">
-                  <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-full border-4 border-white bg-[#cfd9de]" />
-                  <div className="w-24 h-8 rounded-full bg-[#eff3f4] mb-1" />
+              <div key={n} className="p-4 animate-pulse">
+                <div className="flex items-center gap-2.5 w-full mb-3">
+                  <div className="w-16 h-16 sm:w-18 sm:h-18 rounded-full bg-[#eff3f4] shrink-0" />
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <div className="h-16 sm:h-18 w-24 sm:w-28 rounded-xl bg-[#eff3f4] shrink-0" />
+                    <div className="h-16 sm:h-18 w-24 sm:w-28 rounded-xl bg-[#eff3f4] shrink-0" />
+                    <div className="hidden sm:block h-16 sm:h-18 w-24 sm:w-28 rounded-xl bg-[#eff3f4] shrink-0" />
+                    <div className="hidden md:block h-16 sm:h-18 w-24 sm:w-28 rounded-xl bg-[#eff3f4] shrink-0" />
+                  </div>
                 </div>
-                <div className="px-4 flex flex-col gap-2 mt-2">
+                <div className="flex flex-col gap-2">
                   <div className="w-36 h-4 bg-[#eff3f4] rounded" />
-                  <div className="w-20 h-3 bg-[#eff3f4] rounded" />
-                  <div className="w-full h-8 bg-[#eff3f4] rounded mt-1" />
+                  <div className="flex items-center gap-2">
+                    <div className="w-20 h-3 bg-[#eff3f4] rounded" />
+                    <div className="w-16 h-5 rounded-full bg-[#eff3f4]" />
+                  </div>
+                  <div className="w-full h-6 bg-[#eff3f4] rounded mt-1" />
                 </div>
               </div>
             ))}
           </div>
-        ) : profiles.length === 0 ? (
+        ) : qualifiedProfiles.length === 0 ? (
           /* Empty State */
           <div className="p-12 text-center flex flex-col items-center justify-center min-h-[50vh]">
             <div className="w-12 h-12 rounded-full bg-[#1d9bf0]/10 flex items-center justify-center mb-3 text-[#1d9bf0]">
               <Sparkles className="w-6 h-6" />
             </div>
             <h3 className="font-extrabold text-lg text-[#0f1419] mb-1">
-              No real accounts found yet
+              No qualified accounts found yet
             </h3>
             <p className="text-xs text-[#536471] max-w-sm mt-1">
-              When users sign in via Twitter / X OAuth on oomfs.org, their profile cards will appear here.
+              Profiles appear on the Home feed once they have published at least 4 boards and written at least 1 hashtag.
             </p>
           </div>
         ) : (
           /* Cards Presentation Feed */
           <div className="divide-y divide-[#eff3f4]">
-            {profiles.map((p) => {
+            {qualifiedProfiles.map((p) => {
               const isSelf =
                 authUser?.id === p.id ||
                 authProfile?.username?.toLowerCase() === p.username.toLowerCase();
               const viewerIsFollowing = viewerFollowing.has(p.id);
               const userFollowsViewer = viewerFollowers.has(p.id);
-              const isViewerMutual = viewerIsFollowing && userFollowsViewer;
               const isHovered = hoveredButtonId === p.id;
               const isActionLoading = actionLoadingId === p.id;
               const tags = resolveProfileHashtags(p);
@@ -364,88 +423,40 @@ export default function HomePage() {
               return (
                 <article
                   key={p.id}
-                  className="hover:bg-[#fcfdfd] transition-colors pb-4"
+                  className="p-4 hover:bg-[#fcfdfd] transition-colors"
                 >
-                  {/* Banner Section: 1:1 Parity with Profile 3:1 Aspect Ratio (1500x500) */}
-                  <Link
-                    href={`/${p.username}`}
-                    className="block w-full aspect-[3/1] bg-[#cfd9de] relative overflow-hidden group/banner cursor-pointer"
-                  >
-                    {p.banner_url ? (
+                  {/* Top Row: Avatar on left, up to 4 Board Thumbnails horizontally aligned to right */}
+                  <div className="flex items-center gap-2.5 w-full overflow-x-auto no-scrollbar py-0.5 mb-3">
+                    {/* Avatar */}
+                    <Link
+                      href={`/${p.username}`}
+                      className="relative group/avatar cursor-pointer shrink-0"
+                    >
                       <img
-                        src={p.banner_url}
-                        alt={`${p.name || p.username}'s banner`}
-                        className="w-full h-full object-cover group-hover/banner:scale-[1.02] transition-transform duration-300"
-                        onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).style.display = 'none';
-                        }}
+                        src={formatTwitterAvatar(
+                          p.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.username}`
+                        )}
+                        alt={p.name || p.username}
+                        className="w-16 h-16 sm:w-18 sm:h-18 rounded-full border border-black/5 object-cover bg-white shadow-xs shrink-0 group-hover/avatar:opacity-95 transition-opacity"
                       />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-r from-[#cfd9de] via-[#d5dde2] to-[#cfd9de]" />
+                    </Link>
+
+                    {/* Up to 4 Board Collage Thumbnails horizontally aligned with avatar */}
+                    {userBoards.length > 0 && (
+                      <div className="flex items-center gap-2 shrink-0">
+                        {userBoards.map((b) => (
+                          <BoardCollageThumbnail
+                            key={b.id}
+                            board={b}
+                            username={p.username}
+                          />
+                        ))}
+                      </div>
                     )}
-                  </Link>
-
-                  {/* Overlapping Avatar, Board Thumbnails & Action Button Row */}
-                  <div className="px-4 flex items-end justify-between relative -mt-10 sm:-mt-12 mb-2 gap-2">
-                    {/* Left: Avatar + Horizontally Aligned Board Thumbnails balancing on the banner */}
-                    <div className="flex items-end gap-2.5 min-w-0 flex-1 overflow-x-auto no-scrollbar py-0.5">
-                      {/* Overlapping Avatar */}
-                      <Link
-                        href={`/${p.username}`}
-                        className="relative group/avatar cursor-pointer shrink-0"
-                      >
-                        <img
-                          src={formatTwitterAvatar(
-                            p.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.username}`
-                          )}
-                          alt={p.name || p.username}
-                          className="w-20 h-20 sm:w-22 sm:h-22 rounded-full border-4 border-white object-cover bg-white shadow-sm shrink-0 group-hover/avatar:opacity-95 transition-opacity"
-                        />
-                      </Link>
-
-                      {/* Up to 3 Board Collage Thumbnails balancing on banner */}
-                      {userBoards.length > 0 && (
-                        <div className="flex items-end gap-2 shrink-0 pb-1">
-                          {userBoards.map((b) => (
-                            <BoardCollageThumbnail
-                              key={b.id}
-                              board={b}
-                              username={p.username}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Right: Action Button */}
-                    <div className="mb-1 shrink-0">
-                      {!isSelf ? (
-                        <button
-                          type="button"
-                          onClick={() => handleToggleUserFollow(p.id)}
-                          onMouseEnter={() => setHoveredButtonId(p.id)}
-                          onMouseLeave={() => setHoveredButtonId(null)}
-                          disabled={isActionLoading}
-                          className={`font-bold text-xs min-w-[95px] py-1.5 px-4 rounded-full transition-all cursor-pointer ${
-                            viewerIsFollowing
-                              ? isHovered
-                                ? 'border border-red-200 bg-red-50 text-red-600'
-                                : 'border border-[#cfd9de] text-[#0f1419] bg-white'
-                              : 'bg-[#0f1419] hover:bg-[#272c30] text-white'
-                          } ${isActionLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
-                        >
-                          {viewerIsFollowing ? (isHovered ? 'Unfollow' : 'Following') : 'Follow'}
-                        </button>
-                      ) : (
-                        <div className="text-xs text-[#536471] font-medium px-3 py-1 bg-[#eff3f4] rounded-full">
-                          You
-                        </div>
-                      )}
-                    </div>
                   </div>
 
-                  {/* Profile Identity Details (Name, Verified, Handle, Relationship Badge, Hashtags) */}
-                  <div className="px-4 flex flex-col gap-1">
+                  {/* Profile Identity Details (Name, Verified, Handle, Relationship Badge, Follow Button, Hashtags) */}
+                  <div className="flex flex-col gap-1">
                     <div>
                       <Link
                         href={`/${p.username}`}
@@ -460,23 +471,42 @@ export default function HomePage() {
                       </Link>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <Link
                         href={`/${p.username}`}
                         className="text-xs text-[#536471] hover:underline"
                       >
                         @{p.username}
                       </Link>
-                      {!isSelf && (
-                        isViewerMutual ? (
-                          <span className="bg-[#1d9bf0]/10 text-[#1d9bf0] text-[11px] font-bold px-1.5 py-0.5 rounded shrink-0">
-                            OOMFS
-                          </span>
-                        ) : userFollowsViewer ? (
-                          <span className="bg-[#eff3f4] text-[#536471] text-[11px] font-medium px-1.5 py-0.5 rounded shrink-0">
-                            Follows you
-                          </span>
-                        ) : null
+                      {!isSelf ? (
+                        <>
+                          {userFollowsViewer && !viewerIsFollowing && (
+                            <span className="bg-[#eff3f4] text-[#536471] text-[11px] font-medium px-1.5 py-0.5 rounded shrink-0">
+                              Follows you
+                            </span>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => handleToggleUserFollow(p.id)}
+                            onMouseEnter={() => setHoveredButtonId(p.id)}
+                            onMouseLeave={() => setHoveredButtonId(null)}
+                            disabled={isActionLoading}
+                            className={`font-bold text-xs min-w-[76px] py-0.5 px-3 rounded-full transition-all cursor-pointer ${
+                              viewerIsFollowing
+                                ? isHovered
+                                  ? 'border border-red-200 bg-red-50 text-red-600'
+                                  : 'border border-[#cfd9de] text-[#0f1419] bg-white'
+                                : 'bg-[#0f1419] hover:bg-[#272c30] text-white'
+                            } ${isActionLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                          >
+                            {viewerIsFollowing ? (isHovered ? 'Unfollow' : 'Following') : 'Follow'}
+                          </button>
+                        </>
+                      ) : (
+                        <span className="text-[11px] text-[#536471] font-medium px-2 py-0.5 bg-[#eff3f4] rounded-full shrink-0">
+                          You
+                        </span>
                       )}
                     </div>
 

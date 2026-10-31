@@ -112,7 +112,8 @@ Tabs are ordered left-to-right with clean typography without parentheses counter
 * **Content Surfaces**:
   * The timeline content surface exclusively displays the 2-column Pinterest-style scroll grid (`BoardGridCard.tsx`).
   * Tapping any tab on `BoardPresetsBar` immediately updates the board grid to show either all boards or that preset's boards without intermediate directory cards or drill-down screens.
-  * **Card Geometry**: Rounded rectangle maintaining the compact `aspect-[2/1]` height, with the lead hero image widened to span the full 100% width (precisely framed during creation via `BoardCropModal.tsx`). Secondary images in the board cascade as overlapping circular avatars in the bottom-left corner with `+N` overflow indicator.
+  * **Card Geometry**: Rounded rectangle maintaining the compact `aspect-[2/1]` height, with the lead hero image widened to span the full 100% width (framed during creation and recroppable via `BoardCropModal.tsx`). Secondary images in the board cascade as overlapping circular avatars in the bottom-left corner with `+N` overflow indicator.
+  * **Thumbnail Cropping**: Profile owners can recrop the lead thumbnail directly from the card hover action bar or the `...` more options menu via the interactive 2:1 crop viewfinder.
   * Clean title below the card + item count (e.g. `6 items`).
   * Avatar embeds (`type: 'user'`) render circular mutual avatars with direct links to `/[username]`.
 
