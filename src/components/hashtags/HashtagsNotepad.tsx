@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { 
   Check, 
   Copy, 
@@ -321,27 +322,21 @@ export default function HashtagsNotepad({ user, isSelf }: HashtagsNotepadProps) 
               <p className="text-[15px] sm:text-[16px] leading-[1.8] sm:leading-[1.9] text-[#0f1419] font-normal break-words">
                 {hashtags.map((tag, index) => {
                   const isLast = index === hashtags.length - 1;
-                  const isJustCopied = copiedTag === tag;
+                  const cleanTag = tag.replace(/^#+/, '').trim();
+                  const slug = encodeURIComponent(cleanTag.toLowerCase());
 
                   return (
                     <React.Fragment key={`${tag}-${index}`}>
-                      <span
-                        onClick={() => handleCopyTag(tag)}
-                        title="Click to copy hashtag"
+                      <Link
+                        href={`/hashtag/${slug}`}
+                        title={`View #${cleanTag}`}
                         className="group inline-flex items-center font-medium cursor-pointer hover:text-[#1d9bf0] transition-colors relative"
                       >
                         <span className="text-[#1d9bf0] font-bold mr-0.5 select-none">#</span>
                         <span className="text-[#0f1419] group-hover:text-[#1d9bf0] transition-colors underline-offset-2 hover:underline">
-                          {tag.replace(/^#/, '')}
+                          {cleanTag}
                         </span>
-
-                        {/* Inline copy confirmation popup */}
-                        {isJustCopied && (
-                          <span className="absolute -top-7 left-1/2 -translate-x-1/2 bg-[#0f1419] text-white text-[10px] font-bold px-2 py-0.5 rounded-md whitespace-nowrap shadow-md pointer-events-none z-10 animate-in fade-in duration-100">
-                            Copied!
-                          </span>
-                        )}
-                      </span>
+                      </Link>
                       {!isLast && <span className="text-[#536471] mr-1.5 select-none">,</span>}
                     </React.Fragment>
                   );

@@ -11,7 +11,7 @@ The **Home** timeline represents the primary entry point and creator directory f
 1. **Real OAuth Creators Only**: Exclusively indexes authentic users who have authenticated via Twitter / X OAuth 2.0 PKCE. Placeholder and demo accounts from client-side mock datasets are strictly excluded.
 2. **1:1 Twitter Web Geometry**: Embedded within the standard desktop shell (`MainLayout.tsx`) occupying the central 600px timeline container (`max-w-[600px] border-x border-[#eff3f4]`) with light theme tokens (`#ffffff`, `#eff3f4`, `#0f1419`, `#536471`).
 3. **Multi-Asset Card Presentation**: Adapts the comprehensive profile card format detailed in [`docs/followerlist.md`](followerlist.md), presenting an unobstructed top asset row (avatar + horizontally aligned board thumbnails) and personal hashtags.
-4. **Zero-Friction Discovery & Routing**: Every asset on a creator card is directly interactive—clicking the avatar or handle navigates to `/[username]`, clicking board thumbnails navigates to `/[username]/status/[board.id]`, and clicking hashtags triggers instantaneous clipboard copying.
+4. **Zero-Friction Discovery & Routing**: Every asset on a creator card is directly interactive—clicking the avatar or handle navigates to `/[username]`, clicking board thumbnails navigates to `/[username]/status/[board.id]`, and clicking hashtags navigates to the standardized dedicated hashtag page (`/hashtag/[tag]`).
 
 ---
 
@@ -142,7 +142,7 @@ Positioned directly beneath the top asset row:
 In accordance with [`docs/hashtags.md`](hashtags.md), the creator's personal hashtags replace the standard bio paragraph:
 * **Densely Packed Paragraph Flow**: Rendered as continuous text with Twitter Blue `#` marks (`text-[#1d9bf0] font-bold`) and subtle gray commas (`text-[#536471]`).
 * **Display Cap**: Displays up to 7 hashtags (`MAX_TAGS_ON_CARD = 7`). If the creator has additional tags, a `+N more` link routes directly to `/[username]/hashtags`.
-* **Click-to-Copy Utility**: Clicking any hashtag writes `#tag` to `navigator.clipboard` and surfaces a transient floating tooltip (`Copied!`) directly above the tag for 1.5 seconds.
+* **Dedicated Tag Page Navigation**: Clicking any hashtag routes directly to its dedicated discovery hub (`/hashtag/[tag]`), as detailed in [`docs/tag-page.md`](tag-page.md).
 * **Empty State**: When no hashtags are set, renders a subtle italic indicator (`No hashtags written yet`). On the viewer's own card, surfaces a shortcut link (`Add hashtags →`).
 
 ---

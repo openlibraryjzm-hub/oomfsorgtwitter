@@ -107,6 +107,15 @@ The `content` column holds structured JSON payloads depending on `blocks.type`:
     "images": ["https://..."]
   }
   ```
+* **Hashtag Post (`type: 'comment'`)**:
+  ```json
+  {
+    "text": "Late night vibecoding session with lofi beats. #vibecoder",
+    "hashtag": "vibecoder",
+    "images": ["https://..."],
+    "author": { "username": "dev_kyle", "name": "Kyle" }
+  }
+  ```
 
 ---
 

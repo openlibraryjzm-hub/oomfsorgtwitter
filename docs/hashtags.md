@@ -13,7 +13,7 @@ Unlike global tagging or search-indexer systems, the Hashtags tab is designed st
 1. **Densely Packed Paragraph Flow:** Tags are displayed in a continuous, flowing paragraph separated by commas (e.g. `#vibecoder, #gamer, #painter, #pixelart, #nightowl`), mimicking a personal notepad page rather than isolated pill badges or vertical list rows.
 2. **Hyper-Minimalist UI:** Pure light-theme typography with zero extraneous borders, neon gradients, or nested cards. Tags feature Twitter Blue (`#1d9bf0`) `#` symbols, crisp primary dark text (`#0f1419`), and subtle secondary gray commas (`#536471`).
 3. **Frictionless Creation via Comma Separation:** Profile owners add hashtags simply by typing words and pressing <kbd>,</kbd> (comma) to separate them.
-4. **Single-Click Copy Utility:** Visitors and mutuals can tap any hashtag in the paragraph to copy it directly to their clipboard with inline visual feedback.
+4. **Dedicated Tag Page Navigation:** Clicking any hashtag in View mode navigates directly to its standardized dedicated page (`/hashtag/[tag]`), as detailed in [Dedicated Hashtag Page Architecture](tag-page.md).
 
 ---
 
@@ -44,16 +44,16 @@ All notepad logic is encapsulated in [`HashtagsNotepad.tsx`](file:///c:/Users/GG
   <p className="text-[15px] sm:text-[16px] leading-[1.8] sm:leading-[1.9] text-[#0f1419] font-normal break-words">
     {hashtags.map((tag, index) => (
       <React.Fragment key={tag}>
-        <span onClick={() => handleCopyTag(tag)} className="...">
+        <Link href={`/hashtag/${slug}`} className="...">
           <span className="text-[#1d9bf0] font-bold">#</span>
           <span>{tag.replace(/^#/, '')}</span>
-        </span>
+        </Link>
         {!isLast && <span className="text-[#536471] mr-1.5">,</span>}
       </React.Fragment>
     ))}
   </p>
   ```
-* **Click-to-Copy:** Clicking any hashtag writes `#tag` to `navigator.clipboard` and displays a transient floating tooltip (`Copied!`) directly above the clicked tag for 1.5 seconds.
+* **Dedicated Tag Hub Routing:** Clicking any hashtag routes seamlessly to its standardized discovery hub (`/hashtag/[tag]`), displaying creator adopters, tag stats, and copy actions.
 * **Header Controls:** Displays the notepad glyph (`Hash`), label (`NOTEPAD`), and tag counter. If viewing one's own profile (`isSelf = true`), an `[Edit]` button is available in the top-right corner.
 * **Empty State:** When no hashtags are set, visitors see `@username hasn't written any hashtags yet`, while the owner sees a prompt with an action button to enter Edit mode.
 

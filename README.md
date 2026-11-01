@@ -28,13 +28,13 @@
    1. **Boards** (default): Unifies boards and presets. Features a pinned horizontal bar (`BoardPresetsBar.tsx`) leading with **`All Boards`** (master tab showing total boards count) followed by direct creator preset tabs (capped at 12 slots for smooth horizontal scrolling) and owner actions (`[+ New]`, `[Manage]`). Tapping any preset tab provides instant 1-tap filtering directly to that preset's boards with zero intermediate directory cards or drill-down flows.
    2. **Links**: Linktree-style external accounts and destination portal (`LinksPortal.tsx`) for the creator's personal accounts (Discord, Twitch, Steam, X, YouTube, GitHub, Spotify, etc.). Features a 35+ platform vector icon registry, custom logo uploads, domain auto-detection, left-aligned owner creation controls, and inline reordering.
    3. **Comments**: 1:1 X/Twitter-native profile guestbook and conversational threads with up to 4 image attachments, integrated StrawPage-style doodler with background overlays, and interactive Twitter cards.
-   4. **Hashtags**: Hyper-minimalist personal notepad (`HashtagsNotepad.tsx`) where creators write and display densely packed, comma-separated hashtags as a continuous flowing paragraph (e.g. `#vibecoder, #gamer, #painter`). Features clean View and Edit modes where adding tags is done simply by typing and pressing comma (`,`) to separate, plus click-to-copy and dual persistence (`localStorage` + Supabase `profiles.hashtags`).
+   4. **Hashtags**: Hyper-minimalist personal notepad (`HashtagsNotepad.tsx`) where creators write and display densely packed, comma-separated hashtags as a continuous flowing paragraph (e.g. `#vibecoder, #gamer, #painter`). Features clean View and Edit modes where adding tags is done simply by typing and pressing comma (`,`) to separate, with direct links from View mode to each tag's dedicated discovery hub (`/hashtag/[tag]`) and dual persistence (`localStorage` + Supabase `profiles.hashtags`).
    5. **Likes**: Dedicated feed of posts liked by the user.
 
-   *Detailed profile layout rules and routing are available in [Profile Page Context Doc](docs/profile-page.md), [Collections Context Doc](docs/collections.md), and [Links Context Doc](docs/links.md).*
+   *Detailed profile layout rules and routing are available in [Profile Page Context Doc](docs/profile-page.md), [Hashtags Context Doc](docs/hashtags.md), and [Dedicated Hashtag Page Context Doc](docs/tag-page.md).*
 
 5. **Home Discovery & "Profile-First" Strategy:**  
-   * The **Home** route (`/`) serves as a high-signal creator directory showcasing real Twitter/X OAuth users who meet minimum platform qualifications ($\ge 4$ boards, $\ge 1$ hashtag). Profile cards present an unobstructed top asset row (avatar + up to 4 horizontally aligned 2:1 board thumbnails), inline follow button next to `@username`, and personal hashtags with click-to-copy utility.
+   * The **Home** route (`/`) serves as a high-signal creator directory showcasing real Twitter/X OAuth users who meet minimum platform qualifications ($\ge 4$ boards, $\ge 1$ hashtag). Profile cards present an unobstructed top asset row (avatar + up to 4 horizontally aligned 2:1 board thumbnails), inline follow button next to `@username`, and personal hashtags linking directly to their dedicated discovery pages (`/hashtag/[tag]`).
    * Auxiliary exploration pages (`/explore`, `/notifications`) display clean "Coming Soon" states while product focus stays centered on authentic creator profiles, thread views, and organic **profile-hopping** between mutuals.
 
 6. **Design System Rule (Strict North Star):**  
@@ -76,6 +76,7 @@
 │   ├── navigation.md                   # Global shell geometry, left sidebar registry (7 items), & responsive layout
 │   ├── post-types.md                   # Specification for active post formats & creation guide
 │   ├── profile-page.md                 # Profile layout, identity section, 5 tabs, and status routing
+│   ├── tag-page.md                     # Dedicated hashtag discovery hub (/hashtag/[tag]), normalization, & creator query
 │   └── tipjar.md                       # Twin Coin system, left-over-right layering, and style testing modal
 ├── supabase_schema.sql                 # Baseline schema: profiles, blocks, follows tables & RLS policies
 ├── supabase_follows_rpc.sql            # Supabase RPC migration for bidirectional mutual follower queries
@@ -102,6 +103,7 @@
 │   │   │   └── callback/
 │   │   │       └── route.ts            # OAuth code exchange & Twitter v2 bio enrichment handler
 │   │   ├── explore/page.tsx            # Clean "Coming Soon" explore page
+│   │   ├── hashtag/[tag]/page.tsx      # Standardized dedicated hashtag hub with SSR & static prerender
 │   │   ├── notifications/page.tsx      # Clean "Coming Soon" notifications page
 │   │   ├── oomfs/page.tsx              # Mutual followers directory
 │   │   ├── page.tsx                    # Home feed of real creators in 1:1 Cards format with hashtags integration
@@ -117,7 +119,8 @@
 │   │   │   ├── ProfileView.tsx         # Core profile view, 5 tabs, Edit Profile modal, composer, Badge Wall
 │   │   │   └── BannerCropModal.tsx     # 1:1 X 1500x500 banner crop viewfinder, zoom slider, & wheel zoom
 │   │   ├── hashtags/
-│   │   │   └── HashtagsNotepad.tsx     # Hyper-minimalist personal hashtags notepad (View/Edit modes, comma engine)
+│   │   │   ├── HashtagsNotepad.tsx     # Hyper-minimalist personal hashtags notepad (View/Edit modes, comma engine)
+│   │   │   └── HashtagClientView.tsx   # Dedicated hashtag hub view (hero badge, tabs, creator list, follow actions)
 │   │   ├── collections/
 │   │   │   ├── ReorderPresetsModal.tsx # Modal for rearranging preset collections and deleting presets
 │   │   │   ├── ReorderCollectionModal.tsx # Visual 100-card board reordering workspace for collection owners
@@ -267,5 +270,6 @@ npm run build
 * [x] Follow / Unfollow button wired to `public.follows`
 * [x] Real-time mutual follower count calculation (SQL view or RPC)
 * [x] Linktree-style external accounts portal (`LinksPortal.tsx`) with 35+ platform registry & custom logos
+* [x] Standardized Dedicated Hashtag Pages (`/hashtag/[tag]`) with dual `Creators` + `Posts` tabs and thread navigation
 * [ ] Custom link click tracking / analytics for bio links
 * [ ] Dynamic Open Graph (OG) image generation for Twitter Cards (`oomfs.org/[username]`)

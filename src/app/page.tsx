@@ -524,24 +524,19 @@ export default function HomePage() {
 
                             return (
                               <React.Fragment key={tagKey}>
-                                <span
+                                <Link
+                                  href={`/hashtag/${encodeURIComponent(cleanTag.toLowerCase())}`}
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleCopyTag(tag, tagKey);
                                   }}
-                                  title="Click to copy hashtag"
+                                  title={`View #${cleanTag}`}
                                   className="inline-flex items-center cursor-pointer group/tag relative hover:text-[#1d9bf0] transition-colors"
                                 >
                                   <span className="text-[#1d9bf0] font-bold select-none mr-0.5">#</span>
-                                  <span className="group-hover/tag:underline underline-offset-2 font-medium">
+                                  <span className="group-hover/tag:underline underline-offset-2 font-medium text-[#0f1419] group-hover/tag:text-[#1d9bf0]">
                                     {cleanTag}
                                   </span>
-                                  {isCopied && (
-                                    <span className="absolute -top-7 left-1/2 -translate-x-1/2 bg-[#0f1419] text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-md pointer-events-none z-20 animate-in fade-in duration-100">
-                                      Copied!
-                                    </span>
-                                  )}
-                                </span>
+                                </Link>
                                 {!isLast && <span className="text-[#536471] mr-1.5 select-none">,</span>}
                               </React.Fragment>
                             );

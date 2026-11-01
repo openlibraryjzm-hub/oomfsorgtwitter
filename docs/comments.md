@@ -15,6 +15,8 @@ On `oomfs.org`, comments serve a dual architectural role:
    - Direct click-to-thread navigation opening into a dedicated canonical URL (`/[commentAuthor]/status/[commentId]`).
    - Nested conversational reply feeds in the dedicated thread view.
 
+3. **Hashtag Discussions:** This exact comment and thread architecture is adopted for dedicated hashtag pages (`/hashtag/[tag]`), serving as a public discussion timeline for the tag where comments are scoped to `content.hashtag`. See [Dedicated Hashtag Page Context Doc](tag-page.md).
+
 ### The Two-Way Scoping Model
 
 Every comment establishes a directed relationship between two profiles:

@@ -12,6 +12,7 @@ export interface DbProfile {
   banner_url?: string;
   bio?: string;
   website?: string;
+  hashtags?: string[];
   created_at?: string;
 }
 

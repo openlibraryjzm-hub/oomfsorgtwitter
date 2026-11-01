@@ -132,11 +132,11 @@ Tabs are ordered left-to-right with clean typography without parentheses counter
 * **Role**: Hyper-minimalist personal notepad (`HashtagsNotepad.tsx`) residing within the centered 600px timeline container where users write hashtags for themselves (e.g. `#vibecoder`, `#gamer`, `#painter`).
 * **Design & Feel**: Continuous, densely packed paragraph of comma-separated hashtags flowing like long written text in a notepad. No lines/list clutter or boxed pills—authentic, clean typography with Twitter Blue `#` marks and subtle gray commas.
 * **Interactive Capabilities**:
-  * **View Mode**: Clean flowing paragraph of hashtags. Clicking any hashtag copies it to the clipboard with subtle inline confirmation.
+  * **View Mode**: Clean flowing paragraph of hashtags. Clicking any hashtag navigates to its standardized dedicated hub (`/hashtag/[tag]`), displaying creator adopters, tag posts, and copy actions.
   * **Edit Mode**: Profile owners tap `[Edit]` to enter inline editing. Adding tags is done effortlessly by typing and pressing `,` (comma) to separate. Pressing <kbd>Backspace</kbd> on empty input deletes the previous tag; tags can also be pruned via subtle `×` buttons.
   * **Bulk Edit**: Supports switching to edit as a raw comma-separated text block if desired.
   * **Dual Persistence**: Synchronous instant caching in `localStorage` (`oomfs_profile_hashtags_<userId>`) with resilient non-blocking background persistence to Supabase `public.profiles.hashtags`.
-* **Specification Reference**: Detailed architecture is documented in [Hashtags Context Doc](hashtags.md).
+* **Specification Reference**: Detailed architecture is documented in [Hashtags Context Doc](hashtags.md) and [Dedicated Hashtag Page Context Doc](tag-page.md).
 
 ### 5. Likes (Fifth / Rightmost)
 * **Role**: Dedicated feed showcasing posts liked by the user.
