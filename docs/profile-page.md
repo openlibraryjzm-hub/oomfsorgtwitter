@@ -69,12 +69,9 @@ The profile header sits at the top of `ProfileView.tsx` and adheres strictly to 
    - Main Viewport: Height responsive, 3:1 aspect ratio (`1500×500px`), 100% clean and unobstructed, displaying the authentic header banner.
    - Lightbox Portal: Tapping the banner opens `FullscreenMediaModal.tsx` for full-resolution inspection.
 
-3. **Avatar & Tip Circle (Twin Hero Circles)**:
-   - Avatar: Circular avatar overlapping banner (`-mt-16 sm:-mt-20`). Always run through `formatTwitterAvatar()` to ensure 400×400 HD resolution instead of Twitter's default `_normal.jpg`.
-   - **Tip Circle (`TipCircle.tsx`)**: Twin hero circle positioned immediately to the right of the avatar, matching its exact size (`w-28 h-28 sm:w-36 sm:h-36`) and banner-crossing offset (`-mt-16 sm:-mt-20`).
-     - Symmetrical dual-coin format (~63.4% diameter each).
-     - Left Coin overlaps on top of Right Coin with crisp permanent black outlines.
-     - Tapping the circle launches **`SupporterModal.tsx`**.
+3. **Avatar (Standard Creator Avatar)**:
+   - Avatar: Circular avatar overlapping banner (`-mt-16 sm:-mt-20`) on the white profile seam. Always run through `formatTwitterAvatar()` to ensure 400×400 HD resolution instead of Twitter's default `_normal.jpg`.
+   - Renders cleanly without a secondary coin orbit.
 
 4. **Action Row & Native Edit Profile Modal**:
    - Viewing own profile: **`"Edit profile"`** opens the native edit modal with header banner upload/remove, overlapping avatar, and interactive 1500×500 zoom & pan crop modal (`BannerCropModal.tsx`).
@@ -92,12 +89,12 @@ The profile header sits at the top of `ProfileView.tsx` and adheres strictly to 
 
 ---
 
-## 3. The 5 Profile Tabs
+## 3. The 4 Profile Tabs
 
 Tabs are ordered left-to-right with clean typography without parentheses counters:
 
 ```
-[ 1. Boards ]  [ 2. Links ]  [ 3. Comments ]  [ 4. Hashtags ]  [ 5. Likes ]
+[ 1. Boards ]  [ 2. Links ]  [ 3. Comments ]  [ 4. Likes ]
 ```
 
 ### 1. Boards (Leftmost & Default)
@@ -128,17 +125,7 @@ Tabs are ordered left-to-right with clean typography without parentheses counter
 * **Design & Behavior**: Clean inline comment composer with text area, multi-image attachments supporting up to 4 photos (`TwitterMediaGrid`), and an integrated StrawPage-style doodler (`DoodleModal.tsx`) with brush, flood fill bucket, eraser, and photo background overlay tools.
 * **Cross-Profile Scoping**: Comments store `user_id` (the commenter) and `target_user_id` (the recipient profile). Comments display exclusively on the target profile's Comments tab while remaining indexed under the author.
 
-### 4. Hashtags (Fourth leftmost)
-* **Role**: Hyper-minimalist personal notepad (`HashtagsNotepad.tsx`) residing within the centered 600px timeline container where users write hashtags for themselves (e.g. `#vibecoder`, `#gamer`, `#painter`).
-* **Design & Feel**: Continuous, densely packed paragraph of comma-separated hashtags flowing like long written text in a notepad. No lines/list clutter or boxed pills—authentic, clean typography with Twitter Blue `#` marks and subtle gray commas.
-* **Interactive Capabilities**:
-  * **View Mode**: Clean flowing paragraph of hashtags. Clicking any hashtag navigates to its standardized dedicated hub (`/hashtag/[tag]`), displaying creator adopters, tag posts, and copy actions.
-  * **Edit Mode**: Profile owners tap `[Edit]` to enter inline editing. Adding tags is done effortlessly by typing and pressing `,` (comma) to separate. Pressing <kbd>Backspace</kbd> on empty input deletes the previous tag; tags can also be pruned via subtle `×` buttons.
-  * **Bulk Edit**: Supports switching to edit as a raw comma-separated text block if desired.
-  * **Dual Persistence**: Synchronous instant caching in `localStorage` (`oomfs_profile_hashtags_<userId>`) with resilient non-blocking background persistence to Supabase `public.profiles.hashtags`.
-* **Specification Reference**: Detailed architecture is documented in [Hashtags Context Doc](hashtags.md) and [Dedicated Hashtag Page Context Doc](tag-page.md).
-
-### 5. Likes (Fifth / Rightmost)
+### 4. Likes (Fourth / Rightmost)
 * **Role**: Dedicated feed showcasing posts liked by the user.
 
 ---
