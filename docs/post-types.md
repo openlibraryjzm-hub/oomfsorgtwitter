@@ -14,7 +14,7 @@ Standard text posts have been retired. **Curated Boards (`'board'`)** are the **
 
 | Post Type | Type Identifier | Profile Timeline View | Thread View (`/[username]/status/[id]`) |
 | :--- | :--- | :--- | :--- |
-| **Board** *(Sole Timeline Post Type)* | `'board'` | Pinterest-style 2-column scroll card with 2:1 full-bleed hero cover image, bottom cascading secondary circle avatars, bold title, and item count | Full thread view with bold board title, expanded 2-column Pinterest-style masonry grid, collaborator links, and conversational replies |
+| **Board** *(Sole Timeline Post Type)* | `'board'` | Pinterest-style 2-column scroll card with 2:1 aspect ratio featuring a 2x2 grid (4 quadrants) + centered circular 5th image (Slot 4), bold title, and 5-item count | Full thread view with bold board title, expanded 2-column Pinterest-style masonry grid, collaborator links, and conversational replies |
 | **Profile Comment** | `'comment'` | Guestbook card on the **Comments** tab (text, attached photos/doodles, metrics) | Expanded focal thread view with conversational replies, media grid, and reply composer |
 
 ---
@@ -38,7 +38,7 @@ export interface BoardImage {
 export type BoardItem = BoardImage;
 
 export interface BoardData {
-  images: BoardItem[]; // Minimum 3 items required (images or avatars)
+  images: BoardItem[]; // Exactly 5 items required (images or avatars)
 }
 
 export interface Post {
@@ -65,19 +65,24 @@ export interface Post {
 
 ### 1. Board (`type: 'board'`) — Sole Timeline Post Type
 
-* **Purpose**: Visual moodboards, architectural studies, design references, and creative collaborations. Requires a title and at least 3 items (images and/or mutual user avatars).
+* **Purpose**: Visual moodboards, architectural studies, design references, and creative collaborations. Requires a title and strictly 5 items (images and/or mutual user avatars). Philosophy: *"If you do not have 5 images, it is not board-worthy."*
 * **Zero Emojis**: Board titles, item notes, and tags enforce strict clean typography without emoji glyphs.
 * **Dual Presentation Modes**:
 
 #### A. Timeline Grid Mode (`BoardGridCard.tsx`)
 Rendered inside a 2-column Pinterest-style scroll grid (`grid-cols-2 gap-2.5 sm:gap-3`):
-* **Thumbnail Geometry**: Tightly packed rounded rectangle maintaining the compact **$2:1$ aspect ratio** (`aspect-[2/1]`, `rounded-2xl`, `border-[#cfd9de]`):
-  * **Main Hero Image**: Full-bleed edge-to-edge presentation of the primary board image (or collaborator avatar card) spanning the full 100% width and 100% height, displaying the 2:1 crop (`thumbnailUrl || url`) framed using `BoardCropModal.tsx`.
-  * **On-Card Cover Recropping**: Profile owners can recrop the lead cover thumbnail directly from the card hover action bar or the `...` more options menu via `BoardCropModal.tsx`, immediately syncing `thumbnailUrl` to Supabase `blocks` and session store without affecting the full uncropped image.
-  * **Cascading Overlapping Circles**: Overlaid in the bottom-left corner over a soft gradient scrim ("also followed by" pattern). Shows up to 3 secondary images/avatars (`w-6 h-6 sm:w-7 sm:h-7`, `ring-2 ring-white`, `-ml-2`).
-  * **Overflow Badge**: If the board has more than 4 items (3 secondary), the final bubble renders `+N` count.
+* **Thumbnail Geometry**: Tightly packed rounded rectangle maintaining the compact **$2:1$ aspect ratio** (`w-full aspect-[2/1] rounded-2xl overflow-hidden bg-[#eff3f4] border border-[#cfd9de]`):
+  * **2x2 Grid (4 Quadrants)**: Occupies the full rectangle:
+    * Slot 0: Top-Left
+    * Slot 1: Top-Right
+    * Slot 2: Bottom-Left
+    * Slot 3: Bottom-Right
+    * Each quadrant displays its image with `w-full h-full object-cover`.
+  * **Centered Circular Image (Slot 4)**: Positioned in the exact dead-center of the 2x2 grid (`rounded-full ring-2 ring-white shadow-md w-11 h-11 sm:w-14 sm:h-14 object-cover overflow-hidden z-10`).
+  * **No Cascading Overlays**: Bottom-left cascading circle dots and `+N` overflow bubbles are completely eliminated in favor of the structured 2x2 + center circle architecture.
+  * **On-Card Cover Recropping**: Profile owners can recrop the lead thumbnail directly from the card hover action bar or the `...` more options menu via `BoardCropModal.tsx`.
 * **Avatar Link Embeds (`type: 'user'`)**: Cells render circular HD avatars, display names, and `@handles` (`SelectOomfModal`).
-* **Title & Metadata**: Clean bold title displayed directly under the rectangle, followed by item count (e.g. `6 items`).
+* **Title & Metadata**: Clean bold title displayed directly under the rectangle, followed by item count (`5 items`).
 * **Hover Menu**: Owner 3-dots menu providing **"Recrop cover"**, **"Add to preset"**, and **"Delete board"** actions.
 * **Navigation**: Clicking the card navigates directly to `/[username]/status/[id]`.
 
@@ -107,13 +112,13 @@ The creator composer is dedicated exclusively to drafting Boards:
 
 ### Validation & Form Rules
 * **Board Title Required**: Creators must provide a title (e.g., `Brutalist Architecture`). Subtitles and captions have been completely eliminated.
-* **Minimum 3 Items**: At least 3 slots must be populated (image uploads or mutual avatar links) before the "Create Board" submit button is enabled.
-* **Pre-Filled Template**: Initializes with 5 visual slots for rapid drafting.
+* **Strict 5-Image Requirement**: All 5 slots must be populated (image uploads or mutual avatar links) before the "Create Board" submit button is enabled.
+* **Fixed 5-Slot Architecture**: Initializes with exactly 5 visual slots (Slots 1–4 for the 2x2 grid, Slot 5 for the center circle). Capped strictly at 5 items (no excess items).
 * **Preset Assignment**: Includes an inline dropdown (`Add to preset:`) allowing immediate assignment to a curated preset collection.
 
 ### Media Pipeline
 * **Hybrid Multi-Image & Folder Ingestion**:
-  * **Multi-File Selection**: The "Upload Images" button and individual slot upload inputs accept multiple files at once, auto-filling empty slots sequentially and expanding slots up to 20 items.
+  * **Multi-File Selection**: The "Upload Images" button and individual slot upload inputs accept multiple files at once, auto-filling empty slots up to the 5-item limit.
   * **One-Click Folder Upload (`webkitdirectory`)**: Allows selecting an entire local folder of images in one click.
   * **Drag-and-Drop Zone**: Dropping multiple images or folders onto the Board Builder automatically extracts and sequences files in natural numerical/alphabetical order.
 * **Cover Framing on Slot 1 Only**:
@@ -158,10 +163,10 @@ When maintaining or extending post formats:
   Do not introduce separate standard text posts to the profile timeline. All profile content lives within visual boards.
 - [ ] **No Emojis Rule**:
   Preserve clean typography: strip emojis from board titles, preset names, and item captions.
-- [ ] **Aspect Ratio Math ($2:1$) & Hero Geometry**:
-  The timeline board thumbnail card MUST maintain the exact $2:1$ aspect ratio (`aspect-[2/1]`) featuring a 100% full-bleed hero image with secondary items cascading as overlapping circles in the bottom-left corner. Cover photos framed in composer via `BoardCropModal.tsx`.
-- [ ] **3-Item Minimum**:
-  Always validate that `filledBoardItems.length >= 3` before allowing board creation.
+- [ ] **Aspect Ratio Math ($2:1$) & 2x2 + Center Circle Geometry**:
+  The timeline board thumbnail card MUST maintain the exact $2:1$ aspect ratio (`aspect-[2/1]`) featuring a 2x2 grid (Slots 0–3) with a centered circular image (Slot 4) dead-center.
+- [ ] **Strict 5-Image Enforcement**:
+  Always validate that `filledBoardItems.length === 5` before allowing board creation. If you do not have 5 images, it is not board-worthy.
 - [ ] **Subtitles Removed**:
   Do not re-add subtitle or caption textareas to the board composer. Board titles serve as the sole clean text identifier.
 - [ ] **Tombstone Synchronization**:

@@ -32,17 +32,19 @@ export default function BoardGridCard({
 
   const rawItems: BoardItem[] = post.boardData?.images || [];
   
-  // Fallback items if boardData is missing or empty
-  const items: BoardItem[] = rawItems.length > 0 
-    ? rawItems 
+  // Ensure exactly 5 items for the 2x2 grid + center circle architecture
+  const items: BoardItem[] = rawItems.length >= 5 
+    ? rawItems.slice(0, 5) 
     : [
+        ...rawItems,
         { id: 'fb1', url: post.images?.[0] || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=700&q=80', caption: '' },
         { id: 'fb2', url: post.images?.[1] || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=700&q=80', caption: '' },
-        { id: 'fb3', url: post.images?.[2] || 'https://images.unsplash.com/photo-1507652313519-d4e9174996dd?auto=format&fit=crop&w=700&q=80', caption: '' }
-      ];
+        { id: 'fb3', url: post.images?.[2] || 'https://images.unsplash.com/photo-1507652313519-d4e9174996dd?auto=format&fit=crop&w=700&q=80', caption: '' },
+        { id: 'fb4', url: post.images?.[3] || 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=700&q=80', caption: '' },
+        { id: 'fb5', url: post.images?.[4] || 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=700&q=80', caption: '' }
+      ].slice(0, 5);
 
   const firstItem = items[0];
-  const secondaryItems = items.slice(1);
 
   // Title: use explicit post.title or extract clean first line from text, without emojis
   const cleanTitle = (post.title || post.text?.split('\n')[0] || 'Untitled Board').replace(
@@ -58,11 +60,12 @@ export default function BoardGridCard({
     }
   };
 
-  const getItemImageUrl = (item: BoardItem): string | null => {
+  const getItemImageUrl = (item?: BoardItem): string | null => {
+    if (!item) return null;
     if (item.type === 'user') {
       return formatTwitterAvatar(item.avatar || item.url);
     }
-    return item.url || null;
+    return item.thumbnailUrl || item.url || null;
   };
 
   return (
@@ -70,79 +73,47 @@ export default function BoardGridCard({
       onClick={handleCardClick}
       className="group/board flex flex-col cursor-pointer select-none relative"
     >
-      {/* Board Thumbnail: Widened Full-Bleed Hero Image (Aspect 2:1) + Cascading Circles for Other Board Items */}
+      {/* 5-Image Board Thumbnail Layout: 2x2 Grid + Centered Circular Avatar (Aspect 2:1) */}
       <div className="relative w-full aspect-[2/1] rounded-2xl overflow-hidden bg-[#eff3f4] border border-[#cfd9de] shadow-2xs group-hover/board:border-[#1d9bf0]/50 group-hover/board:shadow-md transition-all duration-200">
-        {/* Main Hero Image / User Card */}
-        {firstItem.type === 'user' ? (
-          <div className="w-full h-full bg-gradient-to-br from-[#f7f9f9] to-[#eff3f4] flex flex-col items-center justify-center p-3 text-center select-none overflow-hidden">
-            <img
-              src={formatTwitterAvatar(firstItem.avatar || firstItem.url)}
-              alt={firstItem.name || firstItem.username || 'User'}
-              className="w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover ring-2 ring-white shadow-sm group-hover/board:scale-105 transition-transform"
-            />
-            <div className="mt-1.5 px-1 max-w-full">
-              <span className="font-bold text-xs sm:text-sm text-[#0f1419] truncate block leading-tight">
-                {firstItem.name || firstItem.username || 'User'}
-              </span>
-              {firstItem.username && (
-                <span className="text-[11px] text-[#536471] truncate block">
-                  @{firstItem.username}
-                </span>
+        {/* 2x2 Grid (2 rows x 2 columns) occupying the full rectangle */}
+        <div className="grid grid-cols-2 grid-rows-2 w-full h-full">
+          {items.slice(0, 4).map((item, idx) => {
+            const imgUrl = getItemImageUrl(item);
+            return (
+              <div
+                key={item.id || idx}
+                className="relative w-full h-full overflow-hidden bg-[#eff3f4]"
+              >
+                {imgUrl ? (
+                  <img
+                    src={imgUrl}
+                    alt={item.caption || item.name || cleanTitle}
+                    className="w-full h-full object-cover group-hover/board:scale-105 transition-transform duration-300"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-[#cfd9de] to-[#eff3f4]" />
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Centered circular image (Slot 4) positioned in the exact dead-center of the 2x2 grid */}
+        {items[4] && (
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none">
+            <div className="rounded-full ring-2 ring-white shadow-md w-11 h-11 sm:w-14 sm:h-14 object-cover overflow-hidden z-10 bg-white">
+              {getItemImageUrl(items[4]) ? (
+                <img
+                  src={getItemImageUrl(items[4])!}
+                  alt={items[4].caption || items[4].name || cleanTitle}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-[#cfd9de] to-[#eff3f4]" />
               )}
             </div>
-          </div>
-        ) : (
-          <img
-            src={firstItem.thumbnailUrl || firstItem.url}
-            alt={firstItem.caption || cleanTitle}
-            className="w-full h-full object-cover group-hover/board:scale-[1.02] transition-transform duration-200"
-            loading="lazy"
-          />
-        )}
-
-        {/* Subtle Bottom Gradient Scrim for Contrast if overlay circles exist */}
-        {secondaryItems.length > 0 && firstItem.type !== 'user' && (
-          <div className="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-black/60 via-black/20 to-transparent pointer-events-none" />
-        )}
-
-        {/* Overlaid on Bottom-Left: Cascading Overlapping Circles of Other Board Items */}
-        {secondaryItems.length > 0 && (
-          <div className="absolute bottom-2 left-2 flex items-center z-10">
-            {secondaryItems.slice(0, 3).map((item, idx) => {
-              const imgUrl = getItemImageUrl(item);
-              const zIndex = 30 - idx * 10;
-              const itemTitle = item.caption || item.name || item.username || `Item ${idx + 2}`;
-
-              return (
-                <div
-                  key={item.id || idx}
-                  style={{ zIndex }}
-                  className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full ring-2 ring-white bg-[#eff3f4] overflow-hidden shadow-sm shrink-0 transition-transform hover:scale-110 ${
-                    idx > 0 ? '-ml-2' : ''
-                  }`}
-                  title={itemTitle}
-                >
-                  {imgUrl ? (
-                    <img src={imgUrl} alt={itemTitle} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gray-200 text-[8px] font-bold text-gray-700">
-                      0{idx + 2}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-
-            {/* +N More Bubble if > 3 secondary items */}
-            {secondaryItems.length > 3 && (
-              <div
-                style={{ zIndex: 0 }}
-                className="w-6 h-6 sm:w-7 sm:h-7 rounded-full ring-2 ring-white bg-[#0f1419] text-white flex items-center justify-center text-[9px] sm:text-[10px] font-bold shadow-sm shrink-0 -ml-2 select-none"
-                title={`${secondaryItems.length - 3} more items`}
-              >
-                +{secondaryItems.length - 3}
-              </div>
-            )}
           </div>
         )}
 
@@ -199,7 +170,7 @@ export default function BoardGridCard({
             {cleanTitle}
           </h3>
           <p className="text-[11px] sm:text-xs text-[#536471] mt-0.5">
-            {items.length} {items.length === 1 ? 'item' : 'items'}
+            5 items
           </p>
         </div>
 

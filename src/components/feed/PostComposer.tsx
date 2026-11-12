@@ -4,7 +4,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   Image as ImageIcon, 
   Upload, 
-  Plus, 
   X, 
   LayoutGrid, 
   Link as LinkIcon,
@@ -13,7 +12,7 @@ import {
   Users,
   Crop
 } from 'lucide-react';
-import { CURRENT_USER, Post, User, Collection, BoardItem } from '@/lib/mockData';
+import { CURRENT_USER, Post, User, Collection } from '@/lib/mockData';
 import { saveSessionPost } from '@/lib/postStore';
 import { useAuth } from '@/context/AuthContext';
 import { createClient } from '@/lib/supabase/client';
@@ -80,6 +79,23 @@ async function compressImageFile(file: File, maxDimension = 1080, quality = 0.82
   });
 }
 
+// Exactly 5 visual slots for the 2x2 grid + center circle architecture
+const createBlankBoardSlots = (): DraftMediaItem[] => [
+  { id: 'b_slot_1', type: 'image', url: '', caption: '' },
+  { id: 'b_slot_2', type: 'image', url: '', caption: '' },
+  { id: 'b_slot_3', type: 'image', url: '', caption: '' },
+  { id: 'b_slot_4', type: 'image', url: '', caption: '' },
+  { id: 'b_slot_5', type: 'image', url: '', caption: '' },
+];
+
+const SLOT_LABELS = [
+  'Slot 1: Top-Left',
+  'Slot 2: Top-Right',
+  'Slot 3: Bottom-Left',
+  'Slot 4: Bottom-Right',
+  'Slot 5: Center Circle',
+];
+
 export default function PostComposer({
   onAddPost,
   onClose,
@@ -121,15 +137,7 @@ export default function PostComposer({
 
   const [isSelectOomfModalOpen, setIsSelectOomfModalOpen] = useState(false);
 
-  // Board media state (supports images and user avatars)
-  const createBlankBoardSlots = (): DraftMediaItem[] => [
-    { id: `b_slot_${Date.now()}_1`, type: 'image', url: '', caption: '' },
-    { id: `b_slot_${Date.now()}_2`, type: 'image', url: '', caption: '' },
-    { id: `b_slot_${Date.now()}_3`, type: 'image', url: '', caption: '' },
-    { id: `b_slot_${Date.now()}_4`, type: 'image', url: '', caption: '' },
-    { id: `b_slot_${Date.now()}_5`, type: 'image', url: '', caption: '' },
-  ];
-
+  // Board media state strictly fixed to exactly 5 slots
   const [mediaItems, setMediaItems] = useState<DraftMediaItem[]>(createBlankBoardSlots());
   const singleSlotFileInputRef = useRef<HTMLInputElement | null>(null);
   const folderInputRef = useRef<HTMLInputElement | null>(null);
@@ -167,20 +175,19 @@ export default function PostComposer({
     imageSrc: ''
   });
 
-  // Thumbnail crop is strictly for the first image (Slot #1) to determine board card preview
+  // Thumbnail crop for the first image (Slot #1)
   const handleOpenCropModal = () => {
     const item = mediaItems[0];
     if (item && item.url && item.type === 'image') {
       setCropModalState({
         isOpen: true,
         slotIndex: 0,
-        imageSrc: item.url // source from the original full image
+        imageSrc: item.url
       });
     }
   };
 
   const handleApplyCrop = (croppedDataUrl: string) => {
-    // Only update thumbnailUrl for the board card preview; preserve original item.url for full masonry view
     setMediaItems((prev) =>
       prev.map((item, idx) =>
         idx === 0 ? { ...item, thumbnailUrl: croppedDataUrl } : item
@@ -232,8 +239,8 @@ export default function PostComposer({
         a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
       );
 
-      // Cap at 24 images to avoid browser canvas memory exhaustion
-      const cappedFiles = imageFiles.slice(0, 24);
+      // Capped strictly at 5 files (maximum 5 images)
+      const cappedFiles = imageFiles.slice(0, 5);
 
       // 2. Compress images via client canvas
       const dataUrls: string[] = [];
@@ -253,14 +260,14 @@ export default function PostComposer({
 
       let shouldCropSlotZero = false;
 
-      // 3. Assign to slots
+      // 3. Assign to slots strictly within the 5 slots (no excess slots)
       setMediaItems((prev) => {
         let fileIdx = 0;
         const updated = [...prev];
 
-        // If a specific slot was targeted (e.g. user clicked "Image" on Slot #2)
-        if (startSlotIndex !== null && startSlotIndex >= 0 && startSlotIndex < updated.length) {
-          for (let idx = startSlotIndex; idx < updated.length && fileIdx < dataUrls.length; idx++) {
+        // If a specific slot was targeted
+        if (startSlotIndex !== null && startSlotIndex >= 0 && startSlotIndex < 5) {
+          for (let idx = startSlotIndex; idx < 5 && fileIdx < dataUrls.length; idx++) {
             if (!updated[idx].url || idx === startSlotIndex) {
               if (idx === 0 && !updated[idx].url) shouldCropSlotZero = true;
               updated[idx] = { ...updated[idx], type: 'image', url: dataUrls[fileIdx] };
@@ -269,8 +276,8 @@ export default function PostComposer({
           }
         }
 
-        // Fill remaining empty slots in order
-        for (let idx = 0; idx < updated.length && fileIdx < dataUrls.length; idx++) {
+        // Fill remaining empty slots in order up to index 4
+        for (let idx = 0; idx < 5 && fileIdx < dataUrls.length; idx++) {
           if (!updated[idx].url) {
             if (idx === 0) shouldCropSlotZero = true;
             updated[idx] = { ...updated[idx], type: 'image', url: dataUrls[fileIdx] };
@@ -278,21 +285,10 @@ export default function PostComposer({
           }
         }
 
-        // If more images remain, append new overflow slots
-        while (fileIdx < dataUrls.length) {
-          updated.push({
-            id: `media_${Date.now()}_${fileIdx}`,
-            type: 'image',
-            url: dataUrls[fileIdx],
-            caption: ''
-          });
-          fileIdx++;
-        }
-
-        return updated;
+        return updated.slice(0, 5);
       });
 
-      // If Slot 1 (hero cover) was newly assigned, trigger the 2:1 crop modal
+      // If Slot 1 was newly assigned, trigger the 2:1 crop modal
       if (shouldCropSlotZero && dataUrls.length > 0) {
         setCropModalState({
           isOpen: true,
@@ -431,19 +427,22 @@ export default function PostComposer({
     }
   };
 
-  // Handle adding board image via pasted URL
+  // Handle adding board image via pasted URL into first available slot
   const handleAddUrlImage = () => {
     const trimmed = urlInput.trim();
     if (!trimmed) return;
-    setMediaItems((prev) => [
-      ...prev,
-      {
-        id: `media_${Date.now()}_${prev.length}`,
-        type: 'image',
-        url: trimmed,
-        caption: ''
-      }
-    ]);
+    const emptyIdx = mediaItems.findIndex((m) => !m.url);
+    if (emptyIdx === -1) {
+      setErrorMsg('All 5 slots are already filled. A board holds exactly 5 images.');
+      return;
+    }
+    setMediaItems((prev) =>
+      prev.map((item, idx) =>
+        idx === emptyIdx
+          ? { ...item, type: 'image', url: trimmed, caption: '' }
+          : item
+      )
+    );
     setUrlInput('');
     setShowUrlInput(false);
     setErrorMsg(null);
@@ -455,16 +454,32 @@ export default function PostComposer({
     );
   };
 
+  // Reset slot contents back to blank without altering the fixed 5-slot structure
   const handleRemoveMedia = (id: string) => {
-    setMediaItems((prev) => prev.filter((item) => item.id !== id));
+    setMediaItems((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              type: 'image',
+              url: '',
+              thumbnailUrl: undefined,
+              caption: '',
+              username: undefined,
+              name: undefined,
+              avatar: undefined
+            }
+          : item
+      )
+    );
   };
 
   const filledBoardItems = mediaItems.filter((m) => m.url.trim().length > 0);
 
-  // Validation check: Title required and at least 3 items filled
+  // Validation check: Title required and EXACTLY 5 items filled
   const canSubmit = () => {
     if (isSubmitting || isProcessingFiles) return false;
-    return title.trim().length > 0 && filledBoardItems.length >= 3;
+    return title.trim().length > 0 && filledBoardItems.length === 5;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -476,8 +491,10 @@ export default function PostComposer({
       return;
     }
 
-    if (filledBoardItems.length < 3) {
-      setErrorMsg('Boards require at least 3 items (images or mutual avatars).');
+    if (filledBoardItems.length < 5) {
+      setErrorMsg(
+        `5 images required (${filledBoardItems.length}/5 added). If you do not have 5 images, it is not board-worthy.`
+      );
       return;
     }
 
@@ -648,20 +665,26 @@ export default function PostComposer({
                 </p>
               </div>
             )}
-            <div className="flex items-center justify-between">
+
+            {/* Board Items Header & 5-Slot Helper Badge */}
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <span className="text-xs font-extrabold text-[#0f1419] uppercase tracking-wider flex items-center gap-1.5">
                 <LayoutGrid className="w-3.5 h-3.5 text-[#1d9bf0]" />
-                <span>Board Items ({filledBoardItems.length} items · min 3)</span>
+                <span>5-Image Architecture ({filledBoardItems.length}/5 slots filled)</span>
               </span>
-              {filledBoardItems.length < 3 && (
-                <span className="text-[11px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                  Add at least 3 items (images or avatars)
+              {filledBoardItems.length < 5 ? (
+                <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
+                  5 images required ({filledBoardItems.length}/5 added)
+                </span>
+              ) : (
+                <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                  All 5 slots filled ✓ Ready to publish
                 </span>
               )}
             </div>
 
-            {/* List of Board Item Slots */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+            {/* Exactly 5 Board Item Slots */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
               {mediaItems.map((item, idx) => (
                 <div
                   key={item.id}
@@ -688,7 +711,7 @@ export default function PostComposer({
                               @{item.username}
                             </span>
                           )}
-                          <span className="absolute top-1 left-1 bg-black/65 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                          <span className="absolute top-1 left-1 bg-black/65 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
                             #{idx + 1}
                           </span>
                           <button
@@ -698,7 +721,7 @@ export default function PostComposer({
                               handleRemoveMedia(item.id);
                             }}
                             className="absolute top-1 right-1 p-1 bg-red-600/90 hover:bg-red-600 text-white rounded-full cursor-pointer z-10"
-                            title="Remove item"
+                            title="Clear slot"
                           >
                             <X className="w-3 h-3" />
                           </button>
@@ -711,13 +734,13 @@ export default function PostComposer({
                             className="w-full h-full object-cover"
                           />
                           <span
-                            className={`absolute top-1 left-1 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-2xs ${
+                            className={`absolute top-1 left-1 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-2xs ${
                               idx === 0 ? 'bg-[#1d9bf0]' : 'bg-black/65'
                             }`}
                           >
-                            {idx === 0 ? '#1 Cover' : `#${idx + 1}`}
+                            {idx === 0 ? '#1 Cover' : idx === 4 ? '#5 Center' : `#${idx + 1}`}
                           </span>
-                          {/* Crop / Reposition Framing Button ONLY for Slot 0 (Cover Thumbnail) */}
+                          {/* Crop / Reposition Framing Button for Slot 0 */}
                           {idx === 0 && (
                             <button
                               type="button"
@@ -735,7 +758,7 @@ export default function PostComposer({
                             type="button"
                             onClick={() => handleRemoveMedia(item.id)}
                             className="absolute top-1 right-1 p-1 bg-red-600/90 hover:bg-red-600 text-white rounded-full cursor-pointer z-10"
-                            title="Remove image"
+                            title="Clear slot"
                           >
                             <X className="w-3 h-3" />
                           </button>
@@ -746,20 +769,12 @@ export default function PostComposer({
                         <span className="absolute top-1 left-1 bg-gray-200 text-[#536471] text-[9px] font-bold px-1.5 py-0.5 rounded-full">
                           #{idx + 1}
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveMedia(item.id)}
-                          className="absolute top-1 right-1 p-0.5 text-[#536471] hover:text-red-500 rounded-full cursor-pointer"
-                          title="Remove slot"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                        <div className="flex-1 flex items-center gap-1.5 pt-3.5">
+                        <div className="flex-1 flex items-center gap-1 pt-3.5">
                           <button
                             type="button"
                             onClick={() => handleSlotUploadClick(idx)}
                             className="flex-1 h-full flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#cfd9de] hover:border-[#1d9bf0] hover:bg-[#1d9bf0]/5 text-[#536471] hover:text-[#1d9bf0] transition-colors p-1 cursor-pointer"
-                            title="Upload image(s) starting from this slot"
+                            title={`Upload image for ${SLOT_LABELS[idx]}`}
                           >
                             <Upload className="w-3.5 h-3.5 mb-0.5 text-[#1d9bf0]" />
                             <span className="text-[10px] font-bold">Image</span>
@@ -780,30 +795,14 @@ export default function PostComposer({
                   <div className="p-1.5">
                     <input
                       type="text"
-                      placeholder={`Item ${idx + 1} caption (optional)`}
+                      placeholder={SLOT_LABELS[idx]}
                       value={item.caption}
                       onChange={(e) => handleUpdateCaption(item.id, e.target.value)}
-                      className="w-full text-[11px] text-[#0f1419] placeholder-[#536471]/50 bg-[#f7f9f9] border border-[#eff3f4] rounded px-1.5 py-1 outline-none transition-colors"
+                      className="w-full text-[10px] text-[#0f1419] placeholder-[#536471]/60 bg-[#f7f9f9] border border-[#eff3f4] rounded px-1.5 py-1 outline-none transition-colors"
                     />
                   </div>
                 </div>
               ))}
-
-              {/* Add Board Item Slot Button */}
-              <button
-                type="button"
-                onClick={() => {
-                  setMediaItems((prev) => [
-                    ...prev,
-                    { id: `b_slot_${Date.now()}_${prev.length + 1}`, type: 'image', url: '', caption: '' }
-                  ]);
-                }}
-                className="h-36 rounded-xl border-2 border-dashed border-[#cfd9de] hover:border-[#1d9bf0] hover:bg-[#1d9bf0]/5 text-[#536471] hover:text-[#1d9bf0] transition-colors flex flex-col items-center justify-center gap-1.5 cursor-pointer"
-                title="Add another board slot"
-              >
-                <Plus className="w-5 h-5" />
-                <span className="text-xs font-bold">Add Slot</span>
-              </button>
             </div>
 
             {/* Upload / Folder / Add Avatar / Paste URL Buttons */}
@@ -852,10 +851,10 @@ export default function PostComposer({
               </button>
             </div>
 
-            {/* Helpful Multi-Upload Tip */}
+            {/* Philosophy tip */}
             <p className="text-[11px] text-[#536471] -mt-1 flex items-center gap-1.5">
               <span>💡</span>
-              <span>Tip: Select multiple photos, pick an entire folder, or drag & drop files directly onto this board.</span>
+              <span>If you do not have 5 images, it is not board-worthy. Exactly 5 slots required.</span>
             </p>
 
             {showUrlInput && (
@@ -957,7 +956,11 @@ export default function PostComposer({
                 disabled={!canSubmit()}
                 className="bg-[#1d9bf0] hover:bg-[#1a8cd8] disabled:opacity-40 text-white font-bold px-5 py-2 rounded-full text-xs transition-colors shadow-2xs cursor-pointer"
               >
-                {isSubmitting ? 'Creating...' : 'Create Board'}
+                {isSubmitting
+                  ? 'Creating...'
+                  : filledBoardItems.length < 5
+                  ? `5 images required (${filledBoardItems.length}/5 added)`
+                  : 'Create Board'}
               </button>
             </div>
           </div>
@@ -974,7 +977,7 @@ export default function PostComposer({
         currentUserId={authUser?.id}
         onSelectUser={(user) => {
           const targetIdx = targetBoardSlotIndexRef.current;
-          if (targetIdx !== null && targetIdx >= 0) {
+          if (targetIdx !== null && targetIdx >= 0 && targetIdx < 5) {
             setMediaItems((prev) =>
               prev.map((item, idx) =>
                 idx === targetIdx
@@ -992,34 +995,36 @@ export default function PostComposer({
           } else {
             setMediaItems((prev) => {
               const emptyIdx = prev.findIndex((m) => !m.url);
-              const newItem: DraftMediaItem = {
-                id: `b_slot_${Date.now()}`,
-                type: 'user',
-                url: `/${user.username}`,
-                username: user.username,
-                name: user.name,
-                avatar: user.avatar,
-                caption: ''
-              };
-              if (emptyIdx !== -1) {
-                return prev.map((m, i) => (i === emptyIdx ? { ...m, ...newItem, id: m.id } : m));
-              }
-              return [...prev, newItem];
+              if (emptyIdx === -1) return prev;
+              return prev.map((item, idx) =>
+                idx === emptyIdx
+                  ? {
+                      ...item,
+                      type: 'user',
+                      url: `/${user.username}`,
+                      username: user.username,
+                      name: user.name,
+                      avatar: user.avatar
+                    }
+                  : item
+              );
             });
           }
-          targetBoardSlotIndexRef.current = null;
           setIsSelectOomfModalOpen(false);
+          targetBoardSlotIndexRef.current = null;
         }}
       />
 
-      {/* Board Hero Image Crop Viewfinder Modal */}
-      <BoardCropModal
-        isOpen={cropModalState.isOpen}
-        imageSrc={cropModalState.imageSrc}
-        onClose={() => setCropModalState({ isOpen: false, slotIndex: null, imageSrc: '' })}
-        onApply={handleApplyCrop}
-        aspectRatio={2.0}
-      />
+      {/* 2:1 Crop Viewfinder Modal for Slot 0 */}
+      {cropModalState.isOpen && cropModalState.imageSrc && (
+        <BoardCropModal
+          isOpen={cropModalState.isOpen}
+          imageSrc={cropModalState.imageSrc}
+          aspectRatio={2.0}
+          onClose={() => setCropModalState({ isOpen: false, slotIndex: null, imageSrc: '' })}
+          onApply={handleApplyCrop}
+        />
+      )}
     </div>
   );
 }

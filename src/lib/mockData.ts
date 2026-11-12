@@ -437,11 +437,6 @@ export const MOCK_POSTS: Post[] = [
           id: 'b5',
           url: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=700&h=560&q=80',
           caption: 'Soft brutalist living space'
-        },
-        {
-          id: 'b6',
-          url: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=700&h=860&q=80',
-          caption: 'Modular apartment elevation'
         }
       ]
     },
@@ -483,6 +478,11 @@ export const MOCK_POSTS: Post[] = [
           id: 'b_ui4',
           url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=700&h=800&q=80',
           caption: 'Light theme elevation tokens'
+        },
+        {
+          id: 'b_ui5',
+          url: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=700&h=700&q=80',
+          caption: 'Syntax and layout tokens'
         }
       ]
     },
@@ -520,6 +520,11 @@ export const MOCK_POSTS: Post[] = [
           id: 'bf4',
           url: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=800&q=80',
           caption: 'Subway station monochrome'
+        },
+        {
+          id: 'bf5',
+          url: 'https://images.unsplash.com/photo-1508804185872-d7badad00f7d?auto=format&fit=crop&w=800&q=80',
+          caption: 'Rainy street lamp grain'
         }
       ]
     },
@@ -573,6 +578,15 @@ export const MOCK_POSTS: Post[] = [
           name: 'Marcus Vance',
           avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
           caption: 'Product engineer'
+        },
+        {
+          id: 'bu5',
+          type: 'user',
+          url: '/jack',
+          username: 'jack',
+          name: 'Jack Dorsey',
+          avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80',
+          caption: 'Protocol advisor'
         }
       ]
     },

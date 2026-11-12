@@ -9,7 +9,7 @@ This document details the architecture, design principles, media compression pip
 The composer ([`src/components/feed/PostComposer.tsx`](file:///c:/Users/GGPC/Desktop/oomfsorg%20twitter/src/components/feed/PostComposer.tsx)) is dedicated exclusively to drafting **Curated Boards (`type: 'board'`)**, which are the sole timeline post type on user profiles.
 
 * **Board Title**: Bold, clean typography title (e.g., `Brutalist Architecture`) without emojis. Subtitles and captions have been removed so the title is the sole clean text identifier of the board.
-* **Visual Items ($3+$ items required)**: Image uploads (compressed client-side via canvas) and/or mutual/user avatar link embeds (`SelectOomfModal`).
+* **Visual Items (Exactly 5 items required)**: Image uploads (compressed client-side via canvas) and/or mutual/user avatar link embeds (`SelectOomfModal`). Follows the philosophy: *"If you do not have 5 images, it is not board-worthy."*
 * **Preset Assignment**: Direct dropdown selection to assign the new board to a curated preset collection upon creation.
 
 ---
@@ -32,14 +32,14 @@ Board creation can be initiated from two primary surfaces:
 ## 3. Board Builder & Unified Attachments
 
 Boards treat **image uploads** and **mutual/user avatars** as unified interchangeable items:
-1. **Visual Slots (3+ items)**: Pre-fills 5 blank item slots where creators can choose either **"Image"** (file upload) or **"Avatar"** (picking a mutual friend via `SelectOomfModal`). In addition, bottom action buttons allow adding photos or mutual avatars to the board dynamically.
+1. **Visual Slots (Exactly 5 Slots)**: Fixed to exactly 5 item slots corresponding to the 2x2 grid (Slots 1–4) and the centered circular avatar (Slot 5). Creators can choose either **"Image"** (file upload) or **"Avatar"** (picking a mutual friend via `SelectOomfModal`).
 2. **Item Captions**: Optional clean notes per slot. Zero emojis.
 
 ### 3.1 Hybrid Multi-Image Ingestion Engine
 To eliminate the friction of manually uploading photos one by one into individual slots, `PostComposer.tsx` provides a seamless hybrid upload pipeline:
-* **Multi-File Selection (`multiple`)**: Both the primary "Upload Images" button and individual slot "Image" buttons support multi-file selection. Selecting $N$ photos sequentially auto-populates empty slots starting from the active slot and appends new overflow slots as needed.
-* **One-Click Folder Upload (`webkitdirectory`)**: A dedicated "Upload Folder" action enables PC creators to select an entire moodboard folder in 1 click.
-* **Full Drag-and-Drop Target**: Dropping loose images or directories directly onto the Board Builder area recurses via `webkitGetAsEntry()`, auto-extracting and populating board slots.
+* **Multi-File Selection (`multiple`)**: Both the primary "Upload Images" button and individual slot "Image" buttons support multi-file selection, sequentially auto-populating empty slots up to the 5-item ceiling.
+* **One-Click Folder Upload (`webkitdirectory`)**: A dedicated "Upload Folder" action enables PC creators to select an entire moodboard folder in 1 click (populating up to the 5 slots).
+* **Full Drag-and-Drop Target**: Dropping loose images or directories directly onto the Board Builder area recurses via `webkitGetAsEntry()`, auto-extracting and populating board slots up to 5 items.
 * **Smart Natural Ordering**: Ingested files are sorted numerically and alphabetically (`01.jpg`, `02.jpg`), preserving the creator's curated sequencing.
 
 ### 3.2 Cover Photo Framing & Viewfinder Cropper (`BoardCropModal.tsx`)
@@ -89,7 +89,7 @@ When the creator taps **"Create Board"**:
        ▼
 1. Validation Check (`canSubmit()`)
    - Title required: `title.trim().length > 0`
-   - Minimum 3 filled items: `filledBoardItems.length >= 3`
+   - Exactly 5 filled items: `filledBoardItems.length === 5`
        │
        ▼
 2. Supabase Persistence (`public.blocks`)
@@ -122,10 +122,10 @@ When modifying composer state, media handling, or UI controls:
   Do not introduce separate standard text post toggles. The composer is dedicated purely to crafting visual boards.
 - [ ] **Strictly No Subtitles**:
   The composer only captures the board title. Do not add subtitle or caption textareas to the board form.
-- [ ] **Dual Slot Choices in Board Builder**:
-  Empty board slots provide distinct buttons for **"Image"** (uploading a photo) and **"Avatar"** (selecting an OOMF mutual or followed user), guaranteeing consistent media and link behavior.
-- [ ] **Validation Guardrails**:
-  Disable the submit button until a non-empty title is provided AND at least 3 slots have valid images or avatar embeds.
+- [ ] **Fixed 5 Visual Slots**:
+  The Board Builder is fixed to exactly 5 slots (Slots 1–4 for the 2x2 grid, Slot 5 for the center circle). Maximum images is capped strictly at 5.
+- [ ] **Strict 5-Image Enforcement**:
+  Disable the submit button until a non-empty title is provided AND all 5 slots have valid images or avatar embeds. If fewer than 5 items are present, display `5 images required (X/5 added)` helper text and block submission.
 - [ ] **Zero Emojis**:
   Strip emojis from board titles and slot captions to preserve typographic minimalism.
 - [ ] **Submitting to Presets**:

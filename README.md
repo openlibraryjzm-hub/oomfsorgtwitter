@@ -18,7 +18,7 @@
 
 3. **Specialized Post Formats & Pinterest Boards:**  
    Profiles showcase rich, modular content formats tailored to creative work and visual curation:
-   * 📌 **Board (`board`)**: The **sole timeline post type**. Renders on the profile in an authentic **2-column Pinterest-style scroll grid** with a full-bleed 2:1 hero cover image, bottom cascading secondary circle avatars ("also followed by" pattern), bold title, and item count below. Cover photos are framed precisely during upload via the interactive `BoardCropModal.tsx` viewfinder. Supports image uploads and mutual avatar link embeds (`SelectOomfModal`). Expands into a full **2-column Pinterest masonry grid** in the dedicated thread view (`/[username]/status/[id]`).
+   * 📌 **Board (`board`)**: The **sole timeline post type**. Renders on the profile in an authentic **2-column Pinterest-style scroll grid** maintaining the compact 2:1 aspect ratio, structured as a **2x2 grid (4 quadrants)** with a **centered circular 5th image (Slot 4)** positioned in the exact dead-center. Enforces the strict rule: *"If you do not have 5 images, it is not board-worthy."* Supports compressed image uploads and mutual avatar embeds (`SelectOomfModal`). Expands into a full **2-column Pinterest masonry grid** in the dedicated thread view (`/[username]/status/[id]`).
    * 💬 **Profile Comments (`comment`)**: 1:1 X/Twitter-native guestbook comments supporting attached images (up to 4 photos), rich interaction suite (Reply, Repost, Like, Share), and full thread navigation (`/[author]/status/[id]`).
 
    *Detailed post format specifications are available in [Post Types Context Doc](docs/post-types.md) and [Composer Context Doc](docs/composer.md).*
@@ -131,7 +131,7 @@
 │   │   │   └── UserNetworkView.tsx     # 1:1 network directory (OOMFs, Following, Followers) & 3 display modes
 │   │   └── feed/
 │   │       ├── BoardPresetsBar.tsx     # Pinned horizontal bar (All Boards, preset tabs, owner actions)
-│   │       ├── BoardGridCard.tsx       # 2-column Pinterest board card (2:1 hero cover, bottom cascading circle avatars)
+│   │       ├── BoardGridCard.tsx       # 2-column Pinterest board card (2:1 aspect ratio, 2x2 grid + center circle)
 │   │       ├── BoardCropModal.tsx      # 2:1 interactive cover crop viewfinder (drag-pan, zoom slider, thirds grid)
 │   │       ├── PostCard.tsx            # Thread view post renderer & board expansion
 │   │       ├── CommentCard.tsx         # Flat guestbook comment card (non-threaded)
